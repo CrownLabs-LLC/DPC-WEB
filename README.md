@@ -1,0 +1,54 @@
+# DPC-WEB
+
+Interim Downtown Pour Collective website — two member-facing landing pages plus
+supporting pages, deployed to Vercel.
+
+| Route | Source | Purpose |
+| --- | --- | --- |
+| `/` | `index.html` | Member founding signup (Stripe Checkout link) |
+| `/partners` | `partners.html` | Founding Partner intake (Resend) |
+| `/privacy` | `privacy.html` | Privacy Policy |
+| `/terms` | `terms.html` | Terms of Service |
+| `/reserved-confirmation` | `reserved-confirmation.html` | Post-deposit confirmation (noindex) |
+
+## Stack
+- Static HTML/CSS/inline JS (no build step). Fonts from Google CDN.
+- One Vercel Node serverless function: [`/api/partner-intake`](api/partner-intake.js).
+- Resend for partner-intake contact + notification email.
+- Stripe Payment Link (hosted) for the $49 founding deposit — no server code.
+
+## Local dev
+```sh
+npm install
+npx vercel dev
+```
+Then open <http://localhost:3000>.
+
+## Configuration
+
+### Env vars (Vercel project settings)
+See [`.env.example`](.env.example). Required:
+- `RESEND_API_KEY`
+- `RESEND_PARTNER_AUDIENCE_ID`
+
+Optional (have sensible defaults):
+- `NOTIFY_TO` — comma-separated recipients
+- `NOTIFY_FROM` — verified Resend sender
+
+### Things to swap in the HTML before launch
+1. **Stripe Payment Link** — replace `data-stripe-url="https://buy.stripe.com/REPLACE_ME"` in `index.html` (two occurrences) with the live link.
+2. **GA4 measurement ID** — replace `G-XXXXXXXXXX` in the loader block at the bottom of each page's `<head>` in `index.html` and `partners.html`.
+3. **Assets** — drop OG images + primary lockup into [`/assets`](assets/README.md).
+
+### Partner page phase toggle
+`partners.html` ships both states. To flip to waitlist mode when the founding
+cohort fills, change `var DPC_PARTNER_PHASE = 1;` to `2` (search for it near the
+bottom of the file).
+
+See [`DEPLOY.md`](DEPLOY.md) for the full launch checklist (Stripe, Resend, GA4,
+DNS, Vercel).
+
+## Source of truth
+The handoff brief that produced these files is preserved in
+[`DESIGN_HANDOFF.md`](DESIGN_HANDOFF.md). Treat it as authoritative for copy,
+tokens, and partner-page voice guardrails.

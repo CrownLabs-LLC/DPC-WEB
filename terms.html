@@ -1,0 +1,454 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Terms of Service | Downtown Pour Collective</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="The Terms of Service for Downtown Pour Collective, a members-only beverage community operated by Table & Town LLC in Livermore, California.">
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#0D1B2A;--liquid:#1E3A5A;--gold:#C4A35A;--gold-ink:#8A6B36;--gold-deep:#9C7E50;
+  --cream:#F5F0E8;--paper:#FBF8F1;--ink:#1B2A38;--ink-soft:#3A4856;--white:#fff;
+  --display:'Playfair Display',Georgia,serif;--support:'Barlow Condensed','Arial Narrow',sans-serif;--body:'Barlow',system-ui,sans-serif;
+}
+*{box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{margin:0;font-family:var(--body);font-size:16px;line-height:1.7;color:var(--ink);background:var(--paper);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;}
+::selection{background:rgba(196,163,90,.28);}
+
+/* top bar */
+.lg-top{position:sticky;top:0;z-index:30;background:var(--navy);border-bottom:1px solid rgba(196,163,90,.25);}
+.lg-top__inner{max-width:1180px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;padding:0 32px;height:66px;}
+a.lg-home{display:flex;align-items:center;border:0;}
+.lg-lockup{height:38px;width:auto;display:block;}
+.lg-top__nav{display:flex;gap:28px;align-items:center;}
+.lg-top__nav a{font-family:var(--support);font-weight:700;font-size:13px;letter-spacing:.18em;text-transform:uppercase;color:rgba(245,240,232,.72);text-decoration:none;border:0;padding:4px 0;transition:color 160ms ease;}
+.lg-top__nav a:hover{color:var(--gold);}
+.lg-top__nav a.is-here{color:var(--gold);border-bottom:1px solid var(--gold);}
+
+/* reading progress */
+.lg-progress{position:sticky;top:66px;z-index:29;height:2px;background:transparent;}
+.lg-progress__bar{height:100%;width:0;background:var(--gold);transition:width 80ms linear;}
+
+/* layout */
+.lg-wrap{position:relative;max-width:1180px;margin:0 auto;padding:0 32px;}
+.lg-masthead{padding:72px 0 0;max-width:760px;}
+.lg-eyebrow{font-family:var(--support);font-weight:700;font-size:13px;letter-spacing:.4em;text-transform:uppercase;color:var(--gold-ink);margin:0 0 22px;}
+.lg-title{font-family:var(--display);font-weight:700;font-size:clamp(40px,6vw,64px);line-height:1.04;letter-spacing:.005em;color:var(--navy);margin:0 0 28px;text-wrap:balance;}
+.lg-meta{display:flex;flex-wrap:wrap;gap:6px 0;font-family:var(--support);font-weight:600;font-size:13px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-soft);}
+.lg-meta span{padding:0 16px;position:relative;}
+.lg-meta span:first-child{padding-left:0;}
+.lg-meta span+span::before{content:"";position:absolute;left:0;top:50%;width:1px;height:12px;background:rgba(196,163,90,.55);transform:translateY(-50%);}
+.lg-rule{border:0;height:1px;background:linear-gradient(90deg,var(--gold) 0%,var(--gold) 64px,rgba(196,163,90,.28) 64px,rgba(196,163,90,.28) 100%);margin:40px 0 0;max-width:760px;}
+
+.lg-layout{display:grid;grid-template-columns:240px 1fr;gap:56px;align-items:start;padding:56px 0 96px;position:relative;z-index:1;}
+
+/* toc */
+.lg-toc{position:sticky;top:96px;max-height:calc(100vh - 120px);overflow-y:auto;padding-right:8px;}
+.lg-toc__title{font-family:var(--support);font-weight:700;font-size:11px;letter-spacing:.34em;text-transform:uppercase;color:var(--gold-ink);margin:0 0 18px;padding-bottom:12px;border-bottom:1px solid rgba(196,163,90,.3);}
+.lg-toc ol{list-style:none;margin:0;padding:0;counter-reset:none;}
+.lg-toc li{margin:0;}
+.lg-toc a{display:flex;gap:10px;align-items:baseline;padding:8px 0;border:0;text-decoration:none;color:var(--ink-soft);transition:color 140ms ease;}
+.lg-toc a:hover{color:var(--navy);}
+.lg-toc a.is-active{color:var(--gold-ink);}
+.lg-toc__n{font-family:var(--support);font-weight:700;font-size:11px;letter-spacing:.06em;min-width:18px;color:var(--gold-deep);}
+.lg-toc a.is-active .lg-toc__n{color:var(--gold-ink);}
+.lg-toc__t{font-family:var(--body);font-weight:500;font-size:13px;line-height:1.35;}
+.lg-toc__scrollwrap{scrollbar-width:thin;scrollbar-color:rgba(196,163,90,.4) transparent;}
+
+/* content */
+.lg-content{max-width:720px;}
+.lg-sec{scroll-margin-top:96px;display:flex;gap:18px;align-items:baseline;margin:64px 0 24px;padding-top:36px;border-top:1px solid rgba(196,163,90,.32);}
+.lg-sec:first-child{margin-top:0;padding-top:0;border-top:0;}
+.lg-sec__n{font-family:var(--support);font-weight:700;font-size:18px;letter-spacing:.04em;color:var(--gold-ink);flex:none;line-height:1.5;min-width:30px;}
+.lg-sec__t{font-family:var(--display);font-weight:700;font-size:clamp(24px,3vw,32px);line-height:1.16;color:var(--navy);text-wrap:balance;}
+.lg-sub{font-family:var(--support);font-weight:700;font-size:15px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold-ink);margin:34px 0 14px;display:flex;gap:10px;align-items:baseline;}
+.lg-sub__n{color:var(--gold-deep);font-variant-numeric:tabular-nums;}
+.lg-p{margin:0 0 18px;color:var(--ink);text-wrap:pretty;}
+.lg-p--sub{padding-left:22px;border-left:2px solid rgba(196,163,90,.3);}
+.lg-lead{color:var(--navy);font-weight:600;}
+.lg-content strong{color:var(--navy);font-weight:600;}
+.lg-list{margin:0 0 20px;padding:0;list-style:none;}
+.lg-list li{position:relative;padding:0 0 10px 24px;color:var(--ink);}
+.lg-list li::before{content:"";position:absolute;left:2px;top:12px;width:6px;height:6px;background:var(--gold);transform:rotate(45deg);}
+.lg-content a{color:var(--gold-ink);text-decoration:none;border-bottom:1px solid rgba(138,107,54,.4);transition:color 140ms ease,border-color 140ms ease;word-break:break-word;}
+.lg-content a:hover{color:var(--navy);border-color:var(--navy);}
+
+/* seal watermark */
+.lg-seal{position:absolute;right:-10px;bottom:120px;width:200px;height:200px;opacity:.05;pointer-events:none;z-index:0;}
+
+/* footer */
+.lg-foot{background:var(--navy);color:var(--cream);margin-top:0;}
+.lg-foot__inner{max-width:1180px;margin:0 auto;padding:64px 32px 40px;display:grid;grid-template-columns:1.5fr 1fr 1fr;gap:48px;align-items:start;}
+.lg-foot .lg-lockup{height:54px;margin-bottom:18px;}
+.lg-foot__line{font-family:var(--body);font-weight:400;font-size:13px;line-height:1.7;color:rgba(245,240,232,.6);margin:0;}
+.lg-foot__head{font-family:var(--support);font-weight:700;font-size:12px;letter-spacing:.34em;text-transform:uppercase;color:var(--gold);margin:0 0 16px;}
+.lg-foot__txt{margin:0 0 6px;font-size:14px;}
+.lg-foot__txt a,.lg-foot__nav a{color:rgba(245,240,232,.82);text-decoration:none;border:0;transition:color 140ms ease;}
+.lg-foot__txt a:hover,.lg-foot__nav a:hover{color:var(--gold);}
+.lg-foot__nav{display:flex;flex-direction:column;gap:8px;font-size:14px;}
+.lg-foot__legal{max-width:1180px;margin:0 auto;padding:28px 32px 36px;border-top:1px solid rgba(245,240,232,.08);font-family:var(--body);font-size:12px;color:rgba(245,240,232,.4);}
+
+.lg-toc-details>summary{display:none;}
+@media(max-width:980px){
+  .lg-layout{grid-template-columns:1fr;gap:0;}
+  .lg-toc{position:static;max-height:none;overflow:visible;margin-bottom:8px;}
+  .lg-toc-details{border:1px solid rgba(196,163,90,.3);border-radius:6px;padding:0;background:rgba(196,163,90,.05);}
+  .lg-toc-details>summary{display:block;cursor:pointer;list-style:none;font-family:var(--support);font-weight:700;font-size:12px;letter-spacing:.28em;text-transform:uppercase;color:var(--gold-ink);padding:16px 18px;}
+  .lg-toc-details>summary::-webkit-details-marker{display:none;}
+  .lg-toc-details .lg-toc__title{display:none;}
+  .lg-toc-details>summary::after{content:"+";float:right;font-size:16px;}
+  .lg-toc-details[open]>summary::after{content:"–";}
+  .lg-toc-details .lg-toc__inner{padding:0 18px 16px;}
+  .lg-seal{display:none;}
+}
+@media(max-width:640px){
+  .lg-top__inner{padding:0 20px;height:58px;}
+  .lg-lockup{height:32px;}
+  .lg-top__nav{gap:18px;}
+  .lg-top__nav a{font-size:11px;letter-spacing:.12em;}
+  .lg-wrap{padding:0 20px;}
+  .lg-masthead{padding-top:48px;}
+  .lg-layout{padding:36px 0 64px;}
+  .lg-foot__inner{grid-template-columns:1fr;gap:36px;padding:48px 20px 32px;}
+  .lg-progress{top:58px;}
+  .lg-sec{gap:12px;}
+}
+</style>
+<script>window.addEventListener('error',function(e){if(e&&e.message&&/ResizeObserver loop/.test(e.message)){e.stopImmediatePropagation();e.preventDefault();}},true);</script>
+</head>
+<body>
+<header class="lg-top">
+  <div class="lg-top__inner">
+    <a class="lg-home" href="index.html" aria-label="Downtown Pour Collective home"><svg viewBox="0 0 540 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Downtown Pour Collective" class="lg-lockup">
+  <defs><clipPath id="lk-glass"><path d="M -16,-46 L 16,-46 L 22,37 L -22,37 Z"/></clipPath></defs>
+  <g transform="translate(74,100) rotate(38)">
+    <path d="M -22,-54 L 22,-54 L 28,44 L -28,44 Z" fill="#C4A35A"/>
+    <path d="M -16,-46 L 16,-46 L 22,37 L -22,37 Z" fill="#0D1B2A"/>
+    <g clip-path="url(#lk-glass)">
+      <path d="M -21,23 L 19,-9 L 22,37 L -22,37 Z" fill="#1E3A5A"/>
+      <line x1="-24" y1="23" x2="22" y2="-10" stroke="#C4A35A" stroke-width="1.4" stroke-linecap="round" opacity="0.75"/>
+    </g>
+    <rect x="-24" y="-58" width="48" height="7" rx="2" fill="#C4A35A"/>
+    <rect x="-32" y="42" width="64" height="8" rx="2" fill="#C4A35A"/>
+  </g>
+  <text x="178" y="74" font-family="'Barlow Condensed',sans-serif" font-weight="700" font-size="17" letter-spacing="7" fill="#C4A35A">DOWNTOWN</text>
+  <text x="174" y="124" font-family="'Playfair Display',serif" font-weight="700" font-size="54" letter-spacing="2" fill="#F5F0E8">POUR</text>
+  <text x="178" y="150" font-family="'Barlow Condensed',sans-serif" font-weight="700" font-size="17" letter-spacing="7" fill="#C4A35A">COLLECTIVE</text>
+</svg></a>
+    <nav class="lg-top__nav">
+      <a href="terms.html" class="is-here">Terms</a>
+      <a href="privacy.html" class="">Privacy</a>
+      <a href="index.html">Home</a>
+    </nav>
+  </div>
+</header>
+<div class="lg-progress"><div class="lg-progress__bar" id="lg-bar"></div></div>
+
+<main class="lg-wrap">
+  <div class="lg-masthead">
+    <p class="lg-eyebrow">Downtown Pour Collective</p>
+    <h1 class="lg-title">Terms of Service</h1>
+    <div class="lg-meta"><span>Version 3.0</span><span>Effective Date: [DATE]</span><span>Last Updated: April 2026</span><span>Table &amp; Town LLC &middot; Livermore, CA</span></div>
+    <hr class="lg-rule">
+  </div>
+
+  <div class="lg-layout">
+    <aside class="lg-toc">
+      <details class="lg-toc-details" open>
+        <summary>Contents</summary>
+        <div class="lg-toc__inner lg-toc__scrollwrap">
+          <p class="lg-toc__title">Contents</p>
+          <ol><li><a href="#sec-1" data-sec="1"><span class="lg-toc__n">1</span><span class="lg-toc__t">Acceptance of Terms</span></a></li><li><a href="#sec-2" data-sec="2"><span class="lg-toc__n">2</span><span class="lg-toc__t">Eligibility</span></a></li><li><a href="#sec-3" data-sec="3"><span class="lg-toc__n">3</span><span class="lg-toc__t">Membership Structure and Pricing</span></a></li><li><a href="#sec-4" data-sec="4"><span class="lg-toc__n">4</span><span class="lg-toc__t">Membership Pours (Program Entitlements)</span></a></li><li><a href="#sec-5" data-sec="5"><span class="lg-toc__n">5</span><span class="lg-toc__t">Membership Pour Rules</span></a></li><li><a href="#sec-6" data-sec="6"><span class="lg-toc__n">6</span><span class="lg-toc__t">Redemption Requirements</span></a></li><li><a href="#sec-7" data-sec="7"><span class="lg-toc__n">7</span><span class="lg-toc__t">Founding Slot Deposits</span></a></li><li><a href="#sec-8" data-sec="8"><span class="lg-toc__n">8</span><span class="lg-toc__t">Ticketed Events</span></a></li><li><a href="#sec-9" data-sec="9"><span class="lg-toc__n">9</span><span class="lg-toc__t">Member Perks and Programs</span></a></li><li><a href="#sec-10" data-sec="10"><span class="lg-toc__n">10</span><span class="lg-toc__t">Boost Missions</span></a></li><li><a href="#sec-11" data-sec="11"><span class="lg-toc__n">11</span><span class="lg-toc__t">Referral Program</span></a></li><li><a href="#sec-12" data-sec="12"><span class="lg-toc__n">12</span><span class="lg-toc__t">Billing and Payment</span></a></li><li><a href="#sec-13" data-sec="13"><span class="lg-toc__n">13</span><span class="lg-toc__t">Cancellation, Pause, and Refunds</span></a></li><li><a href="#sec-14" data-sec="14"><span class="lg-toc__n">14</span><span class="lg-toc__t">Fraud Prevention, Investigation, and Account Enforcement</span></a></li><li><a href="#sec-15" data-sec="15"><span class="lg-toc__n">15</span><span class="lg-toc__t">Account Conduct and Prohibited Activities</span></a></li><li><a href="#sec-16" data-sec="16"><span class="lg-toc__n">16</span><span class="lg-toc__t">Dpc as Merchant of Record</span></a></li><li><a href="#sec-17" data-sec="17"><span class="lg-toc__n">17</span><span class="lg-toc__t">Brand Ambassadors</span></a></li><li><a href="#sec-18" data-sec="18"><span class="lg-toc__n">18</span><span class="lg-toc__t">Program Modifications and Availability</span></a></li><li><a href="#sec-19" data-sec="19"><span class="lg-toc__n">19</span><span class="lg-toc__t">Program Discontinuation and Wind-Down</span></a></li><li><a href="#sec-20" data-sec="20"><span class="lg-toc__n">20</span><span class="lg-toc__t">Intellectual Property and User Generated Content</span></a></li><li><a href="#sec-21" data-sec="21"><span class="lg-toc__n">21</span><span class="lg-toc__t">Third-Party Services and Partner Venues</span></a></li><li><a href="#sec-22" data-sec="22"><span class="lg-toc__n">22</span><span class="lg-toc__t">Disclaimer of Warranties</span></a></li><li><a href="#sec-23" data-sec="23"><span class="lg-toc__n">23</span><span class="lg-toc__t">Limitation of Liability</span></a></li><li><a href="#sec-24" data-sec="24"><span class="lg-toc__n">24</span><span class="lg-toc__t">Indemnification</span></a></li><li><a href="#sec-25" data-sec="25"><span class="lg-toc__n">25</span><span class="lg-toc__t">Dispute Resolution</span></a></li><li><a href="#sec-26" data-sec="26"><span class="lg-toc__n">26</span><span class="lg-toc__t">Governing Law</span></a></li><li><a href="#sec-27" data-sec="27"><span class="lg-toc__n">27</span><span class="lg-toc__t">Alcohol-Related Disclaimers, Member Conduct, and Member Acknowledgements</span></a></li><li><a href="#sec-28" data-sec="28"><span class="lg-toc__n">28</span><span class="lg-toc__t">Communications</span></a></li><li><a href="#sec-29" data-sec="29"><span class="lg-toc__n">29</span><span class="lg-toc__t">Severability</span></a></li><li><a href="#sec-30" data-sec="30"><span class="lg-toc__n">30</span><span class="lg-toc__t">Entire Agreement</span></a></li><li><a href="#sec-31" data-sec="31"><span class="lg-toc__n">31</span><span class="lg-toc__t">Contact Information</span></a></li></ol>
+        </div>
+      </details>
+    </aside>
+    <div class="lg-content">
+      <h2 class="lg-sec" id="sec-1"><span class="lg-sec__n">1</span><span class="lg-sec__t">Acceptance of Terms</span></h2>
+<p class="lg-p">These Terms of Service (“Terms”) constitute a legally binding agreement between you (“Member,” “you,” or “your”) and Table &amp; Town LLC, a California limited liability company, doing business as Downtown Pour Collective (“DPC,” “we,” “us,” or “our”).</p>
+<p class="lg-p">By creating a DPC account, placing a Founding Slot Deposit, purchasing a membership, or using the DPC mobile application (the “App”) or website at <a href="https://www.downtownpourcollective.com" target="_blank" rel="noopener">www.downtownpourcollective.com</a> (the “Site”), you agree to be bound by these Terms, our Privacy Policy, and any additional policies or guidelines referenced herein. If you do not agree to these Terms, do not use our services.</p>
+<p class="lg-p">DPC reserves the right to update or modify these Terms at any time. Material changes will be communicated via email or in-app notification at least thirty (30) days before the effective date. Continued use of the service after changes take effect constitutes acceptance of the revised Terms.</p>
+<h2 class="lg-sec" id="sec-2"><span class="lg-sec__n">2</span><span class="lg-sec__t">Eligibility</span></h2>
+<p class="lg-p">To become a DPC member, you must be at least twenty-one (21) years of age and legally permitted to purchase and consume alcoholic beverages in the State of California. By enrolling, you represent and warrant that you meet these requirements.</p>
+<p class="lg-p">DPC membership is individual and non-transferable. Each account is tied to a single named individual and may not be shared with, assigned to, or used by any other person.</p>
+<h2 class="lg-sec" id="sec-3"><span class="lg-sec__n">3</span><span class="lg-sec__t">Membership Structure and Pricing</span></h2>
+<h3 class="lg-sub"><span class="lg-sub__n">3.1</span> Membership Circles</h3>
+<p class="lg-p">DPC offers three membership Circles, each focused on a different beverage category:</p>
+<p class="lg-p"><strong>Tap Circle (Beer):</strong> $59 per month.</p>
+<p class="lg-p"><strong>Cellar Circle (Wine):</strong> $69 per month.</p>
+<p class="lg-p"><strong>Reserve Circle (Spirits &amp; Cocktails):</strong> $79 per month.</p>
+<p class="lg-p">Each membership includes five (5) monthly “Membership Pours” or “Pours” redeemable for eligible beverages within the applicable Circle’s product category, subject to the Terms. This fee is non-refundable once paid, regardless of subsequent cancellation or non-use of the membership, except where a refund is required by applicable law or where the fee is paid through conversion of a Founding Slot Deposit, which is governed by Section 7.</p>
+<p class="lg-p">Members may join more than one Circle. A one-time Welcome Kit and Activation Fee of $49 applies upon initial enrollment and covers all Circles.</p>
+<p class="lg-p">Membership benefits, including Pours, are time-limited program entitlements and do not constitute stored or banked value.</p>
+<h3 class="lg-sub"><span class="lg-sub__n">3.2</span> Annual Membership</h3>
+<p class="lg-p">Annual memberships are available at twelve (12) months for the price of ten (10). Annual memberships are billed in full at enrollment or renewal for a defined membership term. Notwithstanding the timing of payment, membership benefits, including Pours, are issued and governed on a recurring monthly basis through a series of Monthly Entitlement Periods, as defined in Section 4. During each Monthly Entitlement Period, the member receives the applicable number of Pours for that period only.</p>
+<p class="lg-p">Pours issued for a given Monthly Entitlement Period expire at the end of that period and do not roll over, accumulate, or carry forward to subsequent periods within the annual term. Unused Pours are forfeited at the end of each Monthly Entitlement Period, regardless of whether the membership was paid on an annual or monthly basis.</p>
+<p class="lg-p">By purchasing an annual membership, the member acknowledges and agrees that membership benefits are time-based and are provided incrementally over the membership term, and that membership fees do not purchase, pre-fund, or create any right to a banked, cumulative, or stored quantity of Pours or other benefits.</p>
+<h3 class="lg-sub"><span class="lg-sub__n">3.3</span> Founding Annual Membership</h3>
+<p class="lg-p">Founding Annual memberships are limited to the first two hundred (200) annual members per city chapter, with DPC reserving the right to increase this cap to two hundred fifty (250). Founding Annual members receive a price lock for five (5) years from join date and ongoing, program-duration Founding Member recognition at the DPC Annual Gala via the Founder Ledger. After the five-year price-lock period ends, the Founding Annual membership will automatically renew at the then-current Annual Membership rate for the member’s selected Circle, unless the member cancels before renewal in accordance with these Terms.</p>
+<h2 class="lg-sec" id="sec-4"><span class="lg-sec__n">4</span><span class="lg-sec__t">Membership Pours (Program Entitlements)</span></h2>
+<h3 class="lg-sub"><span class="lg-sub__n">4.1</span> Nature of Membership Pours</h3>
+<p class="lg-p">As part of an active DPC membership, members receive a fixed number of monthly Pours, which are non-monetary, experiential entitlements redeemable at participating Partner Venues in accordance with these Terms.</p>
+<p class="lg-p">“Monthly Entitlement Period” means each recurring monthly period during which Membership Pours are issued and may be used. Monthly Entitlement Periods apply to all memberships, including annual memberships, regardless of billing frequency.</p>
+<p class="lg-p">Membership Pours are not cash, stored value, gift cards, prepaid instruments, or currency of any kind. They do not represent or store monetary value and are not a substitute for money.</p>
+<p class="lg-p">Pours are not severable from an active membership and may not be held, banked, or maintained independently of the membership program. They are non-transferable and may not be sold, exchanged, or redeemed for cash or other consideration. Pours represent a limited, conditional right to redeem an eligible beverage experience at a participating Partner Venue, subject to program rules, availability, and continued venue participation.</p>
+<p class="lg-p">Membership fees are paid for access to the DPC membership program and its features, including the opportunity to receive and use Pours during an active subscription period. Membership fees are not payments for stored, banked, or future monetary value.</p>
+<p class="lg-p">Pours are issued only as a benefit of an active DPC membership. DPC does not sell Pours separately from a membership, whether à la carte, in bundles, in advance, or otherwise, and members may not purchase Pours independently of an active subscription.</p>
+<h3 class="lg-sub"><span class="lg-sub__n">4.2</span> Monthly Allocation and Expiration</h3>
+<p class="lg-p">Each active membership provides a fixed number of Pours per Monthly Entitlement Period, as specified for the applicable Membership Circle. Pours are issued at the start of each Monthly Entitlement Period and expire at the end of that same Monthly Entitlement Period. Pours do not roll over, accumulate, or carry forward to future Monthly Entitlement Period. Any unused Pours are automatically forfeited at the end of the applicable Monthly Entitlement Period, and no refund, credit, or other compensation is provided for unused Pours.</p>
+<h3 class="lg-sub"><span class="lg-sub__n">4.3</span> Effect of Cancellation or Suspension</h3>
+<p class="lg-p">Pours are available only during an active membership. Upon cancellation, termination, or suspension of a membership, all unused Pours are immediately forfeited. Cancelled or inactive members do not retain access to previously issued Pours. No refunds, credits, or compensation are provided for unused Pours except where required by applicable law.</p>
+<h3 class="lg-sub"><span class="lg-sub__n">4.4</span> No Monetary Value or Cash Redemption</h3>
+<p class="lg-p">Pours have no cash value and may not be redeemed for cash or cash equivalents, refunded or credited, or exchanged for any monetary amount. Pours do not represent a stored balance, prepaid account, or financial instrument.</p>
+<h3 class="lg-sub"><span class="lg-sub__n">4.5</span> Redemption Mechanics</h3>
+<p class="lg-p">Each Pour may be redeemed for an eligible beverage at a participating Partner Venue, subject to the member’s selected Membership Circle, the Partner Venue’s available offerings within that Circle’s product category, applicable redemption windows, and other program rules communicated by DPC.</p>
+<p class="lg-p">Eligibility is defined by category-based and experiential criteria rather than by any stated or implied monetary value. If a member orders an item that does not qualify as an eligible beverage within their Membership Circle, or otherwise falls outside program eligibility, the member may purchase that item directly from the Partner Venue at the venue’s standard pricing, and no Pour will be redeemed in connection with that purchase.</p>
+<h3 class="lg-sub"><span class="lg-sub__n">4.6</span> Program Discretion and Availability</h3>
+<p class="lg-p">Pours are part of a dynamic membership program and are subject to availability, venue participation, and operational constraints. DPC reserves the right to modify redemption rules, eligibility criteria, participating venues, and program mechanics from time to time, provided that any material changes are communicated in accordance with these Terms.</p>
+<p class="lg-p">DPC does not guarantee that any particular Partner Venue, eligible beverage, product category, or redemption opportunity will be available at any particular time. Venue closures, inventory limitations, staffing limitations, private events, licensing restrictions, blackout windows, or changes in Partner Venue participation may affect redemption availability.</p>
+<p class="lg-p">Redemption is always subject to the applicable Partner Venue’s independent service discretion, including the right to refuse service or decline to honor a Pour as described in Section 27.</p>
+<h3 class="lg-sub"><span class="lg-sub__n">4.7</span> Annual Memberships</h3>
+<p class="lg-p">For annual memberships, the membership term consists of a series of monthly entitlement periods. During each monthly entitlement period, the member receives the applicable number of Pours for that period only.</p>
+<p class="lg-p">Pours issued for a given monthly entitlement period expire at the end of that period and do not roll over, accumulate, or carry forward to subsequent months within the annual term. Unused Pours are forfeited at the end of each monthly entitlement period, regardless of whether the membership was paid on an annual or monthly basis.</p>
+<p class="lg-p">Cancellation of an annual membership results in termination of future entitlement periods. All unused Pours associated with the current monthly entitlement period are subject to the forfeiture rules in Section 4.2 and 4.3, and no Pours are issued for any remaining portion of the annual term following cancellation.</p>
+<p class="lg-p">By purchasing an annual membership, the member acknowledges and agrees that membership benefits are time-based and are provided incrementally over the membership term, and that unused Pours do not carry forward or create any stored or recoverable value.</p>
+<h2 class="lg-sec" id="sec-5"><span class="lg-sec__n">5</span><span class="lg-sec__t">Membership Pour Rules</span></h2>
+<h3 class="lg-sub"><span class="lg-sub__n">5.1</span> Monthly Allocation</h3>
+<p class="lg-p">Each active membership provides five (5) Membership Pours per month, each redeemable at a different assigned partner venue within the member’s Circle.</p>
+<h3 class="lg-sub"><span class="lg-sub__n">5.2</span> Venue Assignment</h3>
+<p class="lg-p">DPC assigns three (3) venues at the start of each Monthly Entitlement Period. The member may switch up to two (2) assignments within the first five (5) calendar days. After 11:59 PM Pacific Time on the fifth day, all venue assignments lock for the remainder of that Monthly Entitlement Period. If a member does not make selections by the deadline, DPC will auto-assign the remaining venues.</p>
+<h3 class="lg-sub"><span class="lg-sub__n">5.3</span> Pours Upon Cancellation</h3>
+<p class="lg-p">Upon cancellation or termination of membership, no further Pours will be issued. All unused Pours associated with the member’s current Monthly Entitlement Period remain subject to the expiration and forfeiture rules set forth in Section 4. Pours do not remain available following the cancellation and are not redeemable after the applicable Monthly Entitlement Period. No refunds, credits, or compensation are provided for unused Pours except where required by applicable law.</p>
+<h3 class="lg-sub"><span class="lg-sub__n">5.4</span> Redemption Windows</h3>
+<p class="lg-p"><strong>Sunday through Thursday:</strong> Any time during partner venue operating hours.</p>
+<p class="lg-p"><strong>Friday and Saturday:</strong> Before 4:00 PM only.</p>
+<p class="lg-p">Membership Pours may not be redeemed during ticketed events unless DPC issues a written exception.</p>
+<h2 class="lg-sec" id="sec-6"><span class="lg-sec__n">6</span><span class="lg-sec__t">Redemption Requirements</span></h2>
+<h3 class="lg-sub"><span class="lg-sub__n">6.1</span> Live In-App Redemption Required</h3>
+<p class="lg-p">Members must present the live redemption screen within the App at the time of service, featuring a real-time forty-five (45) second countdown and venue-specific motion signature. Screenshots, recordings, and static images are not accepted. Once initiated, a Membership Pour is irrevocably consumed, subject to adjustment by DPC support in the event of a verified App failure, venue-side system effort, or redemption malfunction.</p>
+<h3 class="lg-sub"><span class="lg-sub__n">6.2</span> Photo Identification</h3>
+<p class="lg-p">Partner Venues will request valid government-issued photo ID at each redemption. The name must match the member name in the App.</p>
+<p class="lg-p">A Partner Venue may decline to complete a redemption or honor a Pour if the member cannot produce valid identification, appears intoxicated, is disruptive or unsafe, or if service would be unlawful or inconsistent with the Partner Venue’s policies, as further described in Section 27.</p>
+<h3 class="lg-sub"><span class="lg-sub__n">6.3</span> Location Verification (Geofencing)</h3>
+<p class="lg-p">The App may use location services at redemption start to help confirm that the member has selected the correct Partner Venue and to reduce accidental wrong-venue redemptions. Location signals, when available, are used for venue-selection confirmation, wrong-venue warnings, fraud review, analytics, and support context. Location verification is not a guarantee of service and is not the sole basis for completing or denying a redemption. Members may grant or withhold location permission through their device or App settings; disabling location services may reduce proximity indicators and wrong-venue warnings but does not by itself prevent in-app Pour redemption. Geolocation data is sensitive personal information; DPC’s handling of geolocation data is described in the Privacy Policy.</p>
+<h3 class="lg-sub"><span class="lg-sub__n">6.4</span> No Venue-Side Backup Redemption</h3>
+<p class="lg-p">If the App is not functioning due to device malfunction or connectivity issues, the member must contact DPC support after the visit. DPC support will review the circumstances and, if warranted, apply a manual Membership Pour adjustment. Venue staff do not process backup, manual, or exception-lane redemptions. Venues do not have authority to honor redemptions without a live app screen.</p>
+<h2 class="lg-sec" id="sec-7"><span class="lg-sec__n">7</span><span class="lg-sec__t">Founding Slot Deposits</span></h2>
+<h3 class="lg-sub"><span class="lg-sub__n">7.1</span> Pre-Launch Refunds</h3>
+<p class="lg-p">A Founding Slot Deposit of $49 reserves a slot but does not activate membership or issue Membership Pours. Before the official launch date (August 1, 2026 at 12:01 AM Pacific Time), deposit holders may request a full refund at any time, forfeiting Founding Member status.</p>
+<h3 class="lg-sub"><span class="lg-sub__n">7.2</span> Post-Launch Conversion</h3>
+<p class="lg-p">Beginning at launch, each deposit holder has fourteen (14) calendar days to convert. To “convert,” a deposit holder must complete the membership enrollment process through the App or Site by: (a) selecting the applicable Membership Circle; (b) authorizing payment of the first recurring membership charge for that Circle; and (c) affirmatively consenting to these Terms, the Privacy Policy, the Member Terms &amp; Redemption Policy, and the automatic renewal terms presented at enrollment. A deposit holder does not become a DPC member, and no Pours or other membership benefits are issued, unless and until the deposit holder completes conversion.</p>
+<p class="lg-p">The $49 deposit applies toward the Welcome Kit and Activation Fee. If not converted within the window, the deposit is automatically refunded and the slot forfeited.</p>
+<p class="lg-p">If the official launch date is delayed by more than ninety (90) days after August 1, 2026, deposit holders may request a full refund of their Founding Slot Deposit without forfeiting their place in line or Founding Member eligibility. If a refunded deposit holder later elects to convert upon DPC’s eventual launch, DPC will reinstate the deposit holder’s Founding Member eligibility, subject to the deposit holder completing conversion within the applicable conversion window and otherwise satisfying the membership requirements in these Terms.</p>
+<p class="lg-p">Refunds will be initiated to the original payment method within five (5) business days. Refund posting may take an additional five (5) to ten (10) business days depending on the deposit holder’s card issuer, bank, or payment provider.</p>
+<h2 class="lg-sec" id="sec-8"><span class="lg-sec__n">8</span><span class="lg-sec__t">Ticketed Events</span></h2>
+<p class="lg-p">DPC may facilitate ticketed events at partner venues. DPC is the merchant of record for all ticket transactions. Monthly Membership Pours may not be redeemed during ticketed events. Each ticket purchase is a separate transaction subject to event-specific terms disclosed at the time of purchase.</p>
+<h3 class="lg-sub"><span class="lg-sub__n">8.1</span> Refunds for Ticketed Events</h3>
+<p class="lg-p">Ticket refund requests will be handled in accordance with the refund policy disclosed at purchase. Refunds, if approved, will be issued for the ticket purchase price less any non-refundable third-party payment processing fees and applicable chargebacks. DPC reserves the right to establish event-specific refund windows and non-refundable ticket categories.</p>
+<h2 class="lg-sec" id="sec-9"><span class="lg-sec__n">9</span><span class="lg-sec__t">Member Perks and Programs</span></h2>
+<h3 class="lg-sub"><span class="lg-sub__n">9.1</span> DPC Picks</h3>
+<p class="lg-p">Curated beverage recommendations within the App at each partner venue. Recommendations are informational and do not guarantee availability.</p>
+<h3 class="lg-sub"><span class="lg-sub__n">9.2</span> Birthday Choice</h3>
+<p class="lg-p">During their birthday month, members may choose a Birthday Extra Membership Pour or a Birthday Bring-a-Friend Pour, available only after redeeming at least one standard Pour during the same Monthly Entitlement Period.</p>
+<p class="lg-p">Any Birthday Bring-a-Friend Pour is subject to the same age, identification, presence, service-discretion, and member-responsibility rules applicable to Handoff under Section 9.4 and Section 27.</p>
+<h3 class="lg-sub"><span class="lg-sub__n">9.3</span> The DPC Coaster Passport</h3>
+<p class="lg-p">A collectible engagement program with thirty-one (31) unique coaster designs released over six months. Badge and collectible rewards are subject to availability and may change at DPC’s discretion.</p>
+<h3 class="lg-sub"><span class="lg-sub__n">9.4</span> The DPC Handoff</h3>
+<p class="lg-p">Each quarter, in the third month, members may use one of their own Pours to sponsor a beverage for a non-member friend who must be physically present. The Pour is deducted from the member’s allocation.</p>
+<p class="lg-p">The non-member recipient must be twenty-one (21) years of age or older and must present valid government-issued identification at the point of service. The partner venue retains sole discretion and responsibility to verify age and to refuse service under Section 25658 of the California Business and Professions Code and applicable venue policy. DPC does not verify the age, identity, or sobriety of non-member recipients and assumes no liability for service decisions made by partner venues. Members are responsible for confirming their guest meets these requirements before initiating a Handoff.</p>
+<p class="lg-p">Partner Venues may refuse to complete a Handoff for any reason described in Section 27, including if the recipient appears intoxicated, lacks valid identification, is disruptive or unsafe, or if service would be unlawful or inconsistent with venue policy.</p>
+<h3 class="lg-sub"><span class="lg-sub__n">9.5</span> Milestones</h3>
+<p class="lg-p">Members completing one year of continuous membership receive a premium membership card and annual mystery gift. DPC reserves the right to modify milestone rewards with reasonable notice.</p>
+<h2 class="lg-sec" id="sec-10"><span class="lg-sec__n">10</span><span class="lg-sec__t">Boost Missions</span></h2>
+<p class="lg-p">Certain partner venues may participate in Boost Missions, which offer members rewards for completing qualifying activities. Members who participate may be required to upload photographs of purchase receipts through the App as proof of qualification.</p>
+<p class="lg-p">By uploading a receipt, the member grants DPC a limited, non-exclusive license to use the receipt image solely for verifying mission completion and processing the associated reward. DPC will not use receipt images for marketing. Receipt images may be shared with the applicable partner venue solely for verification. DPC retains receipt images only as long as reasonably necessary for verification and audit.</p>
+<p class="lg-p">Boost Mission rewards, if offered, are issued as promotional membership benefits within the DPC program and may include additional Pours, DPC Rewards Points, or other non-monetary rewards, as determined by DPC.</p>
+<p class="lg-p">Any Pours issued in connection with a Boost Mission are subject to the same issuance, expiration, forfeiture, and non-transferability rules set forth in Section 4, unless otherwise expressly stated at the time of issuance.</p>
+<p class="lg-p">Members may also earn DPC Rewards Points through Boost Missions and other DPC-sanctioned activities. Rewards Points are non-monetary program benefits redeemable for DPC merchandise, Coaster Passport collectibles, partner experiences, event access, and similar non-cash rewards designated by DPC. Rewards Points are not cash, stored value, gift cards, prepaid instruments, or currency, and are not redeemable for cash, gift cards, or any third-party stored-value instrument. Rewards Points are non-transferable, expire on a schedule established and communicated by DPC, and are forfeited upon cancellation, termination, or suspension of membership. DPC may modify the Rewards Points program, including earning activities, redemption catalog, point values, and expiration schedule, at any time with notice consistent with these Terms. The earning, redemption, and use of Rewards Points are governed by the same non-monetary, no-stored-value principles applicable to Pours under Section 4.</p>
+<p class="lg-p">Boost Mission rewards have no cash value, are not redeemable for cash or cash equivalents, and do not represent stored, banked, or recoverable value. Participation in Boost Missions does not create any right to compensation or reimbursement outside of the DPC program.</p>
+<h2 class="lg-sec" id="sec-11"><span class="lg-sec__n">11</span><span class="lg-sec__t">Referral Program</span></h2>
+<p class="lg-p">DPC may offer a referral program. Referral rewards, if offered, are issued at DPC’s discretion and subject to the following:</p>
+<p class="lg-p">Referral rewards may be modified, suspended, or terminated at any time without prior notice.</p>
+<p class="lg-p">Self-referrals, duplicate accounts, and manipulation of the referral system are prohibited and may result in forfeiture of rewards and account suspension.</p>
+<p class="lg-p">Referral rewards have no cash value and are not transferable.</p>
+<p class="lg-p">Any referral rewards provided will be subject to the same expiration, non-transferability, and no-cash-value rules applicable to Membership Pours unless otherwise expressly stated.</p>
+<h2 class="lg-sec" id="sec-12"><span class="lg-sec__n">12</span><span class="lg-sec__t">Billing and Payment</span></h2>
+<h3 class="lg-sub"><span class="lg-sub__n">12.1</span> Payment Methods</h3>
+<p class="lg-p">Members may pay via credit card or ACH bank transfer. DPC uses third-party payment processors (including Stripe) and does not store full payment credentials on its own servers.</p>
+<h3 class="lg-sub"><span class="lg-sub__n">12.2</span> Recurring Billing and California Auto-Renewal Compliance</h3>
+<p class="lg-p">Monthly memberships are billed on a recurring monthly cycle. Annual memberships are billed in full at enrollment and on each renewal date. By enrolling, you authorize DPC to charge your designated payment method on each billing date.</p>
+<p class="lg-p">In accordance with the California Automatic Renewal Law (Business and Professions Code Sections 17600–17606), DPC will: (a) clearly and conspicuously disclose the automatic renewal terms before you complete your initial purchase; (b) obtain your affirmative consent to the automatic renewal terms; (c) provide a post-transaction acknowledgment that includes the automatic renewal terms, cancellation policy, and information on how to cancel; and (d) provide a simple mechanism to cancel, available through the App and by contacting DPC support. Members enrolled in a monthly or annual plan may cancel at any time online through the same medium used to enroll (the App or DPC website) without being required to call, email, or interact with a live representative. For annual memberships, DPC will send a renewal reminder by email between fifteen (15) and forty-five (45) days before each annual renewal, disclosing the renewal date, the amount to be charged, and a direct link to cancel. For promotional, free-trial, or introductory-rate memberships lasting more than thirty-two (32) days, DPC will provide a separate reminder before the promotional period converts to a paid recurring billing.</p>
+<p class="lg-p">If a member is in a paused state under Section 13.3 at the time a renewal reminder is otherwise due, the renewal reminder will additionally disclose: (i) the scheduled date on which the membership will automatically resume; (ii) the member's right to extend the pause (subject to the caps in Section 13.3(b)), to resume earlier, or to cancel before resumption through the App; and (iii) the consequences of cancellation during a paused state set forth in Section 13.3(d).</p>
+<h3 class="lg-sub"><span class="lg-sub__n">12.3</span> Failed Payments</h3>
+<p class="lg-p">DPC will attempt to process failed payments per its processor’s retry schedule. If payment cannot be collected after reasonable attempts, your membership may be suspended or cancelled.</p>
+<h2 class="lg-sec" id="sec-13"><span class="lg-sec__n">13</span><span class="lg-sec__t">Cancellation, Pause, and Refunds</span></h2>
+<h3 class="lg-sub"><span class="lg-sub__n">13.1</span> Monthly Memberships</h3>
+<p class="lg-p">Monthly memberships may be cancelled at any time through the App, by following the cancellation link included in the subscription confirmation email, in-App by [INSERT IN APP ROADMAP FOR CANCELLATION] or by contacting DPC support. Members who enrolled online may cancel online without calling or emailing DPC and without being redirected to a save offer they did not request.</p>
+<p class="lg-p">Cancellation takes effect at the end of the current billing period. No partial-month refunds will be issued. Membership benefits, including Pours, are governed by the Monthly Entitlement Period structure described in Section 4. Pours remain subject to the issuance, expiration, and forfeiture rules set forth in Section 4 and expire at the end of the applicable Monthly Entitlement Period.</p>
+<h3 class="lg-sub"><span class="lg-sub__n">13.2</span> Annual Memberships</h3>
+<p class="lg-p">Annual memberships are billed in full. DPC does not offer prorated refunds for early cancellation unless required by applicable law.</p>
+<p class="lg-p">Cancellation terminates future Monthly Entitlement Periods. Pours issued for the member’s current Monthly Entitlement Period remain subject to the issuance, expiration, and forfeiture rules set forth in Section 4 and expire at the end of that period. No Pours are issued for any remaining portion of the annual membership term following cancellation.</p>
+<h3 class="lg-sub"><span class="lg-sub__n">13.3</span> Membership Pause</h3>
+<p class="lg-p">A member may request a pause of their membership through the App for reasons including travel, illness, injury, family emergency, or other comparable life circumstances. Membership pause is available to members in good standing who are not the subject of a fraud or enforcement investigation under Section 14.</p>
+<p class="lg-p lg-p--sub"><strong class="lg-lead">(a) Effect of pause.</strong> During a paused state: (i) no membership fees are charged; (ii) no Membership Pours are issued; (iii) any Pours previously issued for the then-current Monthly Entitlement Period that remain unused at the time the pause takes effect are forfeited in accordance with Section 4; and (iv) the member's account remains in good standing and retains login access to view account history.</p>
+<p class="lg-p lg-p--sub"><strong class="lg-lead">(b) Pause caps.</strong> Monthly memberships: the next billing date is deferred by the duration of the pause, up to a cumulative maximum of sixty (60) days in any twelve (12)-month period. Annual memberships: the annual membership term is extended by the duration of the pause, up to a cumulative maximum of sixty (60) days per annual term.</p>
+<p class="lg-p lg-p--sub"><strong class="lg-lead">(c) Initiation and resumption.</strong> A pause takes effect at the end of the then-current Monthly Entitlement Period unless DPC otherwise agrees in writing. A member may resume an active membership at any time prior to the scheduled end of the pause through the App; resumption restarts billing and Pour issuance on the next regular billing date. If the member does not affirmatively resume membership before the end of the pause period, membership will automatically resume on the day following the scheduled end of the pause, and billing and Pour issuance will resume accordingly.</p>
+<p class="lg-p lg-p--sub"><strong class="lg-lead">(d) Cancellation during a paused state.</strong> A member may cancel their membership at any time during a paused state through the App or by contacting DPC support. Cancellation takes effect immediately upon request. Upon cancellation: (i) any unused pause days are forfeited; (ii) for annual memberships, no refund or credit is issued for any remaining portion of the prepaid annual term, except where required by applicable law; and (iii) no Membership Pours are issued for any future period.</p>
+<p class="lg-p">By initiating a pause, the member acknowledges and agrees to the consequences of cancellation during the paused state described in this Section 13.3. DPC will display these consequences in the App at the time the member initiates a pause.</p>
+<p class="lg-p lg-p--sub"><strong class="lg-lead">(e) No Pours during pause.</strong> For clarity, Membership Pours are issued only during active Monthly Entitlement Periods. No Pours are issued, and no Pours are redeemable, during a paused state. Monthly Entitlement Periods do not run during a paused state.</p>
+<h2 class="lg-sec" id="sec-14"><span class="lg-sec__n">14</span><span class="lg-sec__t">Fraud Prevention, Investigation, and Account Enforcement</span></h2>
+<p class="lg-p">DPC takes program integrity seriously. In addition to the prohibited activities listed in Section 15, DPC reserves the following rights:</p>
+<p class="lg-p">We may investigate suspected fraud, abuse, location spoofing, account sharing, or misuse of Membership Pours, rewards, referral benefits, or mission rewards.</p>
+<p class="lg-p">During an investigation, DPC may temporarily suspend redemption rights, reward access, referral benefits, or account functionality.</p>
+<p class="lg-p">If DPC determines that Membership Pours, rewards, perks, or referral benefits were obtained or used in violation of these Terms, DPC may revoke, reverse, void, or deny those benefits.</p>
+<p class="lg-p">DPC may require identity verification or additional account verification as a condition of restoring access.</p>
+<p class="lg-p">DPC’s determinations regarding misuse, fraud prevention, and program integrity will be made in good faith based on available records, logs, device signals, redemption data, and support review.</p>
+<p class="lg-p">DPC may refer matters involving suspected criminal conduct to law enforcement.</p>
+<p class="lg-p">A member whose account has been suspended, terminated, or whose Membership Pours or rewards have been revoked under this Section 14 may submit a written appeal to <a href="mailto:support@downtownpourcollective.com">support@downtownpourcollective.com</a> within thirty (30) days of the enforcement action. DPC will acknowledge the appeal within five (5) business days and will issue a written determination within fifteen (15) business days, which may include reinstatement, partial restoration of Membership Pours, or confirmation of the original determination. Nothing in this Section 14 limits the member’s right to pursue dispute resolution under Section 25 or to contact the California Department of Consumer Affairs or other applicable regulators.</p>
+<h2 class="lg-sec" id="sec-15"><span class="lg-sec__n">15</span><span class="lg-sec__t">Account Conduct and Prohibited Activities</span></h2>
+<p class="lg-p">You agree not to:</p>
+<p class="lg-p">Share account credentials or allow another person to use your membership.</p>
+<p class="lg-p">Use screenshots, recordings, or reproductions of the live redemption screen.</p>
+<p class="lg-p">Manipulate, spoof, or falsify location data.</p>
+<p class="lg-p">Attempt to redeem Membership Pours at unassigned venues.</p>
+<p class="lg-p">Engage in fraudulent, abusive, or disruptive behavior toward venue staff, DPC personnel, or other members.</p>
+<p class="lg-p">Reverse-engineer, decompile, or extract source code from the App.</p>
+<p class="lg-p">Use the service for any unlawful purpose.</p>
+<p class="lg-p">Use Membership Pours to obtain alcoholic beverages for any other person except through a DPC-authorized feature, such as Handoff, and only in accordance with these Terms and Partner Venue service rules.</p>
+<p class="lg-p">DPC reserves the right to suspend or terminate any account that violates these Terms.</p>
+<h2 class="lg-sec" id="sec-16"><span class="lg-sec__n">16</span><span class="lg-sec__t">DPC as Merchant of Record</span></h2>
+<p class="lg-p">DPC, operating as a DBA of Table &amp; Town LLC, is the merchant of record for all membership subscriptions, Founding Slot Deposits, and ticketed event transactions. Your contractual relationship for these transactions is with Table &amp; Town LLC, not with any partner venue. Partner venues are independently owned businesses participating under separate agreements with DPC.</p>
+<p class="lg-p">DPC is not the merchant of record for alcoholic beverages sold or served by Partner Venues in connection with Pour redemptions.</p>
+<h2 class="lg-sec" id="sec-17"><span class="lg-sec__n">17</span><span class="lg-sec__t">Brand Ambassadors</span></h2>
+<p class="lg-p">DPC may engage independent contractors (“Brand Ambassadors”) to promote the DPC program. Brand Ambassadors are not employees, agents, or legal representatives of Table &amp; Town LLC or DPC and have no authority to bind DPC, waive any provision of these Terms, modify membership pricing or benefits, grant Membership Pours or refunds, represent DPC to any partner venue or sponsor, or make any commitment on behalf of DPC. Any representation or promise made by a Brand Ambassador that is inconsistent with these Terms or with DPC’s published materials is not binding on DPC. Members should rely only on official written communications from DPC (through the App, website, email from a downtownpourcollective.com domain, or DPC support) for any statement that would alter a member’s rights or obligations. DPC is not liable for any independent actions, representations, or conduct of Brand Ambassadors outside the scope of their authorized activities. Concerns regarding Brand Ambassador conduct should be reported to DPC support.</p>
+<h2 class="lg-sec" id="sec-18"><span class="lg-sec__n">18</span><span class="lg-sec__t">Program Modifications and Availability</span></h2>
+<p class="lg-p">DPC reserves the right to modify, suspend, or discontinue any aspect of the program, including pricing, membership benefits (including the number of Pours issued per Monthly Entitlement Period), redemption windows, partner venue availability, collectible programs, milestones, and perks.</p>
+<p class="lg-p">Material changes to pricing or core membership benefits will be communicated with at least thirty (30) days’ notice. For any material change to the automatic renewal terms of an existing membership (including any price increase, change in billing frequency, or reduction in the number of Membership Pours issued per Membership Entitlement Period or other core benefits included with the membership), DPC will provide the member with a clear and conspicuous notice at least thirty (30) days before the change takes effect and will obtain the member’s affirmative consent to the revised terms before charging the member at the new rate or under the new structure. A member who does not affirmatively consent will continue on the existing terms through the remainder of the then-current billing period and may cancel without penalty before the change would take effect. Venue availability changes may occur with shorter notice as operationally required.</p>
+<h2 class="lg-sec" id="sec-19"><span class="lg-sec__n">19</span><span class="lg-sec__t">Program Discontinuation and Wind-Down</span></h2>
+<p class="lg-p">DPC may modify, suspend, discontinue, or wind down the membership program at any time, subject to any notice obligations set forth in these Terms or required by applicable law. DPC will provide all active members and deposit holders with at least sixty (60) days' advance notice before the effective date of any planned discontinuation of the membership program, by email or in-app notification, except where a shorter notice period is unavoidable due to insolvency, regulatory order, force majeure, or similar event outside of DPC's reasonable control, in which case DPC will provide the longest notice reasonably practicable under the circumstances.</p>
+<p class="lg-p">During any wind-down period, DPC may, in its discretion and subject to Partner Venue availability, allow active members to use Pours issued for their then-current Monthly Entitlement Period. Pours remain subject to the issuance, expiration, and forfeiture rules set forth in Section 4 and will not be extended, reinstated, converted, refunded, or carried forward beyond the applicable Monthly Entitlement Period.</p>
+<p class="lg-p">Any unconverted Founding Slot Deposits will be refunded in accordance with Section 7. Ticketed-event purchases for events that will not occur will be handled in accordance with the event-specific refund terms disclosed at the time of purchase.</p>
+<p class="lg-p">Nothing in this Section creates or implies any stored, banked, or recoverable value associated with Pours or any obligation to redeem, preserve, convert, or compensate unused or expired Pours.</p>
+<p class="lg-p">DPC may refund any unused portion of prepaid annual membership fees as required by applicable law or as DPC determines appropriate in its discretion.</p>
+<h2 class="lg-sec" id="sec-20"><span class="lg-sec__n">20</span><span class="lg-sec__t">Intellectual Property and User Generated Content</span></h2>
+<p class="lg-p"><strong class="lg-lead">20.1 All content, designs, trademarks, trade names, logos, Coaster Passport designs, the App, and associated materials are the exclusive property of Table &amp; Town LLC or its licensors.</strong> The DPC name, Circle tier names, Coaster Passport, Founder Ledger, and related branding are proprietary to Table &amp; Town LLC.</p>
+<p class="lg-p">20.2 Members are granted a limited, non-exclusive, non-transferable, revocable license to use the App solely for personal, non-commercial participation in the DPC program.</p>
+<h3 class="lg-sub"><span class="lg-sub__n">20.3</span> User-Generated Content</h3>
+<p class="lg-p lg-p--sub"><strong class="lg-lead">(a) Definition.</strong> "User-Generated Content" or "UGC" means any content a member submits, posts, uploads, transmits, tags, or otherwise makes available to DPC or in connection with the DPC program, including without limitation: (i) Pour Stories and other in-App member submissions; (ii) user-submitted Coaster Passport content; (iii) social media posts that tag, mention, or use DPC's name, handles, hashtags, or trademarks; (iv) testimonials, reviews, ratings, and feedback regarding DPC, Partner Venues, or DPC-affiliated events; and (v) photographs, video, audio, or other recordings of DPC events or DPC-affiliated activities at Partner Venues in which the member is visible, audible, or otherwise identifiable.</p>
+<p class="lg-p lg-p--sub"><strong class="lg-lead">(b) License grant.</strong> By submitting, posting, or otherwise making UGC available to DPC, the member grants Table &amp; Town LLC, and its successors, assigns, and authorized sublicensees, a perpetual, irrevocable, worldwide, royalty-free, fully paid-up, non-exclusive, transferable, and sublicensable license (through multiple tiers of sublicensees) to use, host, store, reproduce, modify, adapt, translate, create derivative works of, publish, publicly perform, publicly display, distribute, and otherwise exploit the UGC, in whole or in part, in any media or format now known or later developed, for any DPC business purpose, including without limitation marketing, promotional, editorial, operational, partner-venue, sponsor, and program-development purposes.</p>
+<p class="lg-p lg-p--sub"><strong class="lg-lead">(c) Name, handle, and likeness.</strong> Each member additionally grants DPC the right to use the member's name, handle, voice, and likeness as embodied in or associated with the UGC for the purposes set forth in subsection (b), with attribution to the member's name or handle at DPC's sole option. The member waives any right to inspect or approve any specific use of UGC or of the member's name, handle, voice, or likeness by DPC or any sublicensee.</p>
+<p class="lg-p lg-p--sub"><strong class="lg-lead">(d) Member representations and warranties.</strong> By submitting UGC, the member represents and warrants that: (i) the member is the sole author and owner of the UGC, or has obtained all rights, licenses, consents, and permissions necessary to grant the license set forth in this Section 20.3; (ii) the UGC does not infringe, misappropriate, or violate any third party's intellectual property, privacy, publicity, contractual, or other rights; (iii) the UGC does not contain any material that is defamatory, obscene, threatening, harassing, fraudulent, or otherwise unlawful; and (iv) the member has obtained any necessary releases or consents from any identifiable third parties whose name, voice, or likeness appears in the UGC.</p>
+<p class="lg-p lg-p--sub"><strong class="lg-lead">(e) Moral rights.</strong> To the extent permitted by applicable law, each member waives, and agrees not to assert against DPC or any sublicensee, any moral rights, rights of paternity or integrity, or similar rights in the UGC.</p>
+<p class="lg-p lg-p--sub"><strong class="lg-lead">(f) No obligation.</strong> DPC has no obligation to use, post, retain, or display any UGC and may decline, modify, or remove UGC at any time in DPC's sole discretion.</p>
+<p class="lg-p lg-p--sub"><strong class="lg-lead">(g) Takedown requests.</strong> A member may request that DPC remove specific UGC from active DPC-controlled platforms (such as the App, the Site, or DPC's official social media accounts) by contacting DPC support. DPC will use commercially reasonable efforts to remove the requested UGC from such platforms within thirty (30) days of receipt of the request. The member acknowledges that UGC previously distributed, sublicensed, embedded in marketing materials, or shared with third parties (including Partner Venues and sponsors) before the takedown request may not be recallable, and the license granted under this Section 20.3 survives takedown with respect to UGC already used, distributed, or sublicensed before the takedown request.</p>
+<h2 class="lg-sec" id="sec-21"><span class="lg-sec__n">21</span><span class="lg-sec__t">Third-Party Services and Partner Venues</span></h2>
+<p class="lg-p">Partner Venues are independently owned and operated. DPC does not own, operate, or control any Partner Venue. DPC is not liable for any injury, illness, loss, or damage arising from your visit to or experience at any Partner Venue. DPC does not supervise, direct, or control Partner Venue staffing, alcohol service practices, security, premises operations, or patron-management decisions.</p>
+<p class="lg-p">DPC uses third-party service providers for payment processing, email communications, push notifications, and other operations.</p>
+<h2 class="lg-sec" id="sec-22"><span class="lg-sec__n">22</span><span class="lg-sec__t">Disclaimer of Warranties</span></h2>
+<p class="lg-p">THE DPC SERVICE, APP, AND SITE ARE PROVIDED “AS IS” AND “AS AVAILABLE” WITHOUT WARRANTIES OF ANY KIND, WHETHER EXPRESS, IMPLIED, OR STATUTORY, INCLUDING BUT NOT LIMITED TO IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT.</p>
+<h2 class="lg-sec" id="sec-23"><span class="lg-sec__n">23</span><span class="lg-sec__t">Limitation of Liability</span></h2>
+<p class="lg-p">TO THE MAXIMUM EXTENT PERMITTED BY LAW, TABLE &amp; TOWN LLC SHALL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES ARISING OUT OF OR RELATED TO YOUR USE OF THE SERVICE.</p>
+<p class="lg-p">IN NO EVENT SHALL TABLE &amp; TOWN LLC’S TOTAL AGGREGATE LIABILITY EXCEED THE AMOUNT PAID IN MEMBERSHIP FEES DURING THE TWELVE (12) MONTHS PRECEDING THE CLAIM.</p>
+<p class="lg-p">Nothing in this Section 23 is intended to (and shall not be construed to) limit or exclude liability for: (a) gross negligence, fraud, or willful misconduct; (b) bodily injury or death to the extent caused by DPC’s negligent or wrongful act; (c) any liability that cannot be limited or excluded under California law, including California Civil Code Section 1668; (d) DPC’s indemnification obligations, if any, expressly set forth in these Terms; or (e) any statutory rights of California consumers that cannot lawfully be waived. Some jurisdictions do not allow the exclusion or limitation of certain damages, so the above limitations may not apply to you to the extent prohibited by applicable law.</p>
+<h2 class="lg-sec" id="sec-24"><span class="lg-sec__n">24</span><span class="lg-sec__t">Indemnification</span></h2>
+<p class="lg-p">You agree to indemnify, defend, and hold harmless Table &amp; Town LLC from any claims, liabilities, damages, losses, costs, and expenses arising out of: (a) your use of the service; (b) your violation of these Terms; (c) your violation of any law; or (d) your conduct at any Partner Venue.</p>
+<h2 class="lg-sec" id="sec-25"><span class="lg-sec__n">25</span><span class="lg-sec__t">Dispute Resolution</span></h2>
+<p class="lg-p"><strong class="lg-lead">25.1 Informal Resolution.</strong> Before initiating arbitration or any court proceeding, the member must send written notice of the dispute to <a href="mailto:support@downtownpourcollective.com">support@downtownpourcollective.com</a>, describing the dispute and the relief sought. The parties will attempt to resolve the dispute in good faith for thirty (30) days. Any applicable statute of limitations is tolled during this period. Compliance with this Section 25.1 is a condition precedent to arbitration.</p>
+<p class="lg-p"><strong class="lg-lead">25.2 Binding Individual Arbitration.</strong> Any dispute arising out of or relating to these Terms or the DPC service that is not resolved through informal resolution shall be resolved by binding individual arbitration administered by JAMS in Alameda County, California, under the JAMS Streamlined Arbitration Rules and the JAMS Consumer Minimum Standards. California substantive law applies. This arbitration agreement is governed by the Federal Arbitration Act (9 U.S.C. § 1 et seq.). The arbitrator's award is final and binding, and judgment on the award may be entered in any court of competent jurisdiction. THE MEMBER AND DPC EACH WAIVE THE RIGHT TO A JURY TRIAL AND TO BRING OR PARTICIPATE IN ANY CLASS, COLLECTIVE, REPRESENTATIVE, MASS, OR CONSOLIDATED PROCEEDING. If the class-action waiver in this Section 25.2 is found unenforceable as to any particular Claim, that Claim shall be severed and brought in the state or federal courts in Alameda County, California, and the remaining provisions of this Section 25 shall remain in full force and effect.</p>
+<p class="lg-p"><strong class="lg-lead">25.3 Carveouts.</strong> Notwithstanding Section 25.2, either party may: (a) bring an individual action in small claims court in Alameda County, California; (b) bring a claim seeking public injunctive relief in a court of competent jurisdiction in Alameda County, California; or (c) seek temporary or preliminary injunctive relief in a court of competent jurisdiction in Alameda County, California, for intellectual-property infringement or breach of confidentiality.</p>
+<h2 class="lg-sec" id="sec-26"><span class="lg-sec__n">26</span><span class="lg-sec__t">Governing Law</span></h2>
+<p class="lg-p">These Terms shall be governed by the laws of the State of California, without regard to its conflict-of-laws principles. Any matter not subject to arbitration under Section 25 shall be brought exclusively in the state or federal courts located in Alameda County, California, and each party consents to personal jurisdiction in those courts.</p>
+<h2 class="lg-sec" id="sec-27"><span class="lg-sec__n">27</span><span class="lg-sec__t">Alcohol-Related Disclaimers, Member Conduct, and Member Acknowledgements</span></h2>
+<p class="lg-p"><strong class="lg-lead">27.1 DPC’s Role; Independent Partner Venues.</strong> DPC facilitates access to Membership Pours at participating Partner Venues. DPC does not sell, serve, furnish, distribute, or deliver alcoholic beverages and is not a licensee under the California Alcoholic Beverage Control Act. All alcoholic beverages are sold and served by independently owned and operated Partner Venues, each of which is independently responsible for maintaining its own alcoholic beverage license, complying with laws and regulations governing the sale and service of alcoholic beverages, and satisfying any applicable Responsible Beverage Service requirements. Nothing in these Terms, the App, or DPC’s communications, marketing, or program structure is intended to direct, control, or substitute DPC’s judgment for a Partner Venue’s judgment in any service decision.</p>
+<p class="lg-p"><strong class="lg-lead">27.2 Member Responsibility and Safe Transportation.</strong> Members are solely responsible for their own alcohol consumption, conduct, and transportation. Members agree not to drive, operate a vehicle, operate machinery, or engage in any activity requiring sober judgment after consuming alcohol. Members are responsible for arranging safe transportation, including by rideshare, taxi, public transit, designated driver, or other non-driving means, when appropriate. Members agree to comply with all applicable laws governing the purchase, possession, and consumption of alcohol, including laws prohibiting driving under the influence and public intoxication.</p>
+<p class="lg-p"><strong class="lg-lead">27.3 No Encouragement of Excessive Consumption.</strong> The DPC program is intended to support a curated, responsible, and community-oriented experience at Partner Venues. Nothing in the DPC program, these Terms, the App, or any DPC communication, promotion, benefit, event, mission, or program feature is intended to encourage unsafe, irresponsible, or excessive consumption of alcohol. Members agree to consume responsibly and in accordance with applicable law, Partner Venue policies, and their own judgment.</p>
+<p class="lg-p"><strong class="lg-lead">27.4 Partner Venue Right to Refuse Service.</strong> Partner Venues retain sole and independent discretion to refuse service, decline to honor a Pour, or decline to complete a redemption for any lawful reason consistent with applicable law and venue policy. This includes, without limitation, where the member or guest cannot produce valid government-issued photo identification, is under twenty-one (21) years of age, is or appears to be intoxicated, is disruptive, threatening, harassing, abusive, unsafe, or disorderly, attempts to share or misuse a membership, or otherwise creates safety, compliance, or operational concerns.</p>
+<p class="lg-p">A Partner Venue’s refusal of service does not entitle the member to a refund, credit, replacement Pour, extension, or other compensation. If service is refused before a Pour is redeemed or consumed through the App workflow, the Pour cannot be redeemed during that visit but remains assigned to that Partner Venue for the remainder of the Monthly Entitlement Period and is available if the member returns and can be served, subject to venue assignments, redemption windows, availability, and other program rules. Pours are venue-specific and do not transfer to another assigned Partner Venue on refusal of service. In situations involving unsafe, unlawful, abusive, disruptive, fraudulent, or alcohol-related misconduct, DPC may invalidate the Pour or take account-level action under Sections 14, 15, and 27.7. DPC is not responsible for any Partner Venue’s refusal of service or related service decision.</p>
+<p class="lg-p"><strong class="lg-lead">27.5 No Guaranteed Service.</strong> A Pour is a limited, conditional program entitlement, not a guarantee that any particular alcoholic beverage will be served to any particular member at any particular time. All redemptions remain subject to applicable law, Partner Venue policies, Partner Venue availability, service discretion, and these Terms.</p>
+<p class="lg-p"><strong class="lg-lead">27.6 Member Acknowledgment of Alcohol Risks.</strong> Members acknowledge that consuming alcoholic beverages carries inherent risks, including impairment of judgment and motor function, illness, injury, addiction, or death. Members voluntarily assume the risks associated with their own alcohol consumption and agree that DPC has made no representation regarding the safety of any particular alcoholic beverage or the appropriate level of consumption for any particular member.</p>
+<p class="lg-p">27.7 DPC may suspend or terminate a member’s account, revoke access to Membership Pours or other program benefits, or take other action under Sections 14 and 15 if DPC determines that the member has engaged in unsafe, unlawful, abusive, disruptive, fraudulent, or alcohol-related misconduct.</p>
+<p class="lg-p"><strong class="lg-lead">27.8 Resources.</strong> Members concerned about their own alcohol consumption or that of someone they know are encouraged to contact the Substance Abuse and Mental Health Services Administration National Helpline at 1-800-662-HELP (4357), available 24/7 in English and Spanish, or to consult with their own medical or behavioral health provider. DPC’s referral to these resources is informational only and does not constitute medical, therapeutic, or professional advice.</p>
+<h2 class="lg-sec" id="sec-28"><span class="lg-sec__n">28</span><span class="lg-sec__t">Communications</span></h2>
+<p class="lg-p">By enrolling, you consent to receive electronic communications including billing confirmations, venue assignments, Membership Pour reminders, blackout alerts, event invitations, and program updates. You may opt out of marketing communications at any time. Transactional communications cannot be opted out of while membership is active.</p>
+<h2 class="lg-sec" id="sec-29"><span class="lg-sec__n">29</span><span class="lg-sec__t">Severability</span></h2>
+<p class="lg-p">If any provision is found invalid by a court, the remaining provisions continue in full force.</p>
+<h2 class="lg-sec" id="sec-30"><span class="lg-sec__n">30</span><span class="lg-sec__t">Entire Agreement</span></h2>
+<p class="lg-p">These Terms, together with the Privacy Policy and referenced policies, constitute the entire agreement between you and Table &amp; Town LLC regarding the DPC service.</p>
+<h2 class="lg-sec" id="sec-31"><span class="lg-sec__n">31</span><span class="lg-sec__t">Contact Information</span></h2>
+<p class="lg-p"><strong>Operator:</strong> Table &amp; Town LLC</p>
+<p class="lg-p"><strong>DBA:</strong> Downtown Pour Collective</p>
+<p class="lg-p"><strong>Address:</strong> 2601 Horseshoe Ct, Livermore, CA 94551</p>
+<p class="lg-p"><strong>Website:</strong> <a href="https://www.downtownpourcollective.com" target="_blank" rel="noopener">www.downtownpourcollective.com</a></p>
+<p class="lg-p"><strong>Support:</strong> <a href="mailto:support@downtownpourcollective.com">support@downtownpourcollective.com</a></p>
+    </div>
+  </div>
+  <svg class="lg-seal" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <circle cx="100" cy="100" r="92" fill="none" stroke="#0D1B2A" stroke-width="2"/>
+  <circle cx="100" cy="100" r="80" fill="none" stroke="#0D1B2A" stroke-width="1" stroke-dasharray="2 5"/>
+  <circle cx="100" cy="100" r="58" fill="none" stroke="#0D1B2A" stroke-width="1"/>
+  <text x="100" y="124" text-anchor="middle" font-family="'Playfair Display',serif" font-weight="900" font-size="62" fill="#0D1B2A">DPC</text>
+  <text x="100" y="150" text-anchor="middle" font-family="'Barlow Condensed',sans-serif" font-weight="700" font-size="9" letter-spacing="3" fill="#0D1B2A">EST. 2026</text>
+</svg>
+</main>
+
+<footer class="lg-foot">
+  <div class="lg-foot__inner">
+    <div class="lg-foot__brand"><svg viewBox="0 0 540 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Downtown Pour Collective" class="lg-lockup">
+  <defs><clipPath id="lk-glass"><path d="M -16,-46 L 16,-46 L 22,37 L -22,37 Z"/></clipPath></defs>
+  <g transform="translate(74,100) rotate(38)">
+    <path d="M -22,-54 L 22,-54 L 28,44 L -28,44 Z" fill="#C4A35A"/>
+    <path d="M -16,-46 L 16,-46 L 22,37 L -22,37 Z" fill="#0D1B2A"/>
+    <g clip-path="url(#lk-glass)">
+      <path d="M -21,23 L 19,-9 L 22,37 L -22,37 Z" fill="#1E3A5A"/>
+      <line x1="-24" y1="23" x2="22" y2="-10" stroke="#C4A35A" stroke-width="1.4" stroke-linecap="round" opacity="0.75"/>
+    </g>
+    <rect x="-24" y="-58" width="48" height="7" rx="2" fill="#C4A35A"/>
+    <rect x="-32" y="42" width="64" height="8" rx="2" fill="#C4A35A"/>
+  </g>
+  <text x="178" y="74" font-family="'Barlow Condensed',sans-serif" font-weight="700" font-size="17" letter-spacing="7" fill="#C4A35A">DOWNTOWN</text>
+  <text x="174" y="124" font-family="'Playfair Display',serif" font-weight="700" font-size="54" letter-spacing="2" fill="#F5F0E8">POUR</text>
+  <text x="178" y="150" font-family="'Barlow Condensed',sans-serif" font-weight="700" font-size="17" letter-spacing="7" fill="#C4A35A">COLLECTIVE</text>
+</svg><p class="lg-foot__line">Downtown Pour Collective is a community of Table &amp; Town LLC.<br>2601 Horseshoe Ct, Livermore, California 94551.</p></div>
+    <div><p class="lg-foot__head">Contact</p>
+      <p class="lg-foot__txt"><a href="mailto:support@downtownpourcollective.com">support@downtownpourcollective.com</a></p>
+      <p class="lg-foot__txt"><a href="mailto:privacy@downtownpourcollective.com">privacy@downtownpourcollective.com</a></p></div>
+    <div><p class="lg-foot__head">Policies</p>
+      <nav class="lg-foot__nav"><a href="terms.html">Terms of Service</a><a href="privacy.html">Privacy Policy</a><a href="index.html">Home</a></nav></div>
+  </div>
+  <div class="lg-foot__legal"><div>&copy; 2026 Table &amp; Town LLC. All rights reserved.</div></div>
+</footer>
+
+<script>
+(function(){
+  var bar=document.getElementById('lg-bar');
+  var secs=[].slice.call(document.querySelectorAll('.lg-sec'));
+  var links={};
+  [].forEach.call(document.querySelectorAll('.lg-toc a[data-sec]'),function(a){links[a.getAttribute('data-sec')]=a;});
+  function onScroll(){
+    var h=document.documentElement;
+    var max=h.scrollHeight-h.clientHeight;
+    var p=max>0?(h.scrollTop||document.body.scrollTop)/max:0;
+    bar.style.width=(p*100).toFixed(2)+'%';
+    var top=(h.scrollTop||document.body.scrollTop)+120;
+    var cur=null;
+    for(var i=0;i<secs.length;i++){if(secs[i].offsetTop<=top)cur=secs[i];}
+    Object.keys(links).forEach(function(k){links[k].classList.remove('is-active');});
+    if(cur){var id=cur.id.replace('sec-','');if(links[id])links[id].classList.add('is-active');}
+  }
+  window.addEventListener('scroll',onScroll,{passive:true});
+  window.addEventListener('resize',onScroll);
+  onScroll();
+  // collapse TOC after click on small screens
+  document.querySelectorAll('.lg-toc a[data-sec]').forEach(function(a){
+    a.addEventListener('click',function(){
+      if(window.innerWidth<=980){var d=document.querySelector('.lg-toc-details');if(d)d.removeAttribute('open');}
+    });
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Privacy Policy | Downtown Pour Collective</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="The Privacy Policy for Downtown Pour Collective, describing how Table & Town LLC collects, uses, and protects member information.">
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#0D1B2A;--liquid:#1E3A5A;--gold:#C4A35A;--gold-ink:#8A6B36;--gold-deep:#9C7E50;
+  --cream:#F5F0E8;--paper:#FBF8F1;--ink:#1B2A38;--ink-soft:#3A4856;--white:#fff;
+  --display:'Playfair Display',Georgia,serif;--support:'Barlow Condensed','Arial Narrow',sans-serif;--body:'Barlow',system-ui,sans-serif;
+}
+*{box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{margin:0;font-family:var(--body);font-size:16px;line-height:1.7;color:var(--ink);background:var(--paper);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;}
+::selection{background:rgba(196,163,90,.28);}
+
+/* top bar */
+.lg-top{position:sticky;top:0;z-index:30;background:var(--navy);border-bottom:1px solid rgba(196,163,90,.25);}
+.lg-top__inner{max-width:1180px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;padding:0 32px;height:66px;}
+a.lg-home{display:flex;align-items:center;border:0;}
+.lg-lockup{height:38px;width:auto;display:block;}
+.lg-top__nav{display:flex;gap:28px;align-items:center;}
+.lg-top__nav a{font-family:var(--support);font-weight:700;font-size:13px;letter-spacing:.18em;text-transform:uppercase;color:rgba(245,240,232,.72);text-decoration:none;border:0;padding:4px 0;transition:color 160ms ease;}
+.lg-top__nav a:hover{color:var(--gold);}
+.lg-top__nav a.is-here{color:var(--gold);border-bottom:1px solid var(--gold);}
+
+/* reading progress */
+.lg-progress{position:sticky;top:66px;z-index:29;height:2px;background:transparent;}
+.lg-progress__bar{height:100%;width:0;background:var(--gold);transition:width 80ms linear;}
+
+/* layout */
+.lg-wrap{position:relative;max-width:1180px;margin:0 auto;padding:0 32px;}
+.lg-masthead{padding:72px 0 0;max-width:760px;}
+.lg-eyebrow{font-family:var(--support);font-weight:700;font-size:13px;letter-spacing:.4em;text-transform:uppercase;color:var(--gold-ink);margin:0 0 22px;}
+.lg-title{font-family:var(--display);font-weight:700;font-size:clamp(40px,6vw,64px);line-height:1.04;letter-spacing:.005em;color:var(--navy);margin:0 0 28px;text-wrap:balance;}
+.lg-meta{display:flex;flex-wrap:wrap;gap:6px 0;font-family:var(--support);font-weight:600;font-size:13px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-soft);}
+.lg-meta span{padding:0 16px;position:relative;}
+.lg-meta span:first-child{padding-left:0;}
+.lg-meta span+span::before{content:"";position:absolute;left:0;top:50%;width:1px;height:12px;background:rgba(196,163,90,.55);transform:translateY(-50%);}
+.lg-rule{border:0;height:1px;background:linear-gradient(90deg,var(--gold) 0%,var(--gold) 64px,rgba(196,163,90,.28) 64px,rgba(196,163,90,.28) 100%);margin:40px 0 0;max-width:760px;}
+
+.lg-layout{display:grid;grid-template-columns:240px 1fr;gap:56px;align-items:start;padding:56px 0 96px;position:relative;z-index:1;}
+
+/* toc */
+.lg-toc{position:sticky;top:96px;max-height:calc(100vh - 120px);overflow-y:auto;padding-right:8px;}
+.lg-toc__title{font-family:var(--support);font-weight:700;font-size:11px;letter-spacing:.34em;text-transform:uppercase;color:var(--gold-ink);margin:0 0 18px;padding-bottom:12px;border-bottom:1px solid rgba(196,163,90,.3);}
+.lg-toc ol{list-style:none;margin:0;padding:0;counter-reset:none;}
+.lg-toc li{margin:0;}
+.lg-toc a{display:flex;gap:10px;align-items:baseline;padding:8px 0;border:0;text-decoration:none;color:var(--ink-soft);transition:color 140ms ease;}
+.lg-toc a:hover{color:var(--navy);}
+.lg-toc a.is-active{color:var(--gold-ink);}
+.lg-toc__n{font-family:var(--support);font-weight:700;font-size:11px;letter-spacing:.06em;min-width:18px;color:var(--gold-deep);}
+.lg-toc a.is-active .lg-toc__n{color:var(--gold-ink);}
+.lg-toc__t{font-family:var(--body);font-weight:500;font-size:13px;line-height:1.35;}
+.lg-toc__scrollwrap{scrollbar-width:thin;scrollbar-color:rgba(196,163,90,.4) transparent;}
+
+/* content */
+.lg-content{max-width:720px;}
+.lg-sec{scroll-margin-top:96px;display:flex;gap:18px;align-items:baseline;margin:64px 0 24px;padding-top:36px;border-top:1px solid rgba(196,163,90,.32);}
+.lg-sec:first-child{margin-top:0;padding-top:0;border-top:0;}
+.lg-sec__n{font-family:var(--support);font-weight:700;font-size:18px;letter-spacing:.04em;color:var(--gold-ink);flex:none;line-height:1.5;min-width:30px;}
+.lg-sec__t{font-family:var(--display);font-weight:700;font-size:clamp(24px,3vw,32px);line-height:1.16;color:var(--navy);text-wrap:balance;}
+.lg-sub{font-family:var(--support);font-weight:700;font-size:15px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold-ink);margin:34px 0 14px;display:flex;gap:10px;align-items:baseline;}
+.lg-sub__n{color:var(--gold-deep);font-variant-numeric:tabular-nums;}
+.lg-p{margin:0 0 18px;color:var(--ink);text-wrap:pretty;}
+.lg-p--sub{padding-left:22px;border-left:2px solid rgba(196,163,90,.3);}
+.lg-lead{color:var(--navy);font-weight:600;}
+.lg-content strong{color:var(--navy);font-weight:600;}
+.lg-list{margin:0 0 20px;padding:0;list-style:none;}
+.lg-list li{position:relative;padding:0 0 10px 24px;color:var(--ink);}
+.lg-list li::before{content:"";position:absolute;left:2px;top:12px;width:6px;height:6px;background:var(--gold);transform:rotate(45deg);}
+.lg-content a{color:var(--gold-ink);text-decoration:none;border-bottom:1px solid rgba(138,107,54,.4);transition:color 140ms ease,border-color 140ms ease;word-break:break-word;}
+.lg-content a:hover{color:var(--navy);border-color:var(--navy);}
+
+/* seal watermark */
+.lg-seal{position:absolute;right:-10px;bottom:120px;width:200px;height:200px;opacity:.05;pointer-events:none;z-index:0;}
+
+/* footer */
+.lg-foot{background:var(--navy);color:var(--cream);margin-top:0;}
+.lg-foot__inner{max-width:1180px;margin:0 auto;padding:64px 32px 40px;display:grid;grid-template-columns:1.5fr 1fr 1fr;gap:48px;align-items:start;}
+.lg-foot .lg-lockup{height:54px;margin-bottom:18px;}
+.lg-foot__line{font-family:var(--body);font-weight:400;font-size:13px;line-height:1.7;color:rgba(245,240,232,.6);margin:0;}
+.lg-foot__head{font-family:var(--support);font-weight:700;font-size:12px;letter-spacing:.34em;text-transform:uppercase;color:var(--gold);margin:0 0 16px;}
+.lg-foot__txt{margin:0 0 6px;font-size:14px;}
+.lg-foot__txt a,.lg-foot__nav a{color:rgba(245,240,232,.82);text-decoration:none;border:0;transition:color 140ms ease;}
+.lg-foot__txt a:hover,.lg-foot__nav a:hover{color:var(--gold);}
+.lg-foot__nav{display:flex;flex-direction:column;gap:8px;font-size:14px;}
+.lg-foot__legal{max-width:1180px;margin:0 auto;padding:28px 32px 36px;border-top:1px solid rgba(245,240,232,.08);font-family:var(--body);font-size:12px;color:rgba(245,240,232,.4);}
+
+.lg-toc-details>summary{display:none;}
+@media(max-width:980px){
+  .lg-layout{grid-template-columns:1fr;gap:0;}
+  .lg-toc{position:static;max-height:none;overflow:visible;margin-bottom:8px;}
+  .lg-toc-details{border:1px solid rgba(196,163,90,.3);border-radius:6px;padding:0;background:rgba(196,163,90,.05);}
+  .lg-toc-details>summary{display:block;cursor:pointer;list-style:none;font-family:var(--support);font-weight:700;font-size:12px;letter-spacing:.28em;text-transform:uppercase;color:var(--gold-ink);padding:16px 18px;}
+  .lg-toc-details>summary::-webkit-details-marker{display:none;}
+  .lg-toc-details .lg-toc__title{display:none;}
+  .lg-toc-details>summary::after{content:"+";float:right;font-size:16px;}
+  .lg-toc-details[open]>summary::after{content:"–";}
+  .lg-toc-details .lg-toc__inner{padding:0 18px 16px;}
+  .lg-seal{display:none;}
+}
+@media(max-width:640px){
+  .lg-top__inner{padding:0 20px;height:58px;}
+  .lg-lockup{height:32px;}
+  .lg-top__nav{gap:18px;}
+  .lg-top__nav a{font-size:11px;letter-spacing:.12em;}
+  .lg-wrap{padding:0 20px;}
+  .lg-masthead{padding-top:48px;}
+  .lg-layout{padding:36px 0 64px;}
+  .lg-foot__inner{grid-template-columns:1fr;gap:36px;padding:48px 20px 32px;}
+  .lg-progress{top:58px;}
+  .lg-sec{gap:12px;}
+}
+</style>
+<script>window.addEventListener('error',function(e){if(e&&e.message&&/ResizeObserver loop/.test(e.message)){e.stopImmediatePropagation();e.preventDefault();}},true);</script>
+</head>
+<body>
+<header class="lg-top">
+  <div class="lg-top__inner">
+    <a class="lg-home" href="index.html" aria-label="Downtown Pour Collective home"><svg viewBox="0 0 540 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Downtown Pour Collective" class="lg-lockup">
+  <defs><clipPath id="lk-glass"><path d="M -16,-46 L 16,-46 L 22,37 L -22,37 Z"/></clipPath></defs>
+  <g transform="translate(74,100) rotate(38)">
+    <path d="M -22,-54 L 22,-54 L 28,44 L -28,44 Z" fill="#C4A35A"/>
+    <path d="M -16,-46 L 16,-46 L 22,37 L -22,37 Z" fill="#0D1B2A"/>
+    <g clip-path="url(#lk-glass)">
+      <path d="M -21,23 L 19,-9 L 22,37 L -22,37 Z" fill="#1E3A5A"/>
+      <line x1="-24" y1="23" x2="22" y2="-10" stroke="#C4A35A" stroke-width="1.4" stroke-linecap="round" opacity="0.75"/>
+    </g>
+    <rect x="-24" y="-58" width="48" height="7" rx="2" fill="#C4A35A"/>
+    <rect x="-32" y="42" width="64" height="8" rx="2" fill="#C4A35A"/>
+  </g>
+  <text x="178" y="74" font-family="'Barlow Condensed',sans-serif" font-weight="700" font-size="17" letter-spacing="7" fill="#C4A35A">DOWNTOWN</text>
+  <text x="174" y="124" font-family="'Playfair Display',serif" font-weight="700" font-size="54" letter-spacing="2" fill="#F5F0E8">POUR</text>
+  <text x="178" y="150" font-family="'Barlow Condensed',sans-serif" font-weight="700" font-size="17" letter-spacing="7" fill="#C4A35A">COLLECTIVE</text>
+</svg></a>
+    <nav class="lg-top__nav">
+      <a href="terms.html" class="">Terms</a>
+      <a href="privacy.html" class="is-here">Privacy</a>
+      <a href="index.html">Home</a>
+    </nav>
+  </div>
+</header>
+<div class="lg-progress"><div class="lg-progress__bar" id="lg-bar"></div></div>
+
+<main class="lg-wrap">
+  <div class="lg-masthead">
+    <p class="lg-eyebrow">Downtown Pour Collective</p>
+    <h1 class="lg-title">Privacy Policy</h1>
+    <div class="lg-meta"><span>Version 4.2</span><span>Effective Date: [DATE]</span><span>Last Updated: May 2026</span><span>Table &amp; Town LLC &middot; Livermore, CA</span></div>
+    <hr class="lg-rule">
+  </div>
+
+  <div class="lg-layout">
+    <aside class="lg-toc">
+      <details class="lg-toc-details" open>
+        <summary>Contents</summary>
+        <div class="lg-toc__inner lg-toc__scrollwrap">
+          <p class="lg-toc__title">Contents</p>
+          <ol><li><a href="#sec-1" data-sec="1"><span class="lg-toc__n">1</span><span class="lg-toc__t">Introduction</span></a></li><li><a href="#sec-2" data-sec="2"><span class="lg-toc__n">2</span><span class="lg-toc__t">Information We Collect</span></a></li><li><a href="#sec-3" data-sec="3"><span class="lg-toc__n">3</span><span class="lg-toc__t">How We Use Your Information</span></a></li><li><a href="#sec-4" data-sec="4"><span class="lg-toc__n">4</span><span class="lg-toc__t">How We Share Your Information</span></a></li><li><a href="#sec-5" data-sec="5"><span class="lg-toc__n">5</span><span class="lg-toc__t">Pause-State Data Handling</span></a></li><li><a href="#sec-6" data-sec="6"><span class="lg-toc__n">6</span><span class="lg-toc__t">Geolocation Data</span></a></li><li><a href="#sec-7" data-sec="7"><span class="lg-toc__n">7</span><span class="lg-toc__t">Receipt Data From Boost Missions</span></a></li><li><a href="#sec-8" data-sec="8"><span class="lg-toc__n">8</span><span class="lg-toc__t">Dpc Rewards Points Data</span></a></li><li><a href="#sec-9" data-sec="9"><span class="lg-toc__n">9</span><span class="lg-toc__t">Data Minimization</span></a></li><li><a href="#sec-10" data-sec="10"><span class="lg-toc__n">10</span><span class="lg-toc__t">Data Retention</span></a></li><li><a href="#sec-11" data-sec="11"><span class="lg-toc__n">11</span><span class="lg-toc__t">Data Security</span></a></li><li><a href="#sec-12" data-sec="12"><span class="lg-toc__n">12</span><span class="lg-toc__t">Your California Privacy Rights</span></a></li><li><a href="#sec-13" data-sec="13"><span class="lg-toc__n">13</span><span class="lg-toc__t">Children'S Privacy</span></a></li><li><a href="#sec-14" data-sec="14"><span class="lg-toc__n">14</span><span class="lg-toc__t">Third-Party Links</span></a></li><li><a href="#sec-15" data-sec="15"><span class="lg-toc__n">15</span><span class="lg-toc__t">Changes To This Privacy Policy</span></a></li><li><a href="#sec-16" data-sec="16"><span class="lg-toc__n">16</span><span class="lg-toc__t">Contact Information</span></a></li></ol>
+        </div>
+      </details>
+    </aside>
+    <div class="lg-content">
+      <h2 class="lg-sec" id="sec-1"><span class="lg-sec__n">1</span><span class="lg-sec__t">INTRODUCTION</span></h2>
+<p class="lg-p">Table &amp; Town LLC, doing business as Downtown Pour Collective (“DPC,” “we,” “us,” or “our”), respects your privacy and is committed to protecting your personal information. This Privacy Policy describes how we collect, use, disclose, and safeguard your information when you use the DPC mobile application (the “App”), website at <a href="https://www.downtownpourcollective.com" target="_blank" rel="noopener">www.downtownpourcollective.com</a> (the “Site”), and related services (collectively, the “Service”).</p>
+<p class="lg-p">By using our Service, you consent to the data practices described herein.</p>
+<h2 class="lg-sec" id="sec-2"><span class="lg-sec__n">2</span><span class="lg-sec__t">INFORMATION WE COLLECT</span></h2>
+<h3 class="lg-sub"><span class="lg-sub__n">2.1</span> Information You Provide Directly</h3>
+<ul class="lg-list"><li>Full name, email address, phone number.</li><li>Date of birth (age verification and birthday perks).</li><li>Mailing address (Welcome Kit and membership card fulfillment).</li><li>Payment information (processed and stored by our third-party payment processor. DPC does not store full payment credentials).</li><li>Membership Circle selection and preferences.</li><li>Pause status and Pause-related preferences (start date, reason category, expected resume date if provided).</li><li>Support tickets and communications with DPC.</li><li>Receipt images uploaded for Boost Mission verification (containing purchase amounts, items, venue, and timestamps).</li><li>User-generated content submitted to DPC (Pour Stories, Coaster Passport content, social media posts tagged to DPC, testimonials, reviews) subject to the UGC license set forth in DPC's Terms of Service.</li></ul>
+<h3 class="lg-sub"><span class="lg-sub__n">2.2</span> Information Collected Automatically</h3>
+<ul class="lg-list"><li>Device information (device type, operating system, unique identifiers).</li><li>Precise geolocation data (used only during active Pour redemption within the App, including the Handoff venue verification step. Not collected in the background).</li><li>App usage data (screens viewed, features used, redemption history, Pour status per Circle, Monthly Entitlement Period state, venue assignment history, Pause and resume events, Rewards Points balance and earning history).</li><li>Log data (IP address, browser type, access times, pages viewed).</li><li>Push notification interaction data.</li></ul>
+<h3 class="lg-sub"><span class="lg-sub__n">2.3</span> Information from Third Parties</h3>
+<ul class="lg-list"><li>Payment processors (transaction confirmations, payment status, fraud signals).</li><li>Partner venues (POS transaction records used for settlement reconciliation, partner-reported dispute information regarding specific redemptions, and sponsor or mission verification inputs when applicable).</li><li>Sponsors and partner venues participating in Boost Missions (mission completion verification data, where applicable, processed under the B2B marketing services structure described in Section 4).</li><li>Analytics providers (aggregated usage patterns).</li></ul>
+<h2 class="lg-sec" id="sec-3"><span class="lg-sec__n">3</span><span class="lg-sec__t">HOW WE USE YOUR INFORMATION</span></h2>
+<h3 class="lg-sub"><span class="lg-sub__n">3.1</span> Service Delivery</h3>
+<ul class="lg-list"><li>Process membership enrollment, billing, renewals, and Pause requests.</li><li>Issue, track, and manage Membership Pours and venue assignments per Circle.</li><li>Verify identity and location during Pour redemption (Handoff verification).</li><li>Administer Coaster Passport, milestones, birthday perks, Plus-One Pour, Boost Missions, DPC Rewards Points, and referral programs.</li><li>Deliver Welcome Kits and physical membership cards.</li><li>Process Founding Slot Deposits and manage conversion windows.</li><li>Verify Boost Mission completion using uploaded receipt images.</li><li>Process Pause initiation, cap tracking, resume actions, and cancellation-during-pause forfeit handling.</li></ul>
+<h3 class="lg-sub"><span class="lg-sub__n">3.2</span> Communications</h3>
+<ul class="lg-list"><li>Transactional emails and notifications (venue assignments, Pour reset reminders, Pour expiry warnings (Day 25 and Day 28 of each Monthly Entitlement Period), blackout windows, billing, Pause confirmations and cap-approaching alerts, renewal reminders).</li><li>Marketing communications (event invitations, program updates, new venues).</li><li>Support request responses.</li></ul>
+<h3 class="lg-sub"><span class="lg-sub__n">3.3</span> Program Integrity and Fraud Prevention</h3>
+<ul class="lg-list"><li>Geofencing verification at redemption.</li><li>Detection of account sharing, screenshot attempts, location spoofing, and misuse.</li><li>Rate limiting enforcement (1 redemption per Member per venue per 30 minutes cross-Circle, 1 per same-Circle per venue per calendar day).</li><li>Audit of Pour adjustments and DPC support-resolved redemption issues.</li></ul>
+<h3 class="lg-sub"><span class="lg-sub__n">3.4</span> Analytics and Improvement</h3>
+<ul class="lg-list"><li>Understand usage patterns to improve features and experience.</li><li>Generate aggregated, de-identified analytics for internal reporting.</li><li>Provide aggregated performance reporting to partner venues and sponsors (no personally identifiable Member data is shared with venues or sponsors in standard reports).</li></ul>
+<h3 class="lg-sub"><span class="lg-sub__n">3.5</span> Legal Compliance</h3>
+<ul class="lg-list"><li>Comply with applicable laws and legal processes.</li><li>Enforce our Terms of Service.</li></ul>
+<h2 class="lg-sec" id="sec-4"><span class="lg-sec__n">4</span><span class="lg-sec__t">HOW WE SHARE YOUR INFORMATION</span></h2>
+<p class="lg-p">We do not sell your personal information.</p>
+<h3 class="lg-sub"><span class="lg-sub__n">4.1</span> Partner Venues (Standard Operations)</h3>
+<p class="lg-p">During a standard Pour redemption, venue staff see the Member's first name and last initial on the live redemption screen, plus the venue name displayed for Handoff verification. No additional personal information (full last name, email, phone number, address, or payment details) is shared with venue staff during standard operations. Venues do not process backup verifications or exception-lane approvals. All redemption issue resolution is handled by DPC support. DPC may share aggregated, de-identified data with venues for performance reporting.</p>
+<h3 class="lg-sub"><span class="lg-sub__n">4.2</span> Partner Venues (Boost Mission Receipt Verification)</h3>
+<p class="lg-p">When a Member uploads a receipt for Boost Mission verification, the receipt image and associated mission data may be shared with the applicable Partner Venue solely for verification of qualifying transactions. Receipt verification data may not be retained, copied, or repurposed by the Partner Venue after verification is complete. Partner Venues participating in partner-funded Boost Missions are bound by the Partner Data Processing Addendum (Exhibit A to the Partner Venue Agreement). Boost Mission Campaign Management Fees are B2B marketing services payments and do not include any sale or transfer of Member personal information.</p>
+<h3 class="lg-sub"><span class="lg-sub__n">4.3</span> Sponsors</h3>
+<p class="lg-p">DPC provides sponsors with aggregated, de-identified reporting only (impression counts, verified action counts, completion rates). No personally identifiable Member data is shared with sponsors under any circumstances. Sponsorship operates as a Sponsored Product Marketing Co-Op program where sponsor funds flow through DPC's Campaign Management Fee structure and Sponsored Product Marketing Co-Op payments to participating venues. Sponsor payments are B2B marketing services payments and do not include any sale or transfer of Member personal information.</p>
+<h3 class="lg-sub"><span class="lg-sub__n">4.4</span> Service Providers</h3>
+<p class="lg-p">We share information with third-party service providers who perform services on our behalf, including:</p>
+<ul class="lg-list"><li>Payment processing (e.g., Stripe). Processes and stores payment credentials. Contractually restricted to payment-related use only.</li><li>Email and push notification delivery. Receives Member contact information for message delivery only.</li><li>Cloud hosting and data storage. Hosts application data under encryption-at-rest and access controls.</li><li>Analytics and performance monitoring. Receives anonymized or pseudonymized usage data.</li><li>Customer support tools. Receives support ticket data for issue resolution.</li></ul>
+<p class="lg-p">All service providers are contractually obligated to use information only as necessary to perform the services we request, maintain reasonable security, and are prohibited from using DPC Member data for their own unrelated marketing purposes.</p>
+<h3 class="lg-sub"><span class="lg-sub__n">4.5</span> User-Generated Content</h3>
+<p class="lg-p">User-generated content submitted to DPC (Pour Stories, Coaster Passport content, social media posts tagged to DPC, testimonials, reviews, and DPC event photography in which Member appears) is governed by the UGC license set forth in the DPC Terms of Service §20.3. Members grant DPC a perpetual, royalty-free, sublicensable license to use such content for DPC business purposes, with attribution at DPC's option. Full license terms, including takedown procedures and member representations, are set forth in the Terms of Service.</p>
+<h3 class="lg-sub"><span class="lg-sub__n">4.6</span> Legal Obligations</h3>
+<p class="lg-p">We may disclose information if required by law, in response to valid legal process, or to protect rights, safety, or investigate fraud.</p>
+<h3 class="lg-sub"><span class="lg-sub__n">4.7</span> Business Transfers</h3>
+<p class="lg-p">In the event of a merger, acquisition, or sale of assets, personal information may be transferred. We will notify you prior to your information being subject to a different privacy policy.</p>
+<h2 class="lg-sec" id="sec-5"><span class="lg-sec__n">5</span><span class="lg-sec__t">PAUSE-STATE DATA HANDLING</span></h2>
+<p class="lg-p">When you initiate a Membership Pause through the App:</p>
+<ul class="lg-list"><li>We collect and process pause start date and (optionally) the reason you select from the pre-set categories (travel, illness, injury, family emergency).</li><li>No membership fees are charged during a Pause. No new Pours are issued. Any Pours issued for the then-current Monthly Entitlement Period that remain unused at the time the pause takes effect are forfeited in accordance with Member Terms of Service §4 and §13.3(a)(iii).</li><li>Geolocation data is not collected during a Pause (no redemption activity occurs).</li><li>Pause cap counter (cumulative pause days in the trailing twelve-month period for monthly members, or per annual term for annual members) is maintained for cap enforcement.</li><li>Pause history is retained as part of account history. Pause reason categories are not shared with venues, sponsors, or service providers beyond aggregated, de-identified reporting.</li><li>If you cancel during a Pause, cancellation takes effect immediately. Any unused pause days are forfeited and, for annual memberships, no refund or credit is issued for any remaining portion of the prepaid annual term, except where required by applicable law. No Pours are issued for any future period.</li></ul>
+<h2 class="lg-sec" id="sec-6"><span class="lg-sec__n">6</span><span class="lg-sec__t">GEOLOCATION DATA</span></h2>
+<p class="lg-p">The App collects precise geolocation data solely for verifying physical presence at a partner venue during Membership Pour redemption, within a 150-foot radius. Location data is not collected continuously or in the background. Geolocation data is considered sensitive personal information under applicable California law. Its use is strictly limited to service performance (redemption verification including Handoff venue confirmation) and fraud prevention. Geolocation verification logs are retained only in minimized, time-bound, event-based form.</p>
+<p class="lg-p">Disabling location services on your device prevents in-app Pour redemption but does not affect other App features.</p>
+<h2 class="lg-sec" id="sec-7"><span class="lg-sec__n">7</span><span class="lg-sec__t">RECEIPT DATA FROM BOOST MISSIONS</span></h2>
+<p class="lg-p">When Members upload receipt photographs for Boost Mission verification, those images may contain purchase details, venue information, transaction amounts, and timestamps. DPC collects this data solely for mission verification and reward processing. Receipt images may be shared with the applicable Partner Venue for verification under the Partner Data Processing Addendum. Receipt data may be manually reviewed by DPC support staff for verification purposes. DPC does not use receipt images for analytics, model training, or marketing. Receipt images are deleted within ninety (90) days after the mission verification window closes unless retention is required for an active dispute or audit.</p>
+<p class="lg-p">Boost Mission Campaign Management Fee payments and Sponsored Product Marketing Co-Op payments are B2B marketing services payments. They do not constitute the sale or transfer of Member personal information to sponsors or to participating venues.</p>
+<h2 class="lg-sec" id="sec-8"><span class="lg-sec__n">8</span><span class="lg-sec__t">DPC REWARDS POINTS DATA</span></h2>
+<p class="lg-p">DPC Rewards Points are non-monetary program benefits. We track Points balance, earning events (source activity, points awarded), and redemption events (catalog item, points used, fulfillment status). Points data is used solely for program administration. Points balance is not displayed alongside any dollar value in any Member-facing surface. Points expire on a schedule established by DPC and forfeit upon cancellation or termination of membership.</p>
+<h2 class="lg-sec" id="sec-9"><span class="lg-sec__n">9</span><span class="lg-sec__t">DATA MINIMIZATION</span></h2>
+<ul class="lg-list"><li>Member-facing screens display first name and last initial only.</li><li>All Pour operations are server-authoritative and audit-logged with minimal PII.</li><li>Fraud detection uses system-level identifiers rather than exposing Member data to venue staff.</li><li>Venue staff have no access to Member personal information beyond what is displayed on the live redemption screen and the venue name for Handoff verification.</li><li>Schedule A reimbursement rates and per-Pour dollar values are partner-facing settlement data only and are not exposed in any Member-facing surface.</li></ul>
+<h2 class="lg-sec" id="sec-10"><span class="lg-sec__n">10</span><span class="lg-sec__t">DATA RETENTION</span></h2>
+<p class="lg-p">We retain personal information as follows:</p>
+<ul class="lg-list"><li>Account and profile data: retained as long as account is active. Retained for twenty-four (24) months after account cancellation effective date, then deleted or anonymized. Pours expire monthly and forfeit on cancellation under the Pour architecture, so account data is not retained beyond the cancellation date for Pour-balance reasons. [PROPOSED, CONFIRM WITH COUNSEL]</li><li>Payment transaction records: retained for seven (7) years per tax and financial record-keeping requirements. [PROPOSED, CONFIRM WITH COUNSEL]</li><li>Support ticket records: retained for three (3) years after resolution. [PROPOSED, CONFIRM WITH COUNSEL]</li><li>Pour redemption log records: retained for three (3) years for audit and dispute resolution. [PROPOSED, CONFIRM WITH COUNSEL]</li><li>Monthly Entitlement Period close records (issued, redeemed, expired counts per Member per Circle per period): retained for three (3) years. [PROPOSED, CONFIRM WITH COUNSEL]</li><li>Pause history: retained for three (3) years for cap enforcement and audit. [PROPOSED, CONFIRM WITH COUNSEL]</li><li>Geolocation verification logs: retained for ninety (90) days after the redemption event. [PROPOSED, CONFIRM WITH COUNSEL]</li><li>Receipt images (Boost Missions): retained for ninety (90) days after mission verification closes. [PROPOSED, CONFIRM WITH COUNSEL]</li><li>DPC Rewards Points ledger and event history: retained for three (3) years after Member account closure for audit. [PROPOSED, CONFIRM WITH COUNSEL]</li><li>User-generated content: retained per the UGC license terms in the Terms of Service.</li><li>Fraud and audit investigation logs: retained for five (5) years or as required by law. [PROPOSED, CONFIRM WITH COUNSEL]</li><li>Aggregated, de-identified data: may be retained indefinitely for analytics and business planning.</li></ul>
+<h2 class="lg-sec" id="sec-11"><span class="lg-sec__n">11</span><span class="lg-sec__t">DATA SECURITY</span></h2>
+<p class="lg-p">We implement reasonable administrative, technical, and physical security measures including encryption in transit, secure access controls, and regular security reviews. No transmission method is 100% secure. We cannot guarantee absolute security.</p>
+<h2 class="lg-sec" id="sec-12"><span class="lg-sec__n">12</span><span class="lg-sec__t">YOUR CALIFORNIA PRIVACY RIGHTS</span></h2>
+<h3 class="lg-sub"><span class="lg-sub__n">12.1</span> Right to Know</h3>
+<p class="lg-p">You may request disclosure of the categories and specific pieces of personal information collected, sources, purposes, and third-party recipients.</p>
+<h3 class="lg-sub"><span class="lg-sub__n">12.2</span> Right to Delete</h3>
+<p class="lg-p">You may request deletion of personal information, subject to legal exceptions (e.g., information necessary to complete a transaction, detect fraud, or comply with legal obligations).</p>
+<h3 class="lg-sub"><span class="lg-sub__n">12.3</span> Right to Correct</h3>
+<p class="lg-p">You may request correction of inaccurate personal information.</p>
+<h3 class="lg-sub"><span class="lg-sub__n">12.4</span> Right to Opt Out of Sale or Sharing</h3>
+<p class="lg-p">DPC does not sell personal information or share it for cross-context behavioral advertising.</p>
+<h3 class="lg-sub"><span class="lg-sub__n">12.5</span> Right to Non-Discrimination</h3>
+<p class="lg-p">We will not discriminate against you for exercising privacy rights, though exercising certain rights may affect service functionality.</p>
+<h3 class="lg-sub"><span class="lg-sub__n">12.6</span> How to Exercise Your Rights</h3>
+<p class="lg-p">To submit a privacy rights request, you may:</p>
+<ul class="lg-list"><li>Email: <a href="mailto:privacy@downtownpourcollective.com">privacy@downtownpourcollective.com</a></li><li>Submit a request through the App (Settings &gt; Privacy &gt; Submit Request)</li><li>Mail: Table &amp; Town LLC, 2601 Horseshoe Ct, Livermore, CA 94551</li></ul>
+<p class="lg-p">We will verify your identity before fulfilling requests using information already on file (email, phone, account details). You may designate an authorized agent to submit a request on your behalf with proper written authorization.</p>
+<p class="lg-p">We will respond to verified requests within forty-five (45) calendar days. If additional time is needed, we will notify you of the extension and the reason. If a request is denied in whole or in part, we will explain the basis for the denial and inform you of your right to appeal by contacting us at the address above.</p>
+<h2 class="lg-sec" id="sec-13"><span class="lg-sec__n">13</span><span class="lg-sec__t">CHILDREN'S PRIVACY</span></h2>
+<p class="lg-p">The Service is not directed to children. The DPC membership program is restricted to individuals who are at least twenty-one (21) years of age and legally permitted to purchase and consume alcoholic beverages in the State of California, as set forth in the Terms of Service. We do not knowingly collect personal information from anyone under the age of thirteen (13), and we do not knowingly collect personal information from anyone under the age of twenty-one (21). If we learn that we have collected personal information from a child under thirteen (13), or from any individual under twenty-one (21), we will delete that information promptly.</p>
+<h2 class="lg-sec" id="sec-14"><span class="lg-sec__n">14</span><span class="lg-sec__t">THIRD-PARTY LINKS</span></h2>
+<p class="lg-p">The App and Site may link to third-party services. We are not responsible for their privacy practices.</p>
+<h2 class="lg-sec" id="sec-15"><span class="lg-sec__n">15</span><span class="lg-sec__t">CHANGES TO THIS PRIVACY POLICY</span></h2>
+<p class="lg-p">Material changes will be communicated at least thirty (30) days before the effective date. Continued use constitutes acceptance. Where program changes occur in connection with discontinuation or wind-down of the DPC program, notice and timing follow the Member Terms of Service §19 (Program Discontinuation and Wind-Down).</p>
+<h2 class="lg-sec" id="sec-16"><span class="lg-sec__n">16</span><span class="lg-sec__t">CONTACT INFORMATION</span></h2>
+<p class="lg-p"><strong>Operator:</strong> Table &amp; Town LLC</p>
+<p class="lg-p"><strong>DBA:</strong> Downtown Pour Collective</p>
+<p class="lg-p"><strong>Address:</strong> 2601 Horseshoe Ct, Livermore, CA 94551</p>
+<p class="lg-p"><strong>Website:</strong> <a href="https://www.downtownpourcollective.com" target="_blank" rel="noopener">www.downtownpourcollective.com</a></p>
+<p class="lg-p"><strong>Privacy Inquiries:</strong> <a href="mailto:privacy@downtownpourcollective.com">privacy@downtownpourcollective.com</a></p>
+<p class="lg-p"><strong>Support:</strong> <a href="mailto:support@downtownpourcollective.com">support@downtownpourcollective.com</a></p>
+    </div>
+  </div>
+  <svg class="lg-seal" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <circle cx="100" cy="100" r="92" fill="none" stroke="#0D1B2A" stroke-width="2"/>
+  <circle cx="100" cy="100" r="80" fill="none" stroke="#0D1B2A" stroke-width="1" stroke-dasharray="2 5"/>
+  <circle cx="100" cy="100" r="58" fill="none" stroke="#0D1B2A" stroke-width="1"/>
+  <text x="100" y="124" text-anchor="middle" font-family="'Playfair Display',serif" font-weight="900" font-size="62" fill="#0D1B2A">DPC</text>
+  <text x="100" y="150" text-anchor="middle" font-family="'Barlow Condensed',sans-serif" font-weight="700" font-size="9" letter-spacing="3" fill="#0D1B2A">EST. 2026</text>
+</svg>
+</main>
+
+<footer class="lg-foot">
+  <div class="lg-foot__inner">
+    <div class="lg-foot__brand"><svg viewBox="0 0 540 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Downtown Pour Collective" class="lg-lockup">
+  <defs><clipPath id="lk-glass"><path d="M -16,-46 L 16,-46 L 22,37 L -22,37 Z"/></clipPath></defs>
+  <g transform="translate(74,100) rotate(38)">
+    <path d="M -22,-54 L 22,-54 L 28,44 L -28,44 Z" fill="#C4A35A"/>
+    <path d="M -16,-46 L 16,-46 L 22,37 L -22,37 Z" fill="#0D1B2A"/>
+    <g clip-path="url(#lk-glass)">
+      <path d="M -21,23 L 19,-9 L 22,37 L -22,37 Z" fill="#1E3A5A"/>
+      <line x1="-24" y1="23" x2="22" y2="-10" stroke="#C4A35A" stroke-width="1.4" stroke-linecap="round" opacity="0.75"/>
+    </g>
+    <rect x="-24" y="-58" width="48" height="7" rx="2" fill="#C4A35A"/>
+    <rect x="-32" y="42" width="64" height="8" rx="2" fill="#C4A35A"/>
+  </g>
+  <text x="178" y="74" font-family="'Barlow Condensed',sans-serif" font-weight="700" font-size="17" letter-spacing="7" fill="#C4A35A">DOWNTOWN</text>
+  <text x="174" y="124" font-family="'Playfair Display',serif" font-weight="700" font-size="54" letter-spacing="2" fill="#F5F0E8">POUR</text>
+  <text x="178" y="150" font-family="'Barlow Condensed',sans-serif" font-weight="700" font-size="17" letter-spacing="7" fill="#C4A35A">COLLECTIVE</text>
+</svg><p class="lg-foot__line">Downtown Pour Collective is a community of Table &amp; Town LLC.<br>2601 Horseshoe Ct, Livermore, California 94551.</p></div>
+    <div><p class="lg-foot__head">Contact</p>
+      <p class="lg-foot__txt"><a href="mailto:support@downtownpourcollective.com">support@downtownpourcollective.com</a></p>
+      <p class="lg-foot__txt"><a href="mailto:privacy@downtownpourcollective.com">privacy@downtownpourcollective.com</a></p></div>
+    <div><p class="lg-foot__head">Policies</p>
+      <nav class="lg-foot__nav"><a href="terms.html">Terms of Service</a><a href="privacy.html">Privacy Policy</a><a href="index.html">Home</a></nav></div>
+  </div>
+  <div class="lg-foot__legal"><div>&copy; 2026 Table &amp; Town LLC. All rights reserved.</div></div>
+</footer>
+
+<script>
+(function(){
+  var bar=document.getElementById('lg-bar');
+  var secs=[].slice.call(document.querySelectorAll('.lg-sec'));
+  var links={};
+  [].forEach.call(document.querySelectorAll('.lg-toc a[data-sec]'),function(a){links[a.getAttribute('data-sec')]=a;});
+  function onScroll(){
+    var h=document.documentElement;
+    var max=h.scrollHeight-h.clientHeight;
+    var p=max>0?(h.scrollTop||document.body.scrollTop)/max:0;
+    bar.style.width=(p*100).toFixed(2)+'%';
+    var top=(h.scrollTop||document.body.scrollTop)+120;
+    var cur=null;
+    for(var i=0;i<secs.length;i++){if(secs[i].offsetTop<=top)cur=secs[i];}
+    Object.keys(links).forEach(function(k){links[k].classList.remove('is-active');});
+    if(cur){var id=cur.id.replace('sec-','');if(links[id])links[id].classList.add('is-active');}
+  }
+  window.addEventListener('scroll',onScroll,{passive:true});
+  window.addEventListener('resize',onScroll);
+  onScroll();
+  // collapse TOC after click on small screens
+  document.querySelectorAll('.lg-toc a[data-sec]').forEach(function(a){
+    a.addEventListener('click',function(){
+      if(window.innerWidth<=980){var d=document.querySelector('.lg-toc-details');if(d)d.removeAttribute('open');}
+    });
+  });
+})();
+</script>
+</body>
+</html>

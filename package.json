@@ -1,0 +1,16 @@
+{
+  "name": "dpc-web",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Downtown Pour Collective interim website (member + partner landing pages).",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "vercel dev",
+    "deploy": "vercel --prod"
+  },
+  "dependencies": {
+    "resend": "^4.0.0"
+  }
+}

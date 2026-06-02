@@ -1,0 +1,8 @@
+<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <rect width="64" height="64" rx="10" fill="#0D1B2A"></rect>
+  <circle cx="32" cy="32" r="20" fill="#1E3A5A"></circle>
+  <circle cx="32" cy="32" r="20" fill="none" stroke="#2A4F70" stroke-width="2.4" opacity="0.8"></circle>
+  <circle cx="32" cy="32" r="23" fill="none" stroke="#C4A35A" stroke-width="1.4"></circle>
+  <circle cx="32" cy="32" r="20" fill="none" stroke="#C4A35A" stroke-width="0.5" stroke-dasharray="2 3" opacity="0.45"></circle>
+  <text x="32" y="33" text-anchor="middle" dominant-baseline="central" font-family="Georgia, &#39;Playfair Display&#39;, serif" font-weight="700" font-size="17" letter-spacing="1" fill="#F5F0E8">DPC</text>
+</svg>
