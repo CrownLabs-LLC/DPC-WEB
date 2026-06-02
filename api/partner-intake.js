@@ -9,12 +9,51 @@ const NOTIFY_TO = (process.env.NOTIFY_TO || 'nick@downtownpourcollective.com,par
   .map((s) => s.trim())
   .filter(Boolean);
 
+// Auto-acknowledgment per DPC_Partner_Intake_Email_Spec_v1_0. Subject and body are locked.
+// Defaults are the production values; overrideable via env for local dev only.
+const AUTOACK_FROM = process.env.AUTOACK_FROM || 'Downtown Pour Collective <partners@downtownpourcollective.com>';
+const AUTOACK_REPLY_TO = process.env.AUTOACK_REPLY_TO || 'nick@downtownpourcollective.com';
+
 function bad(res, code, message) {
   return res.status(code).json({ success: false, error: { code: 'BAD_REQUEST', message } });
 }
 
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function buildAutoAck({ first_name, venue_name }) {
+  const venue = venue_name || 'your venue';
+  const salutation = first_name ? `${first_name},\n\n` : '';
+  const text = `${salutation}Your note on ${venue} is with Nick. He reads every one of these himself and replies within 48 hours with whether DPC is a fit for your venue and what the next step looks like.
+
+Downtown Pour Collective
+partners@downtownpourcollective.com
+(925) 488-4889
+`;
+  const salutationHtml = first_name
+    ? `<p style="margin:0 0 16px 0;">${escapeHtml(first_name)},</p>`
+    : '';
+  const html = `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>We got it.</title></head>
+<body style="margin:0;padding:0;background:#FFFFFF;">
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#FFFFFF;">
+  <tr><td align="center" style="padding:40px 16px;">
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" style="max-width:600px;width:100%;">
+      <tr><td style="font-family:Barlow,'Helvetica Neue',Arial,sans-serif;font-size:16px;line-height:1.6;color:#0D1B2A;">
+        ${salutationHtml}
+        <p style="margin:0 0 16px 0;">Your note on ${escapeHtml(venue)} is with Nick. He reads every one of these himself and replies within 48 hours with whether DPC is a fit for your venue and what the next step looks like.</p>
+        <p style="margin:24px 0 0 0;font-size:14px;color:#5A5A5A;line-height:1.6;">
+          Downtown Pour Collective<br>
+          partners@downtownpourcollective.com<br>
+          (925) 488-4889
+        </p>
+      </td></tr>
+    </table>
+  </td></tr>
+</table>
+</body></html>`;
+  return { text, html };
 }
 
 export default async function handler(req, res) {
@@ -68,6 +107,21 @@ export default async function handler(req, res) {
   } catch (err) {
     console.error('resend.contacts.create failed', err);
     return res.status(502).json({ success: false, error: { code: 'AUDIENCE_FAIL', message: 'Something stuck on our end. Try once more or email partners@downtownpourcollective.com directly.' } });
+  }
+
+  const ack = buildAutoAck({ first_name, venue_name });
+  try {
+    await resend.emails.send({
+      from: AUTOACK_FROM,
+      to: email,
+      replyTo: AUTOACK_REPLY_TO,
+      subject: 'We got it.',
+      text: ack.text,
+      html: ack.html,
+    });
+  } catch (err) {
+    console.error('resend autoack send failed', err);
+    return res.status(502).json({ success: false, error: { code: 'AUTOACK_FAIL', message: 'Something stuck on our end. Try once more or email partners@downtownpourcollective.com directly.' } });
   }
 
   const subject = `New partner intake: ${venue_name} (${first_name} ${last_name})`;
