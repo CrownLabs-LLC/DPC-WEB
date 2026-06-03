@@ -1,0 +1,39 @@
+<svg viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
+  <!-- Navy background -->
+  <rect x="0" y="0" width="1200" height="630" fill="#0D1B2A"/>
+  <!-- Inset gold hairline frame -->
+  <rect x="24" y="24" width="1152" height="582" rx="6" fill="none" stroke="#C4A35A" stroke-width="0.8" opacity="0.28"/>
+
+  <!-- Glass icon, centered horizontally, vertically biased upward -->
+  <g transform="translate(540, 230) rotate(38) scale(1.15)">
+    <path d="M -30,-72 L 30,-72 L 38,58 L -38,58 Z" fill="#C4A35A"/>
+    <path d="M -23,-62 L 23,-62 L 30,50 L -30,50 Z" fill="#0D1B2A"/>
+    <path d="M -27,6 Q 0,0 27,6 L 30,50 L -30,50 Z" fill="#1E3A5A"/>
+    <path d="M -27,6 Q 0,-2 27,6" fill="none" stroke="#C4A35A" stroke-width="1.8" stroke-linecap="round" opacity="0.7"/>
+    <rect x="-32" y="-77" width="64" height="9" rx="3" fill="#C4A35A"/>
+    <rect x="-42" y="56" width="84" height="10" rx="3" fill="#C4A35A"/>
+    <circle cx="0" cy="28" r="3.5" fill="#C4A35A" opacity="0.25"/>
+    <circle cx="-10" cy="18" r="2.4" fill="#C4A35A" opacity="0.2"/>
+    <circle cx="10" cy="36" r="2" fill="#C4A35A" opacity="0.18"/>
+  </g>
+
+  <!-- Splash arcs -->
+  <path d="M 580,148 C 624,118 672,112 706,134 C 728,150 716,184 686,176" fill="none" stroke="#C4A35A" stroke-width="8" stroke-linecap="round"/>
+  <path d="M 586,160 C 624,134 668,128 696,146 C 712,158 704,182 680,176" fill="none" stroke="#C4A35A" stroke-width="4.4" stroke-linecap="round" opacity="0.55"/>
+  <circle cx="712" cy="130" r="10" fill="#C4A35A"/>
+  <circle cx="736" cy="148" r="7" fill="#C4A35A" opacity="0.8"/>
+  <circle cx="724" cy="110" r="4.8" fill="#C4A35A" opacity="0.6"/>
+  <circle cx="752" cy="132" r="4" fill="#C4A35A" opacity="0.45"/>
+  <circle cx="740" cy="100" r="2.8" fill="#C4A35A" opacity="0.35"/>
+
+  <!-- Wordmark -->
+  <line x1="380" y1="356" x2="820" y2="356" stroke="#C4A35A" stroke-width="0.9" opacity="0.32"/>
+  <text x="600" y="382" text-anchor="middle" font-family="Barlow Condensed" font-size="20" font-weight="700" fill="#C4A35A" letter-spacing="4">DOWNTOWN</text>
+  <text x="600" y="458" text-anchor="middle" font-family="Playfair Display" font-size="78" font-weight="700" fill="#F5F0E8">POUR</text>
+  <text x="600" y="492" text-anchor="middle" font-family="Barlow Condensed" font-size="20" font-weight="700" fill="#C4A35A" letter-spacing="4">COLLECTIVE</text>
+  <line x1="380" y1="508" x2="820" y2="508" stroke="#C4A35A" stroke-width="0.9" opacity="0.32"/>
+
+  <!-- Tagline -->
+  <text x="600" y="554" text-anchor="middle" font-family="Barlow Condensed" font-size="15" font-weight="600" fill="#5A6475" letter-spacing="4">LIVERMORE  &#183;  TRI-VALLEY</text>
+  <text x="600" y="592" text-anchor="middle" font-family="Barlow Condensed" font-size="13" font-weight="700" fill="#C4A35A" letter-spacing="6">FOUNDING MEMBERSHIP OPEN</text>
+</svg>

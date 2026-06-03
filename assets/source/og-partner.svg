@@ -1,0 +1,49 @@
+<svg viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
+  <!-- Navy background -->
+  <rect x="0" y="0" width="1200" height="630" fill="#0D1B2A"/>
+  <!-- Inset gold hairline frame -->
+  <rect x="24" y="24" width="1152" height="582" rx="6" fill="none" stroke="#C4A35A" stroke-width="0.8" opacity="0.28"/>
+
+  <!-- LEFT HALF: lockup -->
+  <!-- Glass icon -->
+  <g transform="translate(280, 240) rotate(38)">
+    <path d="M -30,-72 L 30,-72 L 38,58 L -38,58 Z" fill="#C4A35A"/>
+    <path d="M -23,-62 L 23,-62 L 30,50 L -30,50 Z" fill="#0D1B2A"/>
+    <path d="M -27,6 Q 0,0 27,6 L 30,50 L -30,50 Z" fill="#1E3A5A"/>
+    <path d="M -27,6 Q 0,-2 27,6" fill="none" stroke="#C4A35A" stroke-width="1.8" stroke-linecap="round" opacity="0.7"/>
+    <rect x="-32" y="-77" width="64" height="9" rx="3" fill="#C4A35A"/>
+    <rect x="-42" y="56" width="84" height="10" rx="3" fill="#C4A35A"/>
+    <circle cx="0" cy="28" r="3.5" fill="#C4A35A" opacity="0.25"/>
+    <circle cx="-10" cy="18" r="2.4" fill="#C4A35A" opacity="0.2"/>
+    <circle cx="10" cy="36" r="2" fill="#C4A35A" opacity="0.18"/>
+  </g>
+
+  <!-- Splash arcs -->
+  <path d="M 318,162 C 354,138 396,132 424,150 C 442,162 432,190 406,184" fill="none" stroke="#C4A35A" stroke-width="6.5" stroke-linecap="round"/>
+  <path d="M 322,172 C 354,150 392,144 416,160 C 430,170 422,190 402,184" fill="none" stroke="#C4A35A" stroke-width="3.6" stroke-linecap="round" opacity="0.5"/>
+  <circle cx="430" cy="146" r="8" fill="#C4A35A"/>
+  <circle cx="450" cy="160" r="5.6" fill="#C4A35A" opacity="0.8"/>
+  <circle cx="440" cy="124" r="4" fill="#C4A35A" opacity="0.6"/>
+  <circle cx="460" cy="142" r="3" fill="#C4A35A" opacity="0.45"/>
+
+  <!-- Lockup wordmark (compact, left-aligned beneath glass) -->
+  <line x1="140" y1="362" x2="460" y2="362" stroke="#C4A35A" stroke-width="0.7" opacity="0.32"/>
+  <text x="300" y="384" text-anchor="middle" font-family="Barlow Condensed" font-size="16" font-weight="700" fill="#C4A35A" letter-spacing="3">DOWNTOWN</text>
+  <text x="300" y="448" text-anchor="middle" font-family="Playfair Display" font-size="64" font-weight="700" fill="#F5F0E8">POUR</text>
+  <text x="300" y="476" text-anchor="middle" font-family="Barlow Condensed" font-size="16" font-weight="700" fill="#C4A35A" letter-spacing="3">COLLECTIVE</text>
+  <line x1="140" y1="488" x2="460" y2="488" stroke="#C4A35A" stroke-width="0.7" opacity="0.32"/>
+
+  <!-- Vertical gold divider -->
+  <line x1="600" y1="140" x2="600" y2="490" stroke="#C4A35A" stroke-width="0.9" opacity="0.32"/>
+
+  <!-- RIGHT HALF: headline block -->
+  <text x="660" y="220" font-family="Barlow Condensed" font-size="22" font-weight="700" fill="#C4A35A" letter-spacing="5">FOR OPERATORS</text>
+  <text x="660" y="306" font-family="Playfair Display" font-size="58" font-weight="700" fill="#F5F0E8">Founding</text>
+  <text x="660" y="372" font-family="Playfair Display" font-size="58" font-weight="700" fill="#F5F0E8">Partners</text>
+  <line x1="660" y1="402" x2="1120" y2="402" stroke="#C4A35A" stroke-width="0.9" opacity="0.4"/>
+  <text x="660" y="438" font-family="Barlow Condensed" font-size="20" font-weight="700" fill="#C4A35A" letter-spacing="5">LIVERMORE  &#183;  TRI-VALLEY</text>
+  <text x="660" y="478" font-family="Barlow" font-size="16" font-weight="500" fill="#F5F0E8">downtownpourcollective.com/partners</text>
+
+  <!-- Bottom tagline -->
+  <text x="600" y="588" text-anchor="middle" font-family="Barlow Condensed" font-size="13" font-weight="600" fill="#5A6475" letter-spacing="5">DOWNTOWN POUR COLLECTIVE  &#183;  FOUNDING COHORT</text>
+</svg>
