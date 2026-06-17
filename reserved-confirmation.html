@@ -109,12 +109,59 @@ svg { display: block; }
 }
 .confirm__questions a { color: rgba(245, 240, 232, 0.6); text-decoration: none; }
 .confirm__questions a:hover { color: var(--gold); }
+.cookie {
+  position: fixed;
+  left: 16px;
+  right: 16px;
+  bottom: 16px;
+  z-index: 100;
+  max-width: 720px;
+  margin: 0 auto;
+  background: rgba(13, 27, 42, 0.96);
+  border: 1px solid rgba(196, 163, 90, 0.4);
+  border-radius: 6px;
+  padding: 18px 22px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+}
+.cookie[hidden] { display: none; }
+.cookie__text {
+  font-family: var(--body);
+  font-weight: 400;
+  font-size: 13px;
+  line-height: 1.6;
+  color: rgba(245, 240, 232, 0.85);
+  margin: 0;
+  flex: 1;
+}
+.cookie__text a { color: var(--gold); text-decoration: underline; text-underline-offset: 2px; }
+.cookie__accept {
+  flex-shrink: 0;
+  font-family: var(--support);
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  background: var(--gold);
+  color: var(--navy);
+  border: 0;
+  border-radius: 4px;
+  padding: 12px 24px;
+  min-height: 44px;
+  cursor: pointer;
+}
 @media (max-width: 767px) {
   body { padding: 56px 24px; }
   .confirm__border { inset: 14px; }
   .confirm__lockup { width: 170px; }
   .confirm__headline { font-size: 32px; }
   .confirm__body p { font-size: 16px; }
+  .cookie { flex-direction: column; align-items: stretch; gap: 14px; text-align: center; }
+  .cookie__accept { width: 100%; }
 }
 </style>
 </head>
@@ -157,6 +204,10 @@ svg { display: block; }
   </div>
   <p class="confirm__questions">Questions? <a href="mailto:hello@downtownpourcollective.com">hello@downtownpourcollective.com</a></p>
 </main>
+<div class="cookie" id="cookie-banner" role="region" aria-label="Cookie notice" hidden>
+  <p class="cookie__text">By using this site you agree to our use of analytics cookies. <a href="/privacy">Privacy Policy</a></p>
+  <button class="cookie__accept" type="button" id="cookie-accept">Accept</button>
+</div>
 <script src="assets/analytics.js"></script>
 <script>DPCAnalytics.init({ page: 'confirmation' });</script>
 </body>

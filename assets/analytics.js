@@ -4,6 +4,7 @@
   var GA_ID = 'G-C7CCW2YLPH';
   var CONSENT_KEY = 'dpc_cookie_consent';
   var LEGACY_CONSENT_KEY = 'dpc_partner_cookie_consent';
+  var DEPOSIT_TRACKED_KEY = 'dpc_deposit_tracked';
   var gaLoaded = false;
   var pageInitDone = false;
   var currentPageConfig = null;
@@ -40,7 +41,7 @@
       function gtag() { window.dataLayer.push(arguments); }
       window.gtag = gtag;
       gtag('js', new Date());
-      gtag('config', GA_ID, { anonymize_ip: true });
+      gtag('config', GA_ID);
       if (cb) cb();
     };
     document.head.appendChild(s);
@@ -75,6 +76,7 @@
           track('scroll_depth', { percent_scrolled: m });
         }
       });
+      if (fired[100]) window.removeEventListener('scroll', check);
     }
     window.addEventListener('scroll', check, { passive: true });
     check();
@@ -90,7 +92,7 @@
         track('section_view', { section: label });
         observer.unobserve(entry.target);
       });
-    }, { threshold: 0.35 });
+    }, { threshold: 0.1 });
     selectors.forEach(function (sel) {
       document.querySelectorAll(sel).forEach(function (el) { observer.observe(el); });
     });
@@ -110,13 +112,20 @@
           e.preventDefault();
           return;
         }
-        track('deposit_button_click');
+        e.preventDefault();
+        var navigated = false;
+        function go() {
+          if (navigated) return;
+          navigated = true;
+          window.location.href = url;
+        }
+        track('deposit_button_click', { event_callback: go });
         track('outbound_click', {
           link_url: url,
           link_domain: 'stripe.com',
           outbound: true
         });
-        window.location.href = url;
+        setTimeout(go, 400);
       });
     });
   }
@@ -141,6 +150,10 @@
   }
 
   function initConfirmationTracking() {
+    try {
+      if (sessionStorage.getItem(DEPOSIT_TRACKED_KEY) === '1') return;
+      sessionStorage.setItem(DEPOSIT_TRACKED_KEY, '1');
+    } catch (e) {}
     track('founding_deposit_complete');
   }
 
@@ -159,10 +172,6 @@
   function init(config) {
     currentPageConfig = config || {};
     if (config.page === 'member') initStripeCTAs();
-    if (config.page === 'confirmation') {
-      if (hasConsent()) bootAnalytics();
-      return;
-    }
     initCookieBanner();
   }
 
