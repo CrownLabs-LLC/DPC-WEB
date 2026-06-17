@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Disallow: /reserved-confirmation
+
+Sitemap: https://www.downtownpourcollective.com/sitemap.xml

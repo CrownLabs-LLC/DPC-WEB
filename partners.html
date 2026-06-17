@@ -837,22 +837,6 @@ img, svg { display: block; max-width: 100%; }
   html { scroll-behavior: auto; }
 }
 </style>
-<!-- GA4 -->
-<script>
-(function () {
-  var GA_ID = 'G-C7CCW2YLPH';
-  if (!GA_ID || GA_ID.indexOf('XXXXXXXXXX') !== -1) return;
-  var s = document.createElement('script');
-  s.async = true;
-  s.src = 'https://www.googletagmanager.com/gtag/js?id=' + GA_ID;
-  document.head.appendChild(s);
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){ dataLayer.push(arguments); }
-  window.gtag = gtag;
-  gtag('js', new Date());
-  gtag('config', GA_ID, { anonymize_ip: true });
-})();
-</script>
 </head>
 <body>
 
@@ -1211,20 +1195,8 @@ var DPC_PARTNER_PHASE = 1;
   if (src) src.value = (DPC_PARTNER_PHASE === 2) ? 'partner-waitlist-2026' : 'partner-landing-june2026';
 })();
 </script>
-<script>
-/* ── Cookie banner (minimal analytics consent) ── */
-(function () {
-  var KEY = 'dpc_partner_cookie_consent';
-  var banner = document.getElementById('cookie-banner');
-  try { if (banner && !localStorage.getItem(KEY)) banner.hidden = false; }
-  catch (e) { if (banner) banner.hidden = false; }
-  var accept = document.getElementById('cookie-accept');
-  if (accept) accept.addEventListener('click', function () {
-    try { localStorage.setItem(KEY, '1'); } catch (e) {}
-    if (banner) banner.hidden = true;
-  });
-})();
-</script>
+<script src="assets/analytics.js"></script>
+<script>DPCAnalytics.init({ page: 'partners' });</script>
 <script>
 /* ── Intake form ──────────────────────────────────────────────────────────
    Client-side validation + UX only. On a production build the form POSTs to a
@@ -1286,7 +1258,7 @@ var DPC_PARTNER_PHASE = 1;
       }
       if (wrap) wrap.classList.add('is-submitted');
       var src = (payload.source) || 'partner-landing-june2026';
-      if (window.gtag) window.gtag('event', 'form_submit', { source: src });
+      if (window.DPCAnalytics) DPCAnalytics.track('form_submit', { source: src });
     }).catch(function () {
       errorEl.textContent = GENERIC_FAIL;
       if (submitBtn) { submitBtn.disabled = false; }
