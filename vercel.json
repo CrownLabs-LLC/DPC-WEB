@@ -7,7 +7,7 @@
   ],
   "functions": {
     "api/stripe-webhook.js": {
-      "maxDuration": 30
+      "maxDuration": 15
     }
   },
   "headers": [

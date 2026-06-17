@@ -34,13 +34,12 @@ You said walk through this part. Here it is:
    - Description: `$49 deposit to reserve your founding spot. Refundable if you
      don't convert at launch.`
    - Price: `$49.00 USD`, one-time.
-   - Metadata (click "Add metadata"):
-     - `product_type` = `founding_deposit`
-     - `source` = `dpc-web`
 3. Save the product. Open it.
 4. Under the price, click **"Create payment link"**.
    - Quantity: fixed 1, customers cannot adjust.
    - Collect: customer email (required), name (required), phone (optional).
+   - **Metadata** (required for the webhook): `product_type` = `founding_deposit`,
+     `source` = `dpc-web`
    - After payment: **"Don't show confirmation page — redirect"** →
      `https://www.downtownpourcollective.com/reserved-confirmation`.
    - Promotion codes: off.
@@ -59,7 +58,12 @@ checkout. After paying with a Live test card on a Live deployment, you land on
 
 The site sends the Founding Slot Deposit welcome email from
 [`/api/stripe-webhook`](api/stripe-webhook.js) when Stripe fires
-`checkout.session.completed` for a paid $49 session.
+`checkout.session.completed` for a paid $49 USD session with
+`metadata.product_type = founding_deposit`.
+
+**Important:** `api/stripe-webhook.js` exports `config.api.bodyParser = false`
+so Vercel passes the raw request body to Stripe signature verification. Do not
+remove that export or signature checks will fail in production.
 
 1. **Resend** → Audiences → create `Founding Members` → copy the audience UUID
    (`RESEND_FOUNDING_AUDIENCE_ID`).

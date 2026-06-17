@@ -6,6 +6,13 @@ import {
   splitName,
 } from './lib/founding-deposit-welcome.js';
 
+// Required so Vercel leaves the request body as a raw stream for Stripe signature verification.
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
+
 const DEPOSIT_AMOUNT_CENTS = 4900;
 const WELCOME_SENT_METADATA_KEY = 'welcome_sent';
 const NOTIFY_DEPOSIT_TO = (process.env.NOTIFY_DEPOSIT_TO || 'nick@downtownpourcollective.com,hello@downtownpourcollective.com')
@@ -15,8 +22,6 @@ const NOTIFY_DEPOSIT_TO = (process.env.NOTIFY_DEPOSIT_TO || 'nick@downtownpourco
 const NOTIFY_DEPOSIT_FROM = process.env.NOTIFY_DEPOSIT_FROM || 'Downtown Pour Collective <hello@downtownpourcollective.com>';
 
 async function readRawBody(req) {
-  if (typeof req.body === 'string') return req.body;
-  if (Buffer.isBuffer(req.body)) return req.body;
   const chunks = [];
   for await (const chunk of req) {
     chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
@@ -26,16 +31,33 @@ async function readRawBody(req) {
 
 function isPaidFoundingDeposit(session) {
   if (!session || session.payment_status !== 'paid') return false;
+  if (session.currency !== 'usd') return false;
   if (session.amount_total !== DEPOSIT_AMOUNT_CENTS) return false;
-  const productType = session.metadata?.product_type;
-  if (productType && productType !== 'founding_deposit') return false;
+  if (session.metadata?.product_type !== 'founding_deposit') return false;
   return true;
 }
 
-async function handleCheckoutSessionCompleted(stripe, resend, session) {
+async function markWelcomeSent(stripe, session) {
+  await stripe.checkout.sessions.update(session.id, {
+    metadata: {
+      ...(session.metadata || {}),
+      [WELCOME_SENT_METADATA_KEY]: '1',
+      welcome_sent_at: new Date().toISOString(),
+    },
+  });
+}
+
+async function handleCheckoutSessionCompleted(stripe, resend, sessionSnapshot) {
+  if (!sessionSnapshot?.id) {
+    return { skipped: 'missing_session_id' };
+  }
+
+  const session = await stripe.checkout.sessions.retrieve(sessionSnapshot.id);
+
   if (!isPaidFoundingDeposit(session)) {
     console.info('stripe-webhook: ignoring session', session.id, {
       payment_status: session.payment_status,
+      currency: session.currency,
       amount_total: session.amount_total,
       product_type: session.metadata?.product_type,
     });
@@ -51,7 +73,7 @@ async function handleCheckoutSessionCompleted(stripe, resend, session) {
   ).trim().toLowerCase();
   if (!email) {
     console.error('stripe-webhook: missing customer email for session', session.id);
-    throw new Error('Missing customer email on checkout session');
+    return { skipped: 'missing_customer_email' };
   }
 
   const { first_name, last_name } = splitName(session.customer_details?.name || '');
@@ -59,8 +81,10 @@ async function handleCheckoutSessionCompleted(stripe, resend, session) {
   const audienceId = process.env.RESEND_FOUNDING_AUDIENCE_ID;
   if (!audienceId) {
     console.error('stripe-webhook: missing RESEND_FOUNDING_AUDIENCE_ID');
-    throw new Error('Server is missing founding audience configuration');
+    return { skipped: 'server_not_configured', missing: 'RESEND_FOUNDING_AUDIENCE_ID' };
   }
+
+  await markWelcomeSent(stripe, session);
 
   try {
     await resend.contacts.create({
@@ -108,14 +132,6 @@ async function handleCheckoutSessionCompleted(stripe, resend, session) {
   } catch (err) {
     console.error('stripe-webhook: internal deposit notify failed', err);
   }
-
-  await stripe.checkout.sessions.update(session.id, {
-    metadata: {
-      ...(session.metadata || {}),
-      [WELCOME_SENT_METADATA_KEY]: '1',
-      welcome_sent_at: new Date().toISOString(),
-    },
-  });
 
   return { processed: true, session_id: session.id, email };
 }
