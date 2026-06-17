@@ -50,13 +50,44 @@ You said walk through this part. Here it is:
 5. Click **Create**. Copy the resulting URL (looks like `https://buy.stripe.com/abc123`).
 6. Replace `data-stripe-url="https://buy.stripe.com/REPLACE_ME"` in `index.html`
    (two occurrences) with the live URL.
-7. Stripe webhook for downstream credit ledger / founding deposit conversion is
-   owned by the **mobile app backend**, not this site. Per `DPC/CLAUDE.md`, the
-   `founding-deposits/` module wires that up. Nothing to do here.
 
 Acceptance: clicking either "Reserve My Founding Spot" CTA opens Stripe-hosted
 checkout. After paying with a Live test card on a Live deployment, you land on
 `/reserved-confirmation`.
+
+### 2b. Stripe webhook — founding deposit welcome email
+
+The site sends the Founding Slot Deposit welcome email from
+[`/api/stripe-webhook`](api/stripe-webhook.js) when Stripe fires
+`checkout.session.completed` for a paid $49 session.
+
+1. **Resend** → Audiences → create `Founding Members` → copy the audience UUID
+   (`RESEND_FOUNDING_AUDIENCE_ID`).
+2. **Stripe** → Developers → API keys → copy the **Secret key**
+   (`STRIPE_SECRET_KEY`). Use the same mode (Test/Live) as the Payment Link.
+3. **Stripe** → Developers → Webhooks → **Add endpoint**
+   - URL: `https://www.downtownpourcollective.com/api/stripe-webhook`
+   - Events: `checkout.session.completed` only
+   - Copy the **Signing secret** (`STRIPE_WEBHOOK_SECRET`).
+4. **Vercel** → Environment Variables (Production + Preview):
+   - `RESEND_FOUNDING_AUDIENCE_ID`
+   - `STRIPE_SECRET_KEY`
+   - `STRIPE_WEBHOOK_SECRET`
+   - (`RESEND_API_KEY` is already required for partner intake)
+5. Redeploy after env vars are set.
+
+Acceptance: complete a test deposit → welcome email arrives within 60 seconds,
+contact appears in the Founding Members audience, and `nick@` / `hello@` receive
+the internal deposit notification. Stripe session metadata gets `welcome_sent=1`
+so webhook retries do not resend.
+
+**Local webhook testing:** use the Stripe CLI:
+
+```sh
+stripe listen --forward-to localhost:3000/api/stripe-webhook
+```
+
+Copy the printed `whsec_…` into a local `.env` for `vercel dev`.
 
 ---
 
@@ -99,6 +130,9 @@ You said you have these — copy them in and commit.
 3. **Environment Variables** — add for **Production** (and ideally Preview):
    - `RESEND_API_KEY`
    - `RESEND_PARTNER_AUDIENCE_ID`
+   - `RESEND_FOUNDING_AUDIENCE_ID`
+   - `STRIPE_SECRET_KEY`
+   - `STRIPE_WEBHOOK_SECRET`
    - `NOTIFY_TO` (optional)
    - `NOTIFY_FROM` (optional)
 4. **Deploy**. Wait for the first build to complete.
@@ -127,6 +161,8 @@ Acceptance:
 - Test purchase (use a real card and refund yourself, or run Stripe in a
   staging-mode link first).
 - Redirect lands on `/reserved-confirmation`.
+- Welcome email arrives within 60 seconds; contact is in Resend **Founding Members**.
+- Stripe Dashboard → Webhooks → endpoint shows `checkout.session.completed` delivered.
 
 **Partner intake**
 - Open `/partners`. Fill the form with a real-looking test entry.

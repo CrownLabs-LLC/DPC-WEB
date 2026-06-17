@@ -13,9 +13,11 @@ supporting pages, deployed to Vercel.
 
 ## Stack
 - Static HTML/CSS/inline JS (no build step). Fonts from Google CDN.
-- One Vercel Node serverless function: [`/api/partner-intake`](api/partner-intake.js).
-- Resend for partner-intake contact + notification email.
-- Stripe Payment Link (hosted) for the $49 founding deposit — no server code.
+- Vercel Node serverless functions:
+  - [`/api/partner-intake`](api/partner-intake.js) — partner form → Resend
+  - [`/api/stripe-webhook`](api/stripe-webhook.js) — Stripe deposit → welcome email + Founding Members audience
+- Resend for partner intake and founding deposit welcome email.
+- Stripe Payment Link (hosted) for the $49 founding deposit.
 
 ## Local dev
 ```sh
@@ -29,7 +31,9 @@ Then open <http://localhost:3000>.
 ### Env vars (Vercel project settings)
 See [`.env.example`](.env.example). Required:
 - `RESEND_API_KEY`
-- `RESEND_PARTNER_AUDIENCE_ID`
+- `RESEND_PARTNER_AUDIENCE_ID` (partner intake)
+- `RESEND_FOUNDING_AUDIENCE_ID` (deposit welcome email)
+- `STRIPE_SECRET_KEY` + `STRIPE_WEBHOOK_SECRET` (deposit webhook)
 
 Optional (have sensible defaults):
 - `NOTIFY_TO` — comma-separated recipients
