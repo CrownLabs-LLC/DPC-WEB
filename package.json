@@ -11,7 +11,8 @@
     "deploy": "vercel --prod"
   },
   "dependencies": {
-    "resend": "^4.0.0"
+    "resend": "^4.0.0",
+    "stripe": "^17.7.0"
   },
   "devDependencies": {
     "vercel": "^39.0.0"
