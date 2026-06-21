@@ -39,7 +39,9 @@ You said walk through this part. Here it is:
    - Quantity: fixed 1, customers cannot adjust.
    - Collect: customer email (required), name (required), phone (optional).
    - **Metadata** (required for the webhook): `product_type` = `founding_deposit`,
-     `source` = `dpc-web`
+     `source` = `dpc-web`. Setting this on the **Product** (Stripe Dashboard
+     "Update a product" → Metadata) is fine — the webhook expands line-item
+     products to read it, so it does not have to be link-level metadata.
    - After payment: **"Don't show confirmation page — redirect"** →
      `https://www.downtownpourcollective.com/reserved-confirmation`.
    - Promotion codes: off.
@@ -58,8 +60,12 @@ checkout. After paying with a Live test card on a Live deployment, you land on
 
 The site sends the Founding Slot Deposit welcome email from
 [`/api/stripe-webhook`](api/stripe-webhook.js) when Stripe fires
-`checkout.session.completed` for a paid $49 USD session with
-`metadata.product_type = founding_deposit`.
+`checkout.session.completed` for a paid $49 USD session marked as a founding
+deposit. The webhook accepts `product_type = founding_deposit` from **either**
+the Payment Link / session metadata (which Stripe copies onto the session) **or**
+the Product metadata on a line item (which it does not copy, so the webhook
+expands `line_items.data.price.product` to read it). Setting it in the Stripe
+Dashboard "Update a product" panel is sufficient.
 
 **Important:** `api/stripe-webhook.js` exports `config.api.bodyParser = false`
 so Vercel passes the raw request body to Stripe signature verification. Do not
