@@ -29,11 +29,21 @@ async function readRawBody(req) {
   return Buffer.concat(chunks);
 }
 
+function hasFoundingDepositMetadata(session) {
+  // Link-level metadata is copied onto the session; product-level metadata is not,
+  // so also inspect the expanded line item products (how the Payment Link is configured).
+  if (session.metadata?.product_type === 'founding_deposit') return true;
+  const lineItems = session.line_items?.data || [];
+  return lineItems.some(
+    (item) => item?.price?.product?.metadata?.product_type === 'founding_deposit'
+  );
+}
+
 function isPaidFoundingDeposit(session) {
   if (!session || session.payment_status !== 'paid') return false;
   if (session.currency !== 'usd') return false;
   if (session.amount_total !== DEPOSIT_AMOUNT_CENTS) return false;
-  if (session.metadata?.product_type !== 'founding_deposit') return false;
+  if (!hasFoundingDepositMetadata(session)) return false;
   return true;
 }
 
@@ -52,7 +62,9 @@ async function handleCheckoutSessionCompleted(stripe, resend, sessionSnapshot) {
     return { skipped: 'missing_session_id' };
   }
 
-  const session = await stripe.checkout.sessions.retrieve(sessionSnapshot.id);
+  const session = await stripe.checkout.sessions.retrieve(sessionSnapshot.id, {
+    expand: ['line_items.data.price.product'],
+  });
 
   if (!isPaidFoundingDeposit(session)) {
     console.info('stripe-webhook: ignoring session', session.id, {
@@ -60,6 +72,9 @@ async function handleCheckoutSessionCompleted(stripe, resend, sessionSnapshot) {
       currency: session.currency,
       amount_total: session.amount_total,
       product_type: session.metadata?.product_type,
+      product_types: (session.line_items?.data || []).map(
+        (item) => item?.price?.product?.metadata?.product_type
+      ),
     });
     return { skipped: 'not_founding_deposit' };
   }
@@ -84,7 +99,28 @@ async function handleCheckoutSessionCompleted(stripe, resend, sessionSnapshot) {
     return { skipped: 'server_not_configured', missing: 'RESEND_FOUNDING_AUDIENCE_ID' };
   }
 
-  await markWelcomeSent(stripe, session);
+  // Send the welcome email FIRST. This is the primary side effect, so a failure
+  // here must throw and return non-2xx, letting Stripe retry. Marking the session
+  // as processed before this point would make a retry skip as already_processed
+  // and the customer would never receive the email.
+  const welcome = buildWelcomeEmail({ first_name });
+  await resend.emails.send({
+    from: welcome.from,
+    to: email,
+    replyTo: welcome.replyTo,
+    subject: welcome.subject,
+    text: welcome.text,
+    html: welcome.html,
+  });
+
+  // Best-effort dedup marker. The email already sent, so a failed write here must
+  // not fail the request (returning 500 would make Stripe retry and resend). This
+  // biases toward at-least-once delivery: a rare duplicate welcome beats none.
+  try {
+    await markWelcomeSent(stripe, session);
+  } catch (err) {
+    console.error('stripe-webhook: failed to mark welcome_sent (non-fatal, email already sent)', err);
+  }
 
   try {
     await resend.contacts.create({
@@ -96,22 +132,14 @@ async function handleCheckoutSessionCompleted(stripe, resend, sessionSnapshot) {
     });
   } catch (err) {
     const message = String(err?.message || err);
-    if (!/already exists|duplicate/i.test(message)) {
-      console.error('stripe-webhook: resend.contacts.create failed', err);
-      throw err;
+    if (/already exists|duplicate/i.test(message)) {
+      console.info('stripe-webhook: contact already exists in audience', email);
+    } else {
+      // Non-fatal: the welcome email is the priority and must still send even if
+      // the audience add fails (e.g. transient Resend error or permissions issue).
+      console.error('stripe-webhook: resend.contacts.create failed (non-fatal)', err);
     }
-    console.info('stripe-webhook: contact already exists in audience', email);
   }
-
-  const welcome = buildWelcomeEmail({ first_name });
-  await resend.emails.send({
-    from: welcome.from,
-    to: email,
-    replyTo: welcome.replyTo,
-    subject: welcome.subject,
-    text: welcome.text,
-    html: welcome.html,
-  });
 
   const notify = buildDepositNotifyEmail({
     first_name,
