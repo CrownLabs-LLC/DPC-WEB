@@ -476,19 +476,11 @@ img, svg { display: block; max-width: 100%; }
 .passport__visual {
   border: 2px solid var(--gold);
   border-radius: 6px;
-  padding: 28px;
-  background: var(--navy);
-  text-align: center;
-}
-.passport__seal { width: 100%; max-width: 280px; margin: 0 auto 20px; }
-.passport__caption {
-  font-family: var(--support);
-  font-weight: 700;
-  font-size: 15px;
-  letter-spacing: 0.4em;
-  text-transform: uppercase;
-  color: var(--gold);
-  margin: 0;
+  aspect-ratio: 1 / 1;
+  width: 100%;
+  max-width: 360px;
+  justify-self: center;
+  background: transparent;
 }
 
 /* ============ SECTION 6 · ALSO INCLUDED ============ */
@@ -1229,8 +1221,8 @@ img, svg { display: block; max-width: 100%; }
     </svg>
 
     <p class="hero__eyebrow">LIVERMORE  ·  AUGUST 2026</p>
-    <h1 class="hero__headline">A new way to go out in downtown Livermore.</h1>
-    <p class="hero__sub">Downtown Pour Collective is a members-only community for people who love going out in downtown Livermore. Each month, your membership covers five Pours (your drinks) at five different participating spots in downtown Livermore. Try new places. Feel like a regular at your favorites.</p>
+    <h1 class="hero__headline">Five drinks a month at five of downtown Livermore's best spots.</h1>
+    <p class="hero__sub">Downtown Pour Collective is a members-only community for people who love going out in downtown Livermore. Each month your membership covers five Pours (your drinks), one at each of five local spots. Feel like a regular where they know your order, or try somewhere you have never been.</p>
 
     <div class="hero__cta-wrap">
       <a class="btn" href="#" data-stripe-cta data-stripe-url="https://buy.stripe.com/9B6fZgcED8iU84c4aa0gw00">Reserve My Founding Spot</a>
@@ -1279,7 +1271,7 @@ img, svg { display: block; max-width: 100%; }
           <li>You are looking for a punch card or a discount app.</li>
           <li>You only go out late on Friday and Saturday nights.</li>
           <li>You prefer chain restaurants to independent operators.</li>
-          <li>You prefer month-to-month flexibility over a year-long commitment.</li>
+          <li>You see this as just another monthly bill, not a way to back the places you love.</li>
         </ul>
       </div>
     </div>
@@ -1291,7 +1283,7 @@ img, svg { display: block; max-width: 100%; }
   <div class="how__inner">
     <div class="section__head">
       <span class="eyebrow eyebrow--center">HOW IT WORKS</span>
-      <h2 class="section-title how__title">Five Pours a month, per Circle. Five curated spots. One per spot.</h2>
+      <h2 class="section-title how__title">Five Pours a month. One at each of your five spots.</h2>
       <hr class="rule-gold">
     </div>
     <p class="how__intro">Pick what you like to drink -- we call that your Circle. Each drink you order is a Pour, redeemed right in the app when you walk in.</p>
@@ -1334,33 +1326,14 @@ img, svg { display: block; max-width: 100%; }
   <div class="passport__inner">
     <div>
       <span class="eyebrow">THE COASTER PASSPORT</span>
-      <h2 class="section-title passport__title">36 collectible coasters. One panoramic Livermore landscape.</h2>
+      <h2 class="section-title passport__title">36 collectible coasters. One commissioned piece of Livermore.</h2>
       <hr class="rule-gold rule-gold--left">
-      <p class="passport__body">A collectible series of 36 unique coasters you pick up at the spots you visit. Each one is a tile in a panoramic Livermore landscape that assembles across the year. Three new designs drop each month.</p>
+      <p class="passport__body">Every coaster in the set is a piece of a larger picture. Pick them up one visit at a time at the spots you already go, and by the end of the year all 36 fit together into a single commissioned artwork of Livermore, created by a Livermore artist from the turbines on the ridge, Lake Del Valle, the vineyards, Lizzie Fountain, and the Wine Trolley. Three new designs drop each month, so the picture builds a little more with every Pour you redeem.</p>
       <p class="passport__close">This is what makes Downtown Pour Collective (DPC) different from a punch card.</p>
       <p class="passport__close">Included with every membership. Nothing extra.</p>
     </div>
     <div class="passport__visual">
-      <svg class="passport__seal" viewBox="0 0 280 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Downtown Pour Collective wax seal monogram">
-        <defs>
-          <path id="seal-top" d="M 140,140 m -88,0 a 88,88 0 1,1 176,0" fill="none"></path>
-          <path id="seal-bot" d="M 140,140 m -70,0 a 70,70 0 1,0 140,0" fill="none"></path>
-        </defs>
-        <circle cx="140" cy="140" r="106" fill="#0D1B2A"></circle>
-        <circle cx="140" cy="140" r="76" fill="#1E3A5A"></circle>
-        <circle cx="140" cy="140" r="76" fill="none" stroke="#2A4F70" stroke-width="9" opacity="0.8"></circle>
-        <circle cx="140" cy="140" r="76" fill="none" stroke="#C4A35A" stroke-width="1.2" opacity="0.5"></circle>
-        <circle cx="140" cy="140" r="106" fill="none" stroke="#C4A35A" stroke-width="2.2"></circle>
-        <circle cx="140" cy="140" r="98" fill="none" stroke="#C4A35A" stroke-width="0.6" stroke-dasharray="3 4" opacity="0.42"></circle>
-        <text font-family="'Barlow Condensed',sans-serif" font-weight="700" font-size="13" letter-spacing="4" fill="#C4A35A">
-          <textPath href="#seal-top" startOffset="50%" text-anchor="middle">DOWNTOWN · POUR · COLLECTIVE</textPath>
-        </text>
-        <text font-family="'Barlow Condensed',sans-serif" font-weight="600" font-size="11" letter-spacing="3" fill="#C4A35A" opacity="0.85">
-          <textPath href="#seal-bot" startOffset="50%" text-anchor="middle">LIVERMORE · TRI-VALLEY · EST. 2026</textPath>
-        </text>
-        <text x="140" y="142" text-anchor="middle" dominant-baseline="central" font-family="'Playfair Display',serif" font-weight="700" font-size="46" letter-spacing="2" fill="#F5F0E8">DPC</text>
-      </svg>
-      <p class="passport__caption">VOLUME ONE</p>
+      <!-- Coaster Passport artwork blocked pending Nick-provided asset. Keep this as a plain placeholder until then. -->
     </div>
   </div>
 </section>
@@ -1409,7 +1382,34 @@ img, svg { display: block; max-width: 100%; }
           </svg>
         </div>
         <h3 class="also-item__title">THE ANNUAL CELEBRATION</h3>
-        <p class="also-item__body">Founding Members close out the first year at DPC&#8217;s first Annual celebration -- the founding class&#8217; first proper night together.</p>
+        <p class="also-item__body">Founding Members close out the first year at DPC&#8217;s first Annual celebration, the founding class&#8217; first proper night together.</p>
+      </div>
+      <div class="also-item">
+        <div class="also-item__icon" aria-hidden="true">
+          <svg viewBox="0 0 48 48" fill="none" stroke="#C4A35A" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 16h24"></path>
+            <path d="M15 16l2 24h14l2-24"></path>
+            <path d="M18 16l2-7h8l2 7"></path>
+            <path d="M21 25h6"></path>
+            <path d="M21 31h6"></path>
+          </svg>
+        </div>
+        <h3 class="also-item__title">THE MAKER&#8217;S TABLE</h3>
+        <p class="also-item__body">In the weeks after we open, we begin introducing you to one Livermore maker a month, a local craftsperson or small producer, with something of theirs waiting for you at a partner venue. Another way your membership keeps you connected to the people who make this city what it is.</p>
+      </div>
+      <div class="also-item">
+        <div class="also-item__icon" aria-hidden="true">
+          <svg viewBox="0 0 48 48" fill="none" stroke="#C4A35A" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 8h20"></path>
+            <path d="M18 8v10a6 6 0 0 0 12 0V8"></path>
+            <path d="M24 24v13"></path>
+            <path d="M17 40h14"></path>
+            <path d="M9 20c2 0 2 2 4 2s2-2 4-2"></path>
+            <path d="M31 20c2 0 2 2 4 2s2-2 4-2"></path>
+          </svg>
+        </div>
+        <h3 class="also-item__title">THE SOCIAL POUR</h3>
+        <p class="also-item__body">Once a month, we gather members for an evening at a different Tri-Valley winery, brewery, or distillery. The producer serves its own list under its own roof, and it is a good chance to meet other members outside your usual spots.</p>
       </div>
     </div>
   </div>
@@ -1423,6 +1423,7 @@ img, svg { display: block; max-width: 100%; }
       <h2 class="section-title offer__title">Founding Members shape the first chapter of DPC.</h2>
       <hr class="rule-gold">
     </div>
+    <!-- Monthly-founder intro copy blocked pending Makenna legal review of Terms of Service 3.3. Keeping annual-only public copy. -->
     <p class="offer__intro">The founding class opens at 200 Founding Memberships for Livermore. It locks you in as one of the original members, with five years of price protection and ongoing recognition. The founding class closes at launch, sooner if the spots fill. Everyone who joins after pays the standard rate without the founding benefits. Founding is an annual commitment, paid up front at the founding rate.</p>
 
     <div class="offer__cards">
@@ -1434,7 +1435,7 @@ img, svg { display: block; max-width: 100%; }
       <div class="offer-card">
         <p class="offer-card__num">02</p>
         <h3 class="offer-card__title">FIVE YEARS PRICE PROTECTION</h3>
-        <p class="offer-card__body">Your rate stays the same for five years.</p>
+        <p class="offer-card__body">Pay your founding year up front and your rate stays the same for five years.</p>
       </div>
       <div class="offer-card">
         <p class="offer-card__num">03</p>
@@ -1444,17 +1445,17 @@ img, svg { display: block; max-width: 100%; }
       <div class="offer-card">
         <p class="offer-card__num">04</p>
         <h3 class="offer-card__title">$49 DEPOSIT HOLDS YOUR SPOT</h3>
+        <!-- Monthly-founder deposit copy blocked pending Makenna legal review of Terms of Service 3.3. Keeping annual-only public copy. -->
         <p class="offer-card__body">Refundable until launch. At activation, your Circle&#8217;s annual membership fee is billed (see pricing in the next section). Your $49 converts to your Welcome Kit at that moment.</p>
       </div>
     </div>
 
-    <p class="offer__permanence">The founding class opens once. When it closes, founding pricing and founding recognition close with it, and they do not reopen.</p>
     <p class="offer__year6">After year five, you continue at the then-current member rate with your founding recognition retained for life.</p>
 
     <div class="kit">
       <h3 class="kit__label">WHAT ARRIVES WHEN YOU CONFIRM</h3>
-      <p class="kit__body">When you confirm your Founding Membership, a rigid branded box ships to your door. Inside is a brushed stainless steel Welcome Card engraved with your name, your Circle, and your Founding Member Number. The rest of what is inside is for you to discover.</p>
-      <p class="kit__value">A collection of membership artifacts valued at over $70.</p>
+      <p class="kit__body">When you confirm your Founding Membership, a rigid branded box ships to your door. Inside is a rocks glass, etched with a map of downtown Livermore on one side and the Downtown Pour Collective mark on the other. The rest of what is inside is for you to discover.</p>
+      <!-- Welcome Kit value line blocked pending Nick's recalculated value. Do not publish the old $70. -->
     </div>
   </div>
 </section>
@@ -1477,7 +1478,7 @@ img, svg { display: block; max-width: 100%; }
         </li>
         <li>
           <span class="stack__item-label">Your Welcome Kit</span>
-          <span class="stack__item-body">A brushed stainless steel card engraved with your name, your Circle(s), and your Founding Member Number. Plus everything else in the box.</span>
+          <span class="stack__item-body">A rigid branded box with an etched rocks glass inside. The rest of what is inside is for you to discover.</span>
         </li>
         <li>
           <span class="stack__item-label">A birthday Pour, on us</span>
@@ -1510,21 +1511,21 @@ img, svg { display: block; max-width: 100%; }
         <p class="circle-card__tag">BEER DRINKERS</p>
         <h3 class="circle-card__name">Standard draft, bottle, or can</h3>
         <p class="circle-card__price">$590 / YEAR</p>
-        <p class="circle-card__regular">$59 / month once the Founding class closes</p>
+        <p class="circle-card__regular">paid once · or $59 / month, billed monthly, cancel anytime</p>
       </div>
       <div class="circle-card">
         <p class="circle-card__eyebrow">CELLAR CIRCLE</p>
         <p class="circle-card__tag">WINE DRINKERS</p>
         <h3 class="circle-card__name">Standard glass from the regular list</h3>
         <p class="circle-card__price">$690 / YEAR</p>
-        <p class="circle-card__regular">$69 / month once the Founding class closes</p>
+        <p class="circle-card__regular">paid once · or $69 / month, billed monthly, cancel anytime</p>
       </div>
       <div class="circle-card">
         <p class="circle-card__eyebrow">RESERVE CIRCLE</p>
         <p class="circle-card__tag">COCKTAIL &amp; SPIRITS DRINKERS</p>
         <h3 class="circle-card__name">Standard cocktail or spirit pour</h3>
         <p class="circle-card__price">$790 / YEAR</p>
-        <p class="circle-card__regular">$79 / month once the Founding class closes</p>
+        <p class="circle-card__regular">paid once · or $79 / month, billed monthly, cancel anytime</p>
       </div>
     </div>
 
