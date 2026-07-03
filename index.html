@@ -474,13 +474,13 @@ img, svg { display: block; max-width: 100%; }
 }
 .passport__close:last-child { margin-bottom: 0; }
 .passport__visual {
-  border: 2px solid var(--gold);
-  border-radius: 6px;
-  aspect-ratio: 1 / 1;
   width: 100%;
-  max-width: 360px;
+  max-width: 430px;
   justify-self: center;
-  background: transparent;
+}
+.passport__image {
+  width: 100%;
+  height: auto;
 }
 
 /* ============ SECTION 6 · ALSO INCLUDED ============ */
@@ -1330,7 +1330,7 @@ img, svg { display: block; max-width: 100%; }
       <p class="passport__close">Included with every membership. Nothing extra.</p>
     </div>
     <div class="passport__visual">
-      <!-- Coaster Passport artwork blocked pending Nick-provided asset. Keep this as a plain placeholder until then. -->
+      <img class="passport__image" src="assets/passport/coaster-passport.png" alt="Stack of Downtown Pour Collective Coaster Passport artwork cards" width="1351" height="1294" loading="lazy">
     </div>
   </div>
 </section>
