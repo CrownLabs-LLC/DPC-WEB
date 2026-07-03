@@ -93,7 +93,7 @@
       "name": "How much does the Downtown Pour Collective membership cost?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Founding membership pricing is $550 per year (or $55 per month) for the Tap Circle (beer), $650 per year (or $65 per month) for the Cellar Circle (wine), and $750 per year (or $75 per month) for the Reserve Circle (cocktails and spirits). Paying annually gives you two months free. Your founding rate is locked for five years whether you pay annually or monthly. After the Founding class closes, standard membership is $59, $69, and $79 per month respectively, without the founding benefits. A refundable $49 deposit holds your spot. At activation, your first payment is billed and your $49 becomes your Welcome Kit. Reservations may be confirmed within 14 days of launch."
+        "text": "Founding membership pricing is $550 per year (or $55 per month) for the Tap Circle (beer), $650 per year (or $65 per month) for the Cellar Circle (wine), and $750 per year (or $75 per month) for the Reserve Circle (cocktails and spirits). Paying annually gives you two months free. Your founding rate is locked for five years whether you pay annually or monthly. After the Founding class closes, standard membership is $59, $69, and $79 per month respectively, without the founding benefits. Your $49 deposit holds your founding slot and is refundable until we launch on August 1, 2026. Reservations close at launch. From launch through August 31, 2026, you confirm your membership to lock in your founding status. When you confirm, your $49 goes toward your Welcome Kit and Activation Fee. If you do not confirm by August 31, 2026, your deposit is refunded and your slot is released."
       }
     },
     {
@@ -699,29 +699,6 @@ img, svg { display: block; max-width: 100%; }
   color: rgba(245, 240, 232, 0.8);
   text-wrap: pretty;
 }
-.stack__bridge {
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  max-width: 700px;
-  margin: 36px auto 0;
-}
-.stack__bridge::before,
-.stack__bridge::after {
-  content: "";
-  flex: 1;
-  height: 0.5px;
-  background: rgba(196, 163, 90, 0.2);
-}
-.stack__bridge span {
-  font-family: var(--support);
-  font-weight: 700;
-  font-size: 13px;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: var(--gold);
-  white-space: nowrap;
-}
 .circle__grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -767,23 +744,49 @@ img, svg { display: block; max-width: 100%; }
   flex: 1;
   text-wrap: balance;
 }
+.circle-card__pricing {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  padding-top: 24px;
+  border-top: 1px solid rgba(196, 163, 90, 0.25);
+}
+.circle-card__price-option { min-width: 0; }
 .circle-card__price {
   font-family: var(--support);
   font-weight: 700;
   font-size: 22px;
-  letter-spacing: 0.15em;
+  line-height: 1.1;
+  letter-spacing: 0.08em;
   color: var(--gold);
   margin: 0 0 8px;
-  padding-top: 24px;
-  border-top: 1px solid rgba(196, 163, 90, 0.25);
 }
-.circle-card__regular {
+.circle-card__price-badge {
+  display: inline-block;
+  font-family: var(--support);
+  font-weight: 700;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--navy);
+  background: var(--gold);
+  border-radius: 3px;
+  padding: 4px 6px;
+  margin: 0 0 8px;
+}
+.circle-card__price-note,
+.circle-card__standard {
   font-family: var(--body);
   font-style: italic;
   font-weight: 400;
-  font-size: 14px;
+  font-size: 13px;
+  line-height: 1.4;
   color: rgba(245, 240, 232, 0.7);
   margin: 0;
+}
+.circle-card__standard {
+  color: rgba(245, 240, 232, 0.58);
+  margin-top: 14px;
 }
 .circle__fineprint {
   font-family: var(--body);
@@ -1424,7 +1427,7 @@ img, svg { display: block; max-width: 100%; }
       <hr class="rule-gold">
     </div>
     <!-- Monthly-founder copy PUBLISHED PROVISIONALLY per Brandi, ahead of Makenna's ToS 3.3 legal review (not yet requested). Confirm or remove monthly copy once ToS 3.3 clears. -->
-    <p class="offer__intro">The founding class opens at 200 Founding Memberships for Livermore. It locks you in as one of the original members, with five years of price protection and ongoing recognition. The founding class closes at the end of the launch month, sooner if the spots fill. Everyone who joins after pays the standard rate without the founding benefits. Join the way that suits you: pay for the year up front and get two months free, or spread it across monthly payments. Either way you get every founding benefit, and your rate is locked for five years.</p>
+    <p class="offer__intro">The founding class opens at 200 Founding Memberships for Livermore. It locks you in as one of the original members, with five years of price protection and ongoing recognition. Reserve before we open on August 1. The founding class closes at the end of the launch month, sooner if the spots fill. Everyone who joins after pays the standard rate without the founding benefits. Join the way that suits you: pay for the year up front and get two months free, or spread it across monthly payments. Either way you get every founding benefit, and your rate is locked for five years.</p>
 
     <div class="offer__cards">
       <div class="offer-card">
@@ -1472,31 +1475,58 @@ img, svg { display: block; max-width: 100%; }
     <div class="circle__grid">
       <div class="circle-card">
         <p class="circle-card__tag">BEER DRINKERS</p>
-        <p class="circle-card__eyebrow">TAP CIRCLE</p>
-        <h3 class="circle-card__name">Standard draft, bottle, or can</h3>
-        <p class="circle-card__price">$550 / YEAR</p>
-        <p class="circle-card__regular">or $55 / month — annual saves 2 months</p>
-        <p class="circle-card__regular">Standard rate: $59 / month</p>
+        <h3 class="circle-card__eyebrow">TAP CIRCLE</h3>
+        <p class="circle-card__name">Standard draft, bottle, or can</p>
+        <div class="circle-card__pricing">
+          <div class="circle-card__price-option">
+            <p class="circle-card__price">$550 / year</p>
+            <p class="circle-card__price-badge">2 months free</p>
+            <p class="circle-card__price-note">about $46/mo</p>
+          </div>
+          <div class="circle-card__price-option">
+            <p class="circle-card__price">$55 / month</p>
+            <p class="circle-card__price-note">billed monthly, cancel anytime</p>
+          </div>
+        </div>
+        <p class="circle-card__standard">Standard rate after founding closes: $59/month</p>
       </div>
       <div class="circle-card">
         <p class="circle-card__tag">WINE DRINKERS</p>
-        <p class="circle-card__eyebrow">CELLAR CIRCLE</p>
-        <h3 class="circle-card__name">Standard glass from the regular list</h3>
-        <p class="circle-card__price">$650 / YEAR</p>
-        <p class="circle-card__regular">or $65 / month — annual saves 2 months</p>
-        <p class="circle-card__regular">Standard rate: $69 / month</p>
+        <h3 class="circle-card__eyebrow">CELLAR CIRCLE</h3>
+        <p class="circle-card__name">Standard glass from the regular list</p>
+        <div class="circle-card__pricing">
+          <div class="circle-card__price-option">
+            <p class="circle-card__price">$650 / year</p>
+            <p class="circle-card__price-badge">2 months free</p>
+            <p class="circle-card__price-note">about $54/mo</p>
+          </div>
+          <div class="circle-card__price-option">
+            <p class="circle-card__price">$65 / month</p>
+            <p class="circle-card__price-note">billed monthly, cancel anytime</p>
+          </div>
+        </div>
+        <p class="circle-card__standard">Standard rate after founding closes: $69/month</p>
       </div>
       <div class="circle-card">
         <p class="circle-card__tag">COCKTAIL &amp; SPIRITS DRINKERS</p>
-        <p class="circle-card__eyebrow">RESERVE CIRCLE</p>
-        <h3 class="circle-card__name">Standard cocktail or spirit pour</h3>
-        <p class="circle-card__price">$750 / YEAR</p>
-        <p class="circle-card__regular">or $75 / month — annual saves 2 months</p>
-        <p class="circle-card__regular">Standard rate: $79 / month</p>
+        <h3 class="circle-card__eyebrow">RESERVE CIRCLE</h3>
+        <p class="circle-card__name">Standard cocktail or spirit pour</p>
+        <div class="circle-card__pricing">
+          <div class="circle-card__price-option">
+            <p class="circle-card__price">$750 / year</p>
+            <p class="circle-card__price-badge">2 months free</p>
+            <p class="circle-card__price-note">about $63/mo</p>
+          </div>
+          <div class="circle-card__price-option">
+            <p class="circle-card__price">$75 / month</p>
+            <p class="circle-card__price-note">billed monthly, cancel anytime</p>
+          </div>
+        </div>
+        <p class="circle-card__standard">Standard rate after founding closes: $79/month</p>
       </div>
     </div>
 
-    <p class="circle__fineprint">A refundable $49 deposit holds your spot — one deposit, however many Circles you join. It becomes your Welcome Kit when you activate. Confirm within 14 days of launch, or it refunds automatically.</p>
+    <p class="circle__fineprint">Your $49 deposit holds your founding slot and is refundable until we launch on August 1. Reservations close at launch. From launch through the end of August, you confirm your membership to lock in your founding status. When you confirm, your $49 goes toward your Welcome Kit and Activation Fee. If you do not confirm by the end of August, your deposit is refunded and your slot is released.</p>
 
     <p class="circle__sub">Every Circle is the same membership — the only difference is what you drink and the price. Here&#8217;s what every one includes:</p>
 
