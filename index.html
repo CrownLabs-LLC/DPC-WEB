@@ -736,31 +736,34 @@ img, svg { display: block; max-width: 100%; }
   display: flex;
   flex-direction: column;
 }
-.circle-card__eyebrow {
-  font-family: var(--support);
-  font-weight: 700;
-  font-size: 12px;
-  letter-spacing: 0.4em;
-  text-transform: uppercase;
-  color: var(--gold);
-  margin: 0 0 8px;
-}
+/* small gold kicker, now at the very top */
 .circle-card__tag {
   font-family: var(--support);
   font-weight: 700;
-  font-size: 14px;
-  letter-spacing: 0.16em;
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin: 0 0 10px;
+}
+/* the Circle NAME — now the card title */
+.circle-card__eyebrow {
+  font-family: var(--support);
+  font-weight: 700;
+  font-size: 24px;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--cream);
-  margin: 0 0 18px;
+  margin: 0 0 6px;
 }
+/* the drink descriptor — now a small, quiet support line */
 .circle-card__name {
-  font-family: var(--display);
-  font-weight: 700;
-  font-size: 22px;
-  line-height: 1.2;
-  color: var(--cream);
-  margin: 0 0 28px;
+  font-family: var(--body);
+  font-weight: 400;
+  font-size: 15px;
+  line-height: 1.5;
+  color: rgba(245, 240, 232, 0.7);
+  margin: 0 0 24px;
   flex: 1;
   text-wrap: balance;
 }
@@ -1462,30 +1465,30 @@ img, svg { display: block; max-width: 100%; }
   <div class="circle__inner">
     <div class="section__head">
       <span class="eyebrow eyebrow--center">PICK YOUR CIRCLE</span>
-      <h2 class="section-title circle__title">Pick your Circle.</h2>
+      <h2 class="section-title circle__title">Choose your pour.</h2>
       <p class="circle__sub">Choose the beverage that fits how you go out. Join one Circle or more. Each one brings its own five Pours every month of your founding membership.</p>
     </div>
 
     <div class="circle__grid">
       <div class="circle-card">
-        <p class="circle-card__eyebrow">TAP CIRCLE</p>
         <p class="circle-card__tag">BEER DRINKERS</p>
+        <p class="circle-card__eyebrow">TAP CIRCLE</p>
         <h3 class="circle-card__name">Standard draft, bottle, or can</h3>
         <p class="circle-card__price">$550 / YEAR</p>
         <p class="circle-card__regular">or $55 / month — annual saves 2 months</p>
         <p class="circle-card__regular">Standard rate: $59 / month</p>
       </div>
       <div class="circle-card">
-        <p class="circle-card__eyebrow">CELLAR CIRCLE</p>
         <p class="circle-card__tag">WINE DRINKERS</p>
+        <p class="circle-card__eyebrow">CELLAR CIRCLE</p>
         <h3 class="circle-card__name">Standard glass from the regular list</h3>
         <p class="circle-card__price">$650 / YEAR</p>
         <p class="circle-card__regular">or $65 / month — annual saves 2 months</p>
         <p class="circle-card__regular">Standard rate: $69 / month</p>
       </div>
       <div class="circle-card">
-        <p class="circle-card__eyebrow">RESERVE CIRCLE</p>
         <p class="circle-card__tag">COCKTAIL &amp; SPIRITS DRINKERS</p>
+        <p class="circle-card__eyebrow">RESERVE CIRCLE</p>
         <h3 class="circle-card__name">Standard cocktail or spirit pour</h3>
         <p class="circle-card__price">$750 / YEAR</p>
         <p class="circle-card__regular">or $75 / month — annual saves 2 months</p>
