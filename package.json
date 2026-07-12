@@ -9,7 +9,7 @@
   "scripts": {
     "start": "vercel dev",
     "deploy": "vercel --prod",
-    "test": "node scripts/test-stripe-webhook-paths.mjs && node scripts/test-dashboard-endpoints.mjs"
+    "test": "node scripts/test-stripe-webhook-paths.mjs && node scripts/test-dashboard-endpoints.mjs && node scripts/test-health-check.mjs"
   },
   "dependencies": {
     "resend": "^4.0.0",

@@ -9,6 +9,12 @@
 import Stripe from 'stripe';
 import { Resend } from 'resend';
 import { timingSafeEqual } from 'node:crypto';
+import {
+  supabaseConfigured,
+  supabaseSelect,
+  listUndeliveredEvents,
+  healthChecks,
+} from './lib/ops-checks.js';
 
 const DEPOSIT_AMOUNT_CENTS = 4900;
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -28,21 +34,6 @@ function authorized(req) {
   const a = Buffer.from(provided);
   const b = Buffer.from(token);
   return a.length === b.length && timingSafeEqual(a, b);
-}
-
-function supabaseConfigured() {
-  return Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
-}
-
-async function supabaseSelect(pathAndQuery) {
-  const resp = await fetch(`${process.env.SUPABASE_URL}/rest/v1/${pathAndQuery}`, {
-    headers: {
-      apikey: process.env.SUPABASE_SERVICE_ROLE_KEY,
-      authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
-    },
-  });
-  if (!resp.ok) throw new Error(`supabase returned ${resp.status}`);
-  return resp.json();
 }
 
 function emptyDailyMap(days, now) {
@@ -136,74 +127,12 @@ async function depositsSection(stripe, days, now) {
 // events it could not deliver (catches outages even when our logging is down).
 async function alertsSection(stripe) {
   const [undelivered, webhookErrors] = await Promise.all([
-    stripe.events
-      .list({ delivery_success: false, limit: 20 })
-      .then((r) => r.data.map((e) => ({ id: e.id, type: e.type, created: e.created, pending_webhooks: e.pending_webhooks }))),
+    listUndeliveredEvents(stripe),
     supabaseConfigured()
       ? supabaseSelect('webhook_logs?select=ts,level,message,event_id,session_id&level=eq.error&order=ts.desc&limit=25')
       : Promise.resolve(null),
   ]);
   return { undelivered_events: undelivered, webhook_errors: webhookErrors };
-}
-
-async function healthSection(stripe, resend) {
-  const checks = [];
-  const envVars = [
-    ['STRIPE_SECRET_KEY', 'Stripe secret key set'],
-    ['STRIPE_WEBHOOK_SECRET', 'Stripe webhook secret set'],
-    ['RESEND_API_KEY', 'Resend API key set'],
-    ['RESEND_FOUNDING_AUDIENCE_ID', 'Resend founding audience ID set'],
-    ['SUPABASE_URL', 'Supabase URL set'],
-    ['SUPABASE_ANON_KEY', 'Supabase anon key set'],
-    ['SUPABASE_SERVICE_ROLE_KEY', 'Supabase service role key set'],
-  ];
-  for (const [name, label] of envVars) {
-    checks.push({ name: label, ok: Boolean(process.env[name]), detail: process.env[name] ? '' : `${name} missing in Vercel` });
-  }
-
-  // Live key validity — this is the check that would have caught the July 8
-  // incident (a rotated key that env-presence checks cannot see).
-  let stripeOk = false;
-  let liveMode = false;
-  let stripeDetail = '';
-  try {
-    const balance = await stripe.balance.retrieve();
-    stripeOk = true;
-    liveMode = Boolean(balance.livemode);
-  } catch (err) {
-    stripeDetail = String(err?.message || err);
-  }
-  checks.push({ name: 'Stripe key accepted by Stripe', ok: stripeOk, detail: stripeDetail });
-  checks.push({
-    name: 'Stripe key is live mode',
-    ok: stripeOk && liveMode,
-    detail: stripeOk && !liveMode ? 'Key is TEST mode — live webhook events will fail' : stripeOk ? '' : 'unknown (key invalid)',
-  });
-
-  let resendOk = false;
-  let resendDetail = '';
-  try {
-    const domains = await resend.domains.list();
-    resendOk = !domains?.error;
-    resendDetail = domains?.error ? String(domains.error.message || domains.error.name || 'error') : '';
-  } catch (err) {
-    resendDetail = String(err?.message || err);
-  }
-  checks.push({ name: 'Resend key accepted by Resend', ok: resendOk, detail: resendDetail });
-
-  if (supabaseConfigured()) {
-    let supabaseOk = false;
-    let supabaseDetail = '';
-    try {
-      await supabaseSelect('site_events?select=id&limit=1');
-      supabaseOk = true;
-    } catch (err) {
-      supabaseDetail = String(err?.message || err);
-    }
-    checks.push({ name: 'Supabase reachable', ok: supabaseOk, detail: supabaseDetail });
-  }
-
-  return checks;
 }
 
 export default async function handler(req, res) {
@@ -230,7 +159,7 @@ export default async function handler(req, res) {
     funnelSection(days, now),
     depositsSection(stripe, days, now),
     alertsSection(stripe),
-    healthSection(stripe, resend),
+    healthChecks(stripe, resend),
   ]);
   const unwrap = (settled, label) =>
     settled.status === 'fulfilled' ? settled.value : { error: `${label}: ${String(settled.reason?.message || settled.reason)}` };

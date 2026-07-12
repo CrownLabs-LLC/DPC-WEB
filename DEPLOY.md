@@ -166,6 +166,31 @@ Privacy note: the funnel beacons store event name, page, path, and referrer
 hostname only — no cookies, IPs, or identifiers — matching the privacy
 policy's "aggregated, de-identified analytics".
 
+### 2d. Hourly health alert — /api/health-check
+
+A Vercel cron (see `vercel.json` → `crons`) hits `/api/health-check` at the
+top of every hour. It runs the same live checks as the dashboard and **emails
+an alert** to `nick@` + `hello@` (override with `ALERT_TO` / `ALERT_FROM`)
+when anything is wrong: a missing env var, a Stripe/Resend key that the
+provider rejects, a test-mode key, Supabase unreachable, Stripe events
+undelivered for over 30 minutes, or webhook errors logged in the last 75
+minutes. Alerts are throttled to one email per 6 hours while a problem
+persists (tracked in `webhook_logs`, so throttling needs the Supabase vars).
+
+Setup:
+
+1. **Vercel** → Environment Variables (Production): add `CRON_SECRET` — any
+   long random string. Vercel automatically sends it as a Bearer token on
+   cron invocations, and the endpoint rejects other callers. (Without it the
+   endpoint still works but is publicly triggerable.)
+2. Redeploy. Vercel → Project → Settings → Cron Jobs should list the hourly
+   job after the deploy.
+
+To test it: `curl -H "Authorization: Bearer $CRON_SECRET" https://www.downtownpourcollective.com/api/health-check`
+returns `{"ok":true,...}` when everything is green. One known limitation: if
+`RESEND_API_KEY` itself is the thing that breaks, the alert email can't send —
+the failure still shows on the dashboard and in the Vercel cron logs.
+
 ---
 
 ## 3. GA4 — measurement ID

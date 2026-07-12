@@ -11,8 +11,14 @@
     },
     "api/dashboard-data.js": {
       "maxDuration": 15
+    },
+    "api/health-check.js": {
+      "maxDuration": 15
     }
   },
+  "crons": [
+    { "path": "/api/health-check", "schedule": "0 * * * *" }
+  ],
   "headers": [
     {
       "source": "/reserved-confirmation",
