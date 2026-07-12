@@ -47,6 +47,14 @@ function isPaidFoundingDeposit(session) {
   return true;
 }
 
+// The Resend v4 SDK does not throw on API errors — it resolves with
+// { data, error }. Every Resend call must check `error` explicitly or
+// failures are silently swallowed.
+function resendErrorMessage(error) {
+  if (!error) return '';
+  return `${error.name || 'resend_error'}: ${error.message || JSON.stringify(error)}`;
+}
+
 async function markWelcomeSent(stripe, session) {
   await stripe.checkout.sessions.update(session.id, {
     metadata: {
@@ -93,18 +101,13 @@ async function handleCheckoutSessionCompleted(stripe, resend, sessionSnapshot) {
 
   const { first_name, last_name } = splitName(session.customer_details?.name || '');
   const phone = String(session.customer_details?.phone || '').trim();
-  const audienceId = process.env.RESEND_FOUNDING_AUDIENCE_ID;
-  if (!audienceId) {
-    console.error('stripe-webhook: missing RESEND_FOUNDING_AUDIENCE_ID');
-    return { skipped: 'server_not_configured', missing: 'RESEND_FOUNDING_AUDIENCE_ID' };
-  }
 
   // Send the welcome email FIRST. This is the primary side effect, so a failure
   // here must throw and return non-2xx, letting Stripe retry. Marking the session
   // as processed before this point would make a retry skip as already_processed
   // and the customer would never receive the email.
   const welcome = buildWelcomeEmail({ first_name });
-  await resend.emails.send({
+  const welcomeResult = await resend.emails.send({
     from: welcome.from,
     to: email,
     replyTo: welcome.replyTo,
@@ -112,6 +115,9 @@ async function handleCheckoutSessionCompleted(stripe, resend, sessionSnapshot) {
     text: welcome.text,
     html: welcome.html,
   });
+  if (welcomeResult?.error) {
+    throw new Error(`welcome email send failed — ${resendErrorMessage(welcomeResult.error)}`);
+  }
 
   // Best-effort dedup marker. The email already sent, so a failed write here must
   // not fail the request (returning 500 would make Stripe retry and resend). This
@@ -122,22 +128,28 @@ async function handleCheckoutSessionCompleted(stripe, resend, sessionSnapshot) {
     console.error('stripe-webhook: failed to mark welcome_sent (non-fatal, email already sent)', err);
   }
 
-  try {
-    await resend.contacts.create({
-      audienceId,
-      email,
-      firstName: first_name || undefined,
-      lastName: last_name || undefined,
-      unsubscribed: false,
-    });
-  } catch (err) {
-    const message = String(err?.message || err);
-    if (/already exists|duplicate/i.test(message)) {
-      console.info('stripe-webhook: contact already exists in audience', email);
-    } else {
-      // Non-fatal: the welcome email is the priority and must still send even if
-      // the audience add fails (e.g. transient Resend error or permissions issue).
-      console.error('stripe-webhook: resend.contacts.create failed (non-fatal)', err);
+  // Audience add is best-effort: the welcome email already sent, so nothing
+  // past this point may throw (a 500 would make Stripe retry and resend it).
+  const audienceId = process.env.RESEND_FOUNDING_AUDIENCE_ID;
+  if (!audienceId) {
+    console.error('stripe-webhook: RESEND_FOUNDING_AUDIENCE_ID not set — skipping audience add (non-fatal)');
+  } else {
+    try {
+      const contactResult = await resend.contacts.create({
+        audienceId,
+        email,
+        firstName: first_name || undefined,
+        lastName: last_name || undefined,
+        unsubscribed: false,
+      });
+      const message = resendErrorMessage(contactResult?.error);
+      if (message && /already exists|duplicate/i.test(message)) {
+        console.info('stripe-webhook: contact already exists in audience', email);
+      } else if (message) {
+        console.error('stripe-webhook: resend.contacts.create failed (non-fatal)', message);
+      }
+    } catch (err) {
+      console.error('stripe-webhook: resend.contacts.create threw (non-fatal)', err);
     }
   }
 
@@ -150,15 +162,18 @@ async function handleCheckoutSessionCompleted(stripe, resend, sessionSnapshot) {
     amount_usd: (session.amount_total / 100).toFixed(2),
   });
   try {
-    await resend.emails.send({
+    const notifyResult = await resend.emails.send({
       from: NOTIFY_DEPOSIT_FROM,
       to: NOTIFY_DEPOSIT_TO,
       replyTo: email,
       subject: notify.subject,
       html: notify.html,
     });
+    if (notifyResult?.error) {
+      console.error('stripe-webhook: internal deposit notify failed (non-fatal)', resendErrorMessage(notifyResult.error));
+    }
   } catch (err) {
-    console.error('stripe-webhook: internal deposit notify failed', err);
+    console.error('stripe-webhook: internal deposit notify threw (non-fatal)', err);
   }
 
   return { processed: true, session_id: session.id, email };
@@ -174,9 +189,14 @@ export default async function handler(req, res) {
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
   const resendApiKey = process.env.RESEND_API_KEY;
 
-  if (!stripeSecretKey || !webhookSecret || !resendApiKey) {
-    console.error('stripe-webhook: missing STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, or RESEND_API_KEY');
-    return res.status(500).json({ received: false, error: 'Server not configured' });
+  const missingEnv = [
+    ['STRIPE_SECRET_KEY', stripeSecretKey],
+    ['STRIPE_WEBHOOK_SECRET', webhookSecret],
+    ['RESEND_API_KEY', resendApiKey],
+  ].filter(([, value]) => !value).map(([name]) => name);
+  if (missingEnv.length) {
+    console.error('stripe-webhook: missing env vars:', missingEnv.join(', '), '— set them in Vercel and redeploy');
+    return res.status(500).json({ received: false, error: 'Server not configured', missing: missingEnv });
   }
 
   const stripe = new Stripe(stripeSecretKey);
@@ -192,6 +212,23 @@ export default async function handler(req, res) {
     return res.status(400).json({ received: false, error: 'Invalid signature' });
   }
 
+  // A test-mode key cannot retrieve live sessions (and vice versa): every
+  // event would 500 on sessions.retrieve with resource_missing. Catch the
+  // misconfiguration up front and say exactly what to fix. Still return 500
+  // so Stripe keeps retrying/alerting until the env var is corrected.
+  const keyMode = /^(sk|rk)_live_/.test(stripeSecretKey) ? 'live' : 'test';
+  const eventMode = event.livemode ? 'live' : 'test';
+  if (keyMode !== eventMode) {
+    console.error(
+      `stripe-webhook: mode mismatch — received a ${eventMode}-mode event but STRIPE_SECRET_KEY is a ${keyMode}-mode key. ` +
+      'Set the matching Stripe secret key in Vercel env vars and redeploy.'
+    );
+    return res.status(500).json({
+      received: false,
+      error: `Server misconfigured: ${eventMode}-mode event with ${keyMode}-mode API key`,
+    });
+  }
+
   try {
     if (event.type === 'checkout.session.completed') {
       const result = await handleCheckoutSessionCompleted(stripe, resend, event.data.object);
@@ -200,7 +237,16 @@ export default async function handler(req, res) {
 
     return res.status(200).json({ received: true, skipped: 'ignored_event_type', type: event.type });
   } catch (err) {
-    console.error('stripe-webhook: handler failed', event?.id, err);
-    return res.status(500).json({ received: false, error: 'Webhook handler failed' });
+    console.error('stripe-webhook: handler failed', event?.id, {
+      message: err?.message,
+      type: err?.type,
+      code: err?.code,
+      statusCode: err?.statusCode,
+    }, err);
+    return res.status(500).json({
+      received: false,
+      error: 'Webhook handler failed',
+      detail: String(err?.message || err),
+    });
   }
 }

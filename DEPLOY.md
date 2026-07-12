@@ -91,6 +91,28 @@ contact appears in the Founding Members audience, and `nick@` / `hello@` receive
 the internal deposit notification. Stripe session metadata gets `welcome_sent=1`
 so webhook retries do not resend.
 
+**Troubleshooting webhook HTTP 500s** (Stripe emails "We've had some trouble
+sending requests…"): the handler only returns 500 for problems that are fixable
+on our side, and it logs the exact cause. In order of likelihood:
+
+1. **Vercel → Project → Logs** (filter `/api/stripe-webhook`). The log line
+   names the problem directly:
+   - `missing env vars: …` — one of `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`,
+     `RESEND_API_KEY` was removed or never set for Production. Re-add and redeploy.
+   - `mode mismatch — received a live-mode event but STRIPE_SECRET_KEY is a
+     test-mode key` — the Payment Link/webhook are Live but Vercel holds an
+     `sk_test_…` key (or vice versa). Swap in the matching key and redeploy.
+   - `handler failed … type: 'StripeAuthenticationError'` — the key was rolled
+     or revoked in Stripe. Paste the current Live secret key into Vercel.
+   - `welcome email send failed — …` — Resend rejected the send (revoked API
+     key, unverified domain). Fix in Resend; Stripe retries deliver the email.
+2. **Stripe Dashboard → Developers → Webhooks → the endpoint** shows each
+   attempt's response body, which carries the same `error` / `missing` /
+   `detail` fields.
+3. After fixing, **resend the failed events** from that same Stripe webhook
+   page (each event → "Resend") so affected customers still get their welcome
+   email — dedup via `welcome_sent` metadata prevents doubles.
+
 **Local webhook testing:** use the Stripe CLI:
 
 ```sh
