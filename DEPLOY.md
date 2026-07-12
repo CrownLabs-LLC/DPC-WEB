@@ -113,6 +113,17 @@ on our side, and it logs the exact cause. In order of likelihood:
    page (each event → "Resend") so affected customers still get their welcome
    email — dedup via `welcome_sent` metadata prevents doubles.
 
+Note: a transient Stripe or Resend outage also produces 500s by design (so
+Stripe retries and the email still gets delivered). A short burst of 500s that
+self-resolves is not a configuration problem — only sustained failures need
+the checklist above.
+
+**Offline handler tests** (no credentials or network needed):
+
+```sh
+npm test   # runs scripts/test-stripe-webhook-paths.mjs
+```
+
 **Local webhook testing:** use the Stripe CLI:
 
 ```sh
