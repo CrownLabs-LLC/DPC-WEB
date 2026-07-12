@@ -132,6 +132,40 @@ stripe listen --forward-to localhost:3000/api/stripe-webhook
 
 Copy the printed `whsec_…` into a local `.env` for `vercel dev`.
 
+### 2c. Ops dashboard — /dashboard
+
+A token-protected operations view at `https://www.downtownpourcollective.com/dashboard`:
+site visits and deposit-CTA clicks (first-party, anonymous), deposits pulled
+live from Stripe, undelivered Stripe webhook events, webhook error log, and
+health checks that verify the Stripe/Resend/Supabase keys actually work (not
+just that they're set — this is the check that catches a rotated key).
+
+Setup (one time):
+
+1. **Supabase** → open the project → SQL Editor → paste the contents of
+   [`db/setup.sql`](db/setup.sql) → Run. Creates `site_events` (anonymous
+   funnel beacons; anon key can only append) and `webhook_logs` (service-role
+   only).
+2. **Supabase** → Project Settings → API: copy the **Project URL**, the
+   **anon public** key, and the **service_role** key (keep the last one secret).
+3. **Vercel** → Environment Variables (Production):
+   - `SUPABASE_URL` — the project URL
+   - `SUPABASE_ANON_KEY` — anon public key (append-only funnel writes)
+   - `SUPABASE_SERVICE_ROLE_KEY` — service role key (dashboard reads, webhook log)
+   - `DASHBOARD_TOKEN` — any long random string; this is the dashboard password
+     (e.g. run `openssl rand -hex 24`). Store it in 1Password.
+4. Redeploy.
+
+Acceptance: visit `/dashboard`, enter the token → KPI tiles, charts, and every
+health row green. Browse the homepage and click a deposit CTA → the visit and
+click appear on the dashboard within a minute. The dashboard works without the
+Supabase vars too (Stripe/health sections only) — funnel tiles show
+"not configured" until step 3 is done.
+
+Privacy note: the funnel beacons store event name, page, path, and referrer
+hostname only — no cookies, IPs, or identifiers — matching the privacy
+policy's "aggregated, de-identified analytics".
+
 ---
 
 ## 3. GA4 — measurement ID

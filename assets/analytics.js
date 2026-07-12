@@ -5,9 +5,35 @@
   var CONSENT_KEY = 'dpc_cookie_consent';
   var LEGACY_CONSENT_KEY = 'dpc_partner_cookie_consent';
   var DEPOSIT_TRACKED_KEY = 'dpc_deposit_tracked';
+  var DEPOSIT_BEACON_KEY = 'dpc_deposit_beacon';
+  var TRACK_ENDPOINT = '/api/track';
   var gaLoaded = false;
   var pageInitDone = false;
   var currentPageConfig = null;
+
+  // First-party ops beacon (feeds the /dashboard funnel). Anonymous — event
+  // name, page label, path, referrer only — so it is not consent-gated the
+  // way GA4 is. Fire-and-forget: never throws, never blocks navigation.
+  function sendEvent(event) {
+    try {
+      var payload = JSON.stringify({
+        event: event,
+        page: (currentPageConfig && currentPageConfig.page) || '',
+        path: window.location.pathname,
+        referrer: document.referrer || ''
+      });
+      if (navigator.sendBeacon) {
+        navigator.sendBeacon(TRACK_ENDPOINT, new Blob([payload], { type: 'application/json' }));
+      } else if (window.fetch) {
+        fetch(TRACK_ENDPOINT, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: payload,
+          keepalive: true
+        }).catch(function () {});
+      }
+    } catch (e) {}
+  }
 
   function hasConsent() {
     try {
@@ -48,6 +74,7 @@
   }
 
   function track(event, params) {
+    if (event === 'form_submit') sendEvent('form_submit');
     if (window.gtag) window.gtag('event', event, params || {});
   }
 
@@ -119,6 +146,7 @@
           navigated = true;
           window.location.href = url;
         }
+        sendEvent('deposit_click');
         track('deposit_button_click', { event_callback: go });
         track('outbound_click', {
           link_url: url,
@@ -171,7 +199,18 @@
 
   function init(config) {
     currentPageConfig = config || {};
+    sendEvent('page_view');
     if (config.page === 'member') initStripeCTAs();
+    if (config.page === 'confirmation') {
+      // Once per browser session, so refreshes of the confirmation page do
+      // not inflate the funnel. Falls back to sending if storage is blocked.
+      var send = true;
+      try {
+        if (sessionStorage.getItem(DEPOSIT_BEACON_KEY) === '1') send = false;
+        else sessionStorage.setItem(DEPOSIT_BEACON_KEY, '1');
+      } catch (e) {}
+      if (send) sendEvent('deposit_confirmed');
+    }
     initCookieBanner();
   }
 
