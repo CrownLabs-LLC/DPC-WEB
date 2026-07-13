@@ -187,7 +187,19 @@ export default async function handler(req, res) {
   }
 
   const now = Date.now();
-  const problems = await gatherProblems(now);
+  // Per-phase durations, logged and returned so the real timeout margin can
+  // be watched in production as provider latency drifts.
+  const timings = {};
+  const timed = async (label, fn) => {
+    const startedAt = Date.now();
+    try {
+      return await fn();
+    } finally {
+      timings[label] = Date.now() - startedAt;
+    }
+  };
+
+  const problems = await timed('gather_ms', () => gatherProblems(now));
   const fingerprint = problems.length ? fingerprintOf(problems) : null;
   let alerted = false;
   let throttled = false;
@@ -201,20 +213,20 @@ export default async function handler(req, res) {
     const supabaseDown = problems.some((p) => p.key === 'check:Supabase reachable');
     if (!process.env.RESEND_API_KEY) {
       alertError = 'cannot email: RESEND_API_KEY missing';
-    } else if (!supabaseDown && (await recentlyAlerted(now, fingerprint))) {
+    } else if (!supabaseDown && (await timed('throttle_read_ms', () => recentlyAlerted(now, fingerprint)))) {
       throttled = true;
     } else {
       try {
-        await sendAlert(problems, now);
+        await timed('alert_send_ms', () => sendAlert(problems, now));
         alerted = true;
         if (supabaseConfigured() && !supabaseDown) {
           try {
-            await supabaseInsert('webhook_logs', {
+            await timed('alert_record_ms', () => supabaseInsert('webhook_logs', {
               level: 'info',
               source: 'health-check',
               message: 'alert email sent',
               detail: { fingerprint, keys: problems.map((p) => p.key), problems: problems.map((p) => p.text) },
-            }, THROTTLE_IO_TIMEOUT_MS);
+            }, THROTTLE_IO_TIMEOUT_MS));
           } catch (err) {
             console.error('health-check: could not record alert (throttle may not apply)', err?.message || err);
           }
@@ -226,6 +238,9 @@ export default async function handler(req, res) {
     }
   }
 
+  timings.total_ms = Date.now() - now;
+  console.info('health-check: timings', timings);
+
   res.setHeader('Cache-Control', 'no-store');
   return res.status(200).json({
     ok: problems.length === 0,
@@ -234,6 +249,7 @@ export default async function handler(req, res) {
     fingerprint,
     alerted,
     throttled,
+    timings,
     ...(alertError ? { alert_error: alertError } : {}),
   });
 }
