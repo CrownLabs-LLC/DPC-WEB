@@ -174,4 +174,71 @@ process.env.RESEND_API_KEY = 're_dummy';
   check('happy path -> 200 processed', out.status === 200 && out.body?.processed === true, out);
 }
 
+// Case 6: hanging Supabase telemetry must NOT block the webhook response.
+// The ops-log fetch has a 1.5s abort budget; the mock honors the signal and
+// otherwise never resolves. The webhook must still return 200 well under the
+// 15s function limit.
+{
+  process.env.RESEND_FOUNDING_AUDIENCE_ID = 'aud_mock';
+  process.env.SUPABASE_URL = 'https://example.supabase.co';
+  process.env.SUPABASE_SERVICE_ROLE_KEY = 'service_dummy';
+  const origFetch = globalThis.fetch;
+  const origHttpsRequest = https.request;
+  globalThis.fetch = async (url, opts) => {
+    const u = String(url);
+    if (u.includes('/rest/v1/webhook_logs')) {
+      return new Promise((resolve, reject) => {
+        const signal = opts?.signal;
+        if (signal) {
+          if (signal.aborted) return reject(new DOMException('This operation was aborted', 'AbortError'));
+          signal.addEventListener('abort', () => reject(new DOMException('This operation was aborted', 'AbortError')));
+        }
+        // otherwise: hang forever, like a stalled Supabase connection
+      });
+    }
+    if (u.includes('api.resend.com')) {
+      return new Response(JSON.stringify({ id: 'mock_ok' }), { status: 200, headers: { 'content-type': 'application/json' } });
+    }
+    throw new Error('unexpected fetch: ' + u);
+  };
+  https.request = (options, ...rest) => {
+    const req = new PassThrough();
+    req.setTimeout = () => req;
+    req.abort = () => {};
+    process.nextTick(() => {
+      const res = new PassThrough();
+      res.statusCode = 200;
+      res.headers = { 'content-type': 'application/json', 'request-id': 'req_mock' };
+      req.emit('response', res);
+      res.end(JSON.stringify({
+        id: 'cs_test_abc', object: 'checkout.session', payment_status: 'paid',
+        currency: 'usd', amount_total: 4900,
+        metadata: { product_type: 'founding_deposit' },
+        customer_details: { email: 'buyer@example.com', name: 'Pat Buyer' },
+        line_items: { data: [] },
+      }));
+    });
+    return req;
+  };
+  const { default: handler } = await import('../api/stripe-webhook.js?v=6');
+  const { res, out } = mockRes();
+  const startedAt = Date.now();
+  // AbortSignal.timeout's internal timer is unref'ed; with a socketless mock
+  // nothing else keeps the event loop alive, so hold it open past the abort.
+  const keepAlive = setTimeout(() => {}, 10000);
+  await handler(signedRequest(baseEvent({
+    livemode: false,
+    type: 'checkout.session.completed',
+    data: { object: { id: 'cs_test_abc' } },
+  })), res);
+  clearTimeout(keepAlive);
+  const elapsed = Date.now() - startedAt;
+  globalThis.fetch = origFetch;
+  https.request = origHttpsRequest;
+  delete process.env.SUPABASE_URL;
+  delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+  check('hanging telemetry -> still 200 processed', out.status === 200 && out.body?.processed === true, out);
+  check('hanging telemetry -> responds within time budget', elapsed < 5000, `took ${elapsed}ms`);
+}
+
 process.exit(failures ? 1 : 0);

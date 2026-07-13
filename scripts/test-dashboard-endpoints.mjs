@@ -89,7 +89,7 @@ process.env.SUPABASE_ANON_KEY = 'anon_test_key';
 /* ---------------- /api/dashboard-data ---------------- */
 
 const STRIPE_FIXTURES = {
-  '/v1/balance': { object: 'balance', livemode: true, available: [] },
+  '/v1/checkout/sessions': { object: 'list', has_more: false, data: [] },
   '/v1/payment_intents': {
     object: 'list', has_more: false,
     data: [
@@ -198,8 +198,9 @@ process.env.SUPABASE_SERVICE_ROLE_KEY = 'service_test_key';
   check('webhook error log surfaced', alerts?.webhook_errors?.length === 1, alerts);
   const health = out.body?.health;
   const byName = Object.fromEntries((health || []).map((c) => [c.name, c]));
-  check('health: stripe key accepted', byName['Stripe key accepted by Stripe']?.ok === true, byName);
-  check('health: live mode detected', byName['Stripe key is live mode']?.ok === true, byName);
+  check('health: checkout session read probe ok', byName['Stripe key can read checkout sessions']?.ok === true, byName);
+  check('health: payment intent read probe ok', byName['Stripe key can read payment intents']?.ok === true, byName);
+  check('health: live mode detected from key prefix', byName['Stripe key is live mode']?.ok === true, byName);
   check('health: resend key accepted', byName['Resend key accepted by Resend']?.ok === true, byName);
 }
 

@@ -59,6 +59,7 @@ export default async function handler(req, res) {
   try {
     const resp = await fetch(`${supabaseUrl}/rest/v1/site_events`, {
       method: 'POST',
+      signal: AbortSignal.timeout(3000),
       headers: {
         apikey: anonKey,
         authorization: `Bearer ${anonKey}`,

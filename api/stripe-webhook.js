@@ -55,8 +55,11 @@ async function logOps(level, message, fields = {}) {
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!supabaseUrl || !serviceKey) return;
   try {
-    await fetch(`${supabaseUrl}/rest/v1/webhook_logs`, {
+    // Hard 1.5s budget: a stalled Supabase must never eat the webhook's 15s
+    // limit — a timeout here would make Stripe retry an already-sent email.
+    const resp = await fetch(`${supabaseUrl}/rest/v1/webhook_logs`, {
       method: 'POST',
+      signal: AbortSignal.timeout(1500),
       headers: {
         apikey: serviceKey,
         authorization: `Bearer ${serviceKey}`,
@@ -71,6 +74,9 @@ async function logOps(level, message, fields = {}) {
         detail: fields.detail || null,
       }),
     });
+    if (!resp.ok) {
+      console.error('stripe-webhook: ops log rejected (non-fatal)', resp.status);
+    }
   } catch (err) {
     console.error('stripe-webhook: ops log failed (non-fatal)', err?.message || err);
   }
@@ -228,7 +234,9 @@ export default async function handler(req, res) {
     return res.status(500).json({ received: false, error: 'Server not configured', missing: missingEnv });
   }
 
-  const stripe = new Stripe(stripeSecretKey);
+  // Fail a hung Stripe call before Vercel kills the function (15s limit),
+  // so Stripe gets a clean 500-and-retry instead of an opaque timeout.
+  const stripe = new Stripe(stripeSecretKey, { timeout: 10000 });
   const resend = new Resend(resendApiKey);
   const signature = req.headers['stripe-signature'];
 

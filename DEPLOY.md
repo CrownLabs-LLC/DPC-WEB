@@ -171,25 +171,38 @@ policy's "aggregated, de-identified analytics".
 A Vercel cron (see `vercel.json` → `crons`) hits `/api/health-check` at the
 top of every hour. It runs the same live checks as the dashboard and **emails
 an alert** to `nick@` + `hello@` (override with `ALERT_TO` / `ALERT_FROM`)
-when anything is wrong: a missing env var, a Stripe/Resend key that the
-provider rejects, a test-mode key, Supabase unreachable, Stripe events
-undelivered for over 30 minutes, or webhook errors logged in the last 75
-minutes. Alerts are throttled to one email per 6 hours while a problem
-persists (tracked in `webhook_logs`, so throttling needs the Supabase vars).
+when anything is wrong: a missing env var, a Stripe key that fails a
+capability the app needs (reading Checkout Sessions, PaymentIntents, or
+Events), a test-mode key, a rejected Resend key, Supabase unreachable, Stripe
+events undelivered for over 30 minutes, or webhook errors logged in the last
+75 minutes. Every probe has a bounded timeout so the checker survives the
+outages it exists to detect.
 
-Setup:
+Alerts are throttled **per incident**: the set of problems is fingerprinted,
+and the same fingerprint stays quiet for 6 hours while a *different* problem
+alerts immediately (tracked in `webhook_logs`, so throttling needs the
+Supabase vars; without them every hourly run emails while a problem persists).
+
+Setup (required — the endpoint refuses to run without it):
 
 1. **Vercel** → Environment Variables (Production): add `CRON_SECRET` — any
-   long random string. Vercel automatically sends it as a Bearer token on
-   cron invocations, and the endpoint rejects other callers. (Without it the
-   endpoint still works but is publicly triggerable.)
+   long random string (`openssl rand -hex 24`). Vercel automatically sends it
+   as a Bearer token on cron invocations; the endpoint **fails closed** with
+   503 when the secret is missing and 401 for any caller without it (the
+   dashboard token also works, for manual runs).
 2. Redeploy. Vercel → Project → Settings → Cron Jobs should list the hourly
-   job after the deploy.
+   job after the deploy. (Hourly schedules require the Pro plan.)
 
 To test it: `curl -H "Authorization: Bearer $CRON_SECRET" https://www.downtownpourcollective.com/api/health-check`
-returns `{"ok":true,...}` when everything is green. One known limitation: if
-`RESEND_API_KEY` itself is the thing that breaks, the alert email can't send —
-the failure still shows on the dashboard and in the Vercel cron logs.
+returns `{"ok":true,...}` when everything is green.
+
+Known limitations: (1) if `RESEND_API_KEY` itself is the thing that breaks,
+the alert email can't send — the failure still shows on the dashboard and in
+the Vercel cron logs; (2) the Stripe probes cover **read** capabilities only —
+the webhook also needs Checkout Session **write** (it stamps `welcome_sent`
+metadata), which has no safe probe. If you ever switch to a restricted key,
+grant Checkout Sessions read *and* write, PaymentIntents read, and Events
+read.
 
 ---
 

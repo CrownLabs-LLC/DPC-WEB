@@ -1,4 +1,19 @@
 // Shared ops primitives used by /api/dashboard-data and /api/health-check.
+//
+// Every external probe here carries a bounded timeout and independent probes
+// run concurrently — the monitoring path must survive the exact provider
+// outages it exists to detect, inside the function's 15s budget.
+
+const PROBE_TIMEOUT_MS = 4000;
+
+export function withTimeout(promise, ms, label) {
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+    if (timer.unref) timer.unref();
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
 
 export function supabaseConfigured() {
   return Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
@@ -6,6 +21,7 @@ export function supabaseConfigured() {
 
 export async function supabaseSelect(pathAndQuery) {
   const resp = await fetch(`${process.env.SUPABASE_URL}/rest/v1/${pathAndQuery}`, {
+    signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
     headers: {
       apikey: process.env.SUPABASE_SERVICE_ROLE_KEY,
       authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
@@ -18,6 +34,7 @@ export async function supabaseSelect(pathAndQuery) {
 export async function supabaseInsert(table, row) {
   const resp = await fetch(`${process.env.SUPABASE_URL}/rest/v1/${table}`, {
     method: 'POST',
+    signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
     headers: {
       apikey: process.env.SUPABASE_SERVICE_ROLE_KEY,
       authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
@@ -32,7 +49,7 @@ export async function supabaseInsert(table, row) {
 // Stripe's own record of events it has not (yet) successfully delivered to a
 // webhook endpoint — catches outages even when our own logging is down.
 export async function listUndeliveredEvents(stripe, limit = 20) {
-  const page = await stripe.events.list({ delivery_success: false, limit });
+  const page = await stripe.events.list({ delivery_success: false, limit }, { timeout: PROBE_TIMEOUT_MS });
   return page.data.map((e) => ({
     id: e.id,
     type: e.type,
@@ -41,9 +58,12 @@ export async function listUndeliveredEvents(stripe, limit = 20) {
   }));
 }
 
-// Env-presence plus LIVE key validity. The live calls are the checks that
-// catch a rotated/revoked key (like the July 8 incident) — env presence alone
-// cannot see that.
+// Env presence, live-mode, and per-capability key probes. The probes exercise
+// the read permissions the app actually uses (Checkout Sessions for the
+// webhook, PaymentIntents + Events for dashboard/alerts) so a least-privilege
+// restricted key is judged on what production needs, not on Balance access.
+// The webhook's one write (checkout.sessions.update for the welcome_sent
+// marker) has no safe read-only probe — see DEPLOY.md.
 export async function healthChecks(stripe, resend) {
   const checks = [];
   const envVars = [
@@ -63,44 +83,54 @@ export async function healthChecks(stripe, resend) {
     });
   }
 
-  let stripeOk = false;
-  let liveMode = false;
-  let stripeDetail = '';
-  try {
-    const balance = await stripe.balance.retrieve();
-    stripeOk = true;
-    liveMode = Boolean(balance.livemode);
-  } catch (err) {
-    stripeDetail = String(err?.message || err);
-  }
-  checks.push({ name: 'Stripe key accepted by Stripe', ok: stripeOk, detail: stripeDetail });
+  // Same live/test detection the webhook itself uses.
+  const liveKey = /^(sk|rk)_live_/.test(process.env.STRIPE_SECRET_KEY || '');
   checks.push({
     name: 'Stripe key is live mode',
-    ok: stripeOk && liveMode,
-    detail: stripeOk && !liveMode ? 'Key is TEST mode — live webhook events will fail' : stripeOk ? '' : 'unknown (key invalid)',
+    ok: liveKey,
+    detail: liveKey ? '' : 'Key is TEST mode — live webhook events will fail',
   });
 
+  const stripeProbes = [
+    ['Stripe key can read checkout sessions', () => stripe.checkout.sessions.list({ limit: 1 }, { timeout: PROBE_TIMEOUT_MS })],
+    ['Stripe key can read payment intents', () => stripe.paymentIntents.list({ limit: 1 }, { timeout: PROBE_TIMEOUT_MS })],
+    ['Stripe key can read events', () => stripe.events.list({ limit: 1 }, { timeout: PROBE_TIMEOUT_MS })],
+  ];
+  const results = await Promise.allSettled([
+    ...stripeProbes.map(([, probe]) => probe()),
+    withTimeout(resend.domains.list(), PROBE_TIMEOUT_MS, 'resend.domains.list'),
+    supabaseConfigured() ? supabaseSelect('site_events?select=id&limit=1') : Promise.resolve(null),
+  ]);
+
+  stripeProbes.forEach(([name], i) => {
+    const r = results[i];
+    checks.push({
+      name,
+      ok: r.status === 'fulfilled',
+      detail: r.status === 'fulfilled' ? '' : String(r.reason?.message || r.reason),
+    });
+  });
+
+  const resendResult = results[stripeProbes.length];
   let resendOk = false;
   let resendDetail = '';
-  try {
-    const domains = await resend.domains.list();
-    resendOk = !domains?.error;
-    resendDetail = domains?.error ? String(domains.error.message || domains.error.name || 'error') : '';
-  } catch (err) {
-    resendDetail = String(err?.message || err);
+  if (resendResult.status === 'fulfilled') {
+    resendOk = !resendResult.value?.error;
+    resendDetail = resendResult.value?.error
+      ? String(resendResult.value.error.message || resendResult.value.error.name || 'error')
+      : '';
+  } else {
+    resendDetail = String(resendResult.reason?.message || resendResult.reason);
   }
   checks.push({ name: 'Resend key accepted by Resend', ok: resendOk, detail: resendDetail });
 
   if (supabaseConfigured()) {
-    let supabaseOk = false;
-    let supabaseDetail = '';
-    try {
-      await supabaseSelect('site_events?select=id&limit=1');
-      supabaseOk = true;
-    } catch (err) {
-      supabaseDetail = String(err?.message || err);
-    }
-    checks.push({ name: 'Supabase reachable', ok: supabaseOk, detail: supabaseDetail });
+    const supabaseResult = results[stripeProbes.length + 1];
+    checks.push({
+      name: 'Supabase reachable',
+      ok: supabaseResult.status === 'fulfilled',
+      detail: supabaseResult.status === 'fulfilled' ? '' : String(supabaseResult.reason?.message || supabaseResult.reason),
+    });
   }
 
   return checks;
