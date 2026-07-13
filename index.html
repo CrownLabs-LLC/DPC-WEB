@@ -775,6 +775,12 @@ img, svg { display: block; max-width: 100%; }
   max-width: 720px;
   margin: 56px auto 0;
 }
+/* An unpaired last tile spans both columns, sized and centered to match its neighbors */
+.partner-tile:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+  width: calc((100% - 24px) / 2);
+  justify-self: center;
+}
 .partner-tile {
   border: 1px solid rgba(196, 163, 90, 0.45);
   border-radius: 6px;
@@ -1109,6 +1115,7 @@ img, svg { display: block; max-width: 100%; }
   .partners__title { font-size: 26px; }
   .partners__grid { grid-template-columns: 1fr; gap: 14px; }
   .partner-tile { min-height: 0; padding: 28px 20px; }
+  .partner-tile:last-child:nth-child(odd) { width: 100%; }
 
   .timeline { padding: 72px 24px 0; }
   .timeline__title { font-size: 26px; }
