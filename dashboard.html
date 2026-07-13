@@ -1,0 +1,674 @@
+<!doctype html>
+<html lang="en-US">
+<head>
+<meta charset="UTF-8">
+<title>DPC Operations</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<style>
+:root {
+  --page: #f9f9f7;
+  --surface-1: #fcfcfb;
+  --text-primary: #0b0b0b;
+  --text-secondary: #52514e;
+  --text-muted: #898781;
+  --grid-line: #e1e0d9;
+  --baseline: #c3c2b7;
+  --border: rgba(11, 11, 11, 0.10);
+  --series-visits: #2a78d6;
+  --series-clicks: #1baf7a;
+  --series-deposits: #2a78d6;
+  --status-good: #0ca30c;
+  --status-critical: #d03b3b;
+  --delta-good: #006300;
+  --delta-bad: #d03b3b;
+  --accent: #2a78d6;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #0d0d0d;
+    --surface-1: #1a1a19;
+    --text-primary: #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted: #898781;
+    --grid-line: #2c2c2a;
+    --baseline: #383835;
+    --border: rgba(255, 255, 255, 0.10);
+    --series-visits: #3987e5;
+    --series-clicks: #199e70;
+    --series-deposits: #3987e5;
+    --delta-good: #0ca30c;
+    --accent: #3987e5;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--page);
+  color: var(--text-primary);
+  font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+.wrap { max-width: 1080px; margin: 0 auto; padding: 20px 16px 48px; }
+header.top { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+header.top h1 { font-size: 18px; font-weight: 650; margin: 0; }
+header.top .meta { color: var(--text-muted); font-size: 12px; }
+header.top .spacer { flex: 1; }
+button, .btnlike {
+  font: inherit; color: var(--text-primary); background: var(--surface-1);
+  border: 1px solid var(--border); border-radius: 8px; padding: 5px 12px; cursor: pointer;
+}
+button:hover { border-color: var(--baseline); }
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.filters { display: flex; gap: 8px; margin: 0 0 16px; }
+.filters button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); font-weight: 650; }
+.card {
+  background: var(--surface-1); border: 1px solid var(--border);
+  border-radius: 12px; padding: 16px;
+}
+.card h2 { font-size: 13px; font-weight: 650; color: var(--text-secondary); margin: 0 0 12px; }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.tile .label { font-size: 12px; color: var(--text-secondary); }
+.tile .value { font-size: 26px; font-weight: 650; margin: 2px 0; }
+.tile .delta { font-size: 12px; color: var(--text-muted); }
+.tile .delta .dir-good { color: var(--delta-good); font-weight: 600; }
+.tile .delta .dir-bad { color: var(--delta-bad); font-weight: 600; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+@media (max-width: 820px) { .grid2 { grid-template-columns: 1fr; } }
+.chart-wrap { position: relative; }
+.chart-wrap svg { display: block; width: 100%; height: auto; }
+.legend { display: flex; gap: 16px; font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; }
+.legend .key { display: inline-block; width: 14px; height: 0; border-top: 3px solid; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+.tooltip {
+  position: absolute; pointer-events: none; background: var(--surface-1);
+  border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px;
+  font-size: 12px; box-shadow: 0 4px 14px rgba(0,0,0,.12); display: none; z-index: 5; min-width: 130px;
+}
+.tooltip .tt-date { color: var(--text-muted); margin-bottom: 4px; }
+.tooltip .tt-row { display: flex; align-items: center; gap: 6px; }
+.tooltip .tt-key { width: 12px; border-top: 3px solid; border-radius: 2px; }
+.tooltip .tt-val { font-weight: 650; }
+.tooltip .tt-name { color: var(--text-secondary); }
+.status-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.status-list li { display: flex; gap: 8px; align-items: baseline; }
+.status-ic { font-weight: 700; }
+.status-ic.ok { color: var(--status-good); }
+.status-ic.bad { color: var(--status-critical); }
+.status-detail { color: var(--text-muted); font-size: 12px; }
+.banner {
+  border: 1px solid var(--status-critical); background: color-mix(in srgb, var(--status-critical) 8%, var(--surface-1));
+  color: var(--text-primary); border-radius: 12px; padding: 10px 14px; margin-bottom: 16px; font-weight: 600;
+}
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { text-align: left; color: var(--text-muted); font-weight: 600; font-size: 12px; padding: 4px 8px; border-bottom: 1px solid var(--grid-line); }
+td { padding: 5px 8px; border-bottom: 1px solid var(--grid-line); }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+.empty { color: var(--text-muted); }
+details.tableview { margin: -4px 0 16px; }
+details.tableview summary { cursor: pointer; color: var(--text-secondary); font-size: 12px; padding: 4px 2px; }
+#gate { max-width: 380px; margin: 12vh auto; }
+#gate input { width: 100%; font: inherit; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--page); color: var(--text-primary); margin: 10px 0; }
+.err { color: var(--status-critical); font-size: 13px; min-height: 18px; }
+.loading { opacity: .45; transition: opacity .2s; }
+.stack { display: grid; gap: 12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div id="gate" class="card" hidden>
+    <h2>DPC Operations</h2>
+    <p class="meta" style="color:var(--text-secondary)">Enter the dashboard token (DASHBOARD_TOKEN in Vercel).</p>
+    <input id="token-input" type="password" autocomplete="current-password" placeholder="Dashboard token">
+    <div class="err" id="gate-err"></div>
+    <button class="primary" id="token-go">View dashboard</button>
+  </div>
+
+  <div id="app" hidden>
+    <header class="top">
+      <h1>DPC Operations</h1>
+      <span class="meta" id="updated-at"></span>
+      <span class="spacer"></span>
+      <button id="refresh">Refresh</button>
+      <button id="signout">Sign out</button>
+    </header>
+    <div class="banner" id="banner" hidden></div>
+    <div class="filters" role="group" aria-label="Date range">
+      <button data-days="7">Last 7 days</button>
+      <button data-days="30">Last 30 days</button>
+      <button data-days="90">Last 90 days</button>
+    </div>
+    <div class="kpis" id="kpis"></div>
+    <div class="grid2">
+      <div class="card">
+        <h2>Traffic &amp; intent per day</h2>
+        <div class="legend" id="line-legend"></div>
+        <div class="chart-wrap" id="line-chart"></div>
+      </div>
+      <div class="card">
+        <h2>Deposits per day</h2>
+        <div class="chart-wrap" id="bar-chart"></div>
+      </div>
+    </div>
+    <details class="tableview">
+      <summary>View daily data as a table</summary>
+      <div class="card" style="margin-top:8px" id="daily-table"></div>
+    </details>
+    <div class="grid2">
+      <div class="card">
+        <h2>System health</h2>
+        <ul class="status-list" id="health-list"></ul>
+      </div>
+      <div class="card">
+        <h2>Alerts</h2>
+        <div class="stack" id="alerts"></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Recent deposits</h2>
+      <div id="recent-deposits"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  var TOKEN_KEY = 'dpc_dashboard_token';
+  var state = { days: 30, data: null, timer: null };
+
+  function $(id) { return document.getElementById(id); }
+  function el(tag, cls, text) {
+    var node = document.createElement(tag);
+    if (cls) node.className = cls;
+    if (text !== undefined && text !== null) node.textContent = String(text);
+    return node;
+  }
+  function svgEl(tag, attrs) {
+    var node = document.createElementNS('http://www.w3.org/2000/svg', tag);
+    for (var k in attrs) node.setAttribute(k, attrs[k]);
+    return node;
+  }
+  function cssVar(name) {
+    return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  }
+  function fmt(n) {
+    if (n >= 10000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
+    return n.toLocaleString('en-US');
+  }
+  function fmtUsd(cents) { return '$' + (cents / 100).toLocaleString('en-US'); }
+  function fmtDateShort(iso) {
+    var p = iso.split('-');
+    return Number(p[1]) + '/' + Number(p[2]);
+  }
+  function niceMax(maxValue) {
+    if (maxValue <= 0) return 4;
+    var pow = Math.pow(10, Math.floor(Math.log10(maxValue)));
+    var candidates = [1, 2, 4, 5, 10];
+    for (var i = 0; i < candidates.length; i++) {
+      if (candidates[i] * pow >= maxValue) return candidates[i] * pow;
+    }
+    return 10 * pow;
+  }
+
+  /* ---------- auth gate ---------- */
+  function getToken() { try { return localStorage.getItem(TOKEN_KEY) || ''; } catch (e) { return ''; } }
+  function setToken(v) { try { v ? localStorage.setItem(TOKEN_KEY, v) : localStorage.removeItem(TOKEN_KEY); } catch (e) {} }
+  function showGate(msg) {
+    $('app').hidden = true;
+    $('gate').hidden = false;
+    $('gate-err').textContent = msg || '';
+    $('token-input').focus();
+  }
+
+  /* ---------- data ---------- */
+  function load() {
+    var token = getToken();
+    if (!token) return showGate('');
+    $('app').classList.add('loading');
+    fetch('/api/dashboard-data?days=' + state.days, {
+      headers: { Authorization: 'Bearer ' + token },
+      cache: 'no-store'
+    }).then(function (resp) {
+      if (resp.status === 401) { setToken(''); showGate('Token rejected — try again.'); return null; }
+      if (!resp.ok) return resp.json().then(function (b) { throw new Error(b && b.error || ('HTTP ' + resp.status)); });
+      return resp.json();
+    }).then(function (data) {
+      if (!data) return;
+      state.data = data;
+      $('gate').hidden = true;
+      $('app').hidden = false;
+      render();
+    }).catch(function (err) {
+      if (state.data) { $('banner').hidden = false; $('banner').textContent = 'Refresh failed: ' + err.message; }
+      else showGate(err.message);
+    }).finally(function () {
+      $('app').classList.remove('loading');
+    });
+  }
+
+  /* ---------- render ---------- */
+  function render() {
+    var d = state.data;
+    $('updated-at').textContent = 'Updated ' + new Date(d.generated_at).toLocaleString();
+    document.querySelectorAll('.filters button').forEach(function (b) {
+      b.setAttribute('aria-pressed', String(Number(b.dataset.days) === d.days));
+    });
+    renderBanner(d);
+    renderKpis(d);
+    renderCharts(d);
+    renderDailyTable(d);
+    renderHealth(d);
+    renderAlerts(d);
+    renderRecent(d);
+  }
+
+  function renderBanner(d) {
+    var banner = $('banner');
+    var problems = [];
+    if (Array.isArray(d.health)) {
+      d.health.forEach(function (c) { if (!c.ok) problems.push(c.name); });
+    }
+    var undelivered = d.alerts && d.alerts.undelivered_events;
+    if (undelivered && undelivered.length) problems.push(undelivered.length + ' Stripe event(s) undelivered');
+    if (problems.length) {
+      banner.hidden = false;
+      banner.textContent = '⚠ Needs attention: ' + problems.join(' · ');
+    } else {
+      banner.hidden = true;
+    }
+  }
+
+  function tile(label, value, current, previous, upIsGood) {
+    var t = el('div', 'card tile');
+    t.appendChild(el('div', 'label', label));
+    t.appendChild(el('div', 'value', value));
+    var delta = el('div', 'delta');
+    if (previous === null || previous === undefined) {
+      delta.textContent = '—';
+    } else {
+      var diff = current - previous;
+      var arrow = diff > 0 ? '↑' : diff < 0 ? '↓' : '→';
+      var dirClass = diff === 0 ? '' : ((diff > 0) === upIsGood ? 'dir-good' : 'dir-bad');
+      var span = el('span', dirClass, arrow + ' ' + fmt(Math.abs(diff)));
+      delta.appendChild(span);
+      delta.appendChild(document.createTextNode(' vs prior period'));
+    }
+    t.appendChild(delta);
+    return t;
+  }
+
+  function renderKpis(d) {
+    var box = $('kpis');
+    box.textContent = '';
+    var f = d.funnel || {};
+    var dep = d.deposits || {};
+    if (f.configured && f.totals) {
+      box.appendChild(tile('Visits', fmt(f.totals.visits), f.totals.visits, f.prev.visits, true));
+      box.appendChild(tile('Deposit clicks', fmt(f.totals.clicks), f.totals.clicks, f.prev.clicks, true));
+    } else {
+      var note = el('div', 'card tile');
+      note.appendChild(el('div', 'label', 'Visits & clicks'));
+      note.appendChild(el('div', 'value', '—'));
+      note.appendChild(el('div', 'delta', f.error ? 'funnel error' : 'Supabase not configured yet'));
+      box.appendChild(note);
+    }
+    if (typeof dep.count === 'number') {
+      box.appendChild(tile('Deposits', fmt(dep.count), dep.count, dep.prev_count, true));
+      box.appendChild(tile('Collected', fmtUsd(dep.amount_cents), dep.amount_cents, null, true));
+      if (f.configured && f.totals && f.totals.visits > 0) {
+        var rate = (dep.count / f.totals.visits) * 100;
+        box.appendChild(tile('Visit → deposit', rate.toFixed(1) + '%', rate, null, true));
+      }
+    } else {
+      var errTile = el('div', 'card tile');
+      errTile.appendChild(el('div', 'label', 'Deposits'));
+      errTile.appendChild(el('div', 'value', '—'));
+      errTile.appendChild(el('div', 'delta', dep.error || 'unavailable'));
+      box.appendChild(errTile);
+    }
+  }
+
+  /* ---------- charts ---------- */
+  var CHART_W = 520, CHART_H = 220, PAD = { top: 14, right: 74, bottom: 24, left: 34 };
+
+  function frame(svg, yMax) {
+    var plotW = CHART_W - PAD.left - PAD.right;
+    var plotH = CHART_H - PAD.top - PAD.bottom;
+    // counts are integers: never let ticks land on fractional values
+    var ticks = yMax < 4 ? Math.max(1, yMax) : 4;
+    for (var i = 0; i <= ticks; i++) {
+      var val = (yMax / ticks) * i;
+      var y = PAD.top + plotH - (val / yMax) * plotH;
+      if (i > 0) {
+        svg.appendChild(svgEl('line', { x1: PAD.left, x2: PAD.left + plotW, y1: y, y2: y, stroke: cssVar('--grid-line'), 'stroke-width': 1 }));
+      }
+      var lbl = svgEl('text', { x: PAD.left - 6, y: y + 4, 'text-anchor': 'end', 'font-size': 10, fill: cssVar('--text-muted') });
+      lbl.textContent = fmt(Math.round(val));
+      svg.appendChild(lbl);
+    }
+    svg.appendChild(svgEl('line', { x1: PAD.left, x2: PAD.left + plotW, y1: PAD.top + plotH, y2: PAD.top + plotH, stroke: cssVar('--baseline'), 'stroke-width': 1 }));
+    return { plotW: plotW, plotH: plotH };
+  }
+
+  function xLabels(svg, daily, xAt) {
+    var idxs = daily.length <= 8
+      ? daily.map(function (_, i) { return i; })
+      : [0, Math.floor(daily.length / 2), daily.length - 1];
+    idxs.forEach(function (i) {
+      var lbl = svgEl('text', { x: xAt(i), y: CHART_H - 8, 'text-anchor': 'middle', 'font-size': 10, fill: cssVar('--text-muted') });
+      lbl.textContent = fmtDateShort(daily[i].date);
+      svg.appendChild(lbl);
+    });
+  }
+
+  function attachTooltip(wrapper) {
+    var tt = el('div', 'tooltip');
+    wrapper.appendChild(tt);
+    return tt;
+  }
+  function tooltipRow(tt, color, value, name) {
+    var row = el('div', 'tt-row');
+    var key = el('span', 'tt-key');
+    key.style.borderTopColor = color;
+    row.appendChild(key);
+    row.appendChild(el('span', 'tt-val', value));
+    row.appendChild(el('span', 'tt-name', name));
+    tt.appendChild(row);
+  }
+  function placeTooltip(tt, wrapper, clientX, clientY) {
+    var r = wrapper.getBoundingClientRect();
+    var x = clientX - r.left + 14;
+    var y = clientY - r.top - 10;
+    if (x + tt.offsetWidth > r.width) x = x - tt.offsetWidth - 24;
+    tt.style.left = Math.max(0, x) + 'px';
+    tt.style.top = Math.max(0, y) + 'px';
+  }
+
+  function renderLineChart(daily) {
+    var wrapper = $('line-chart');
+    wrapper.textContent = '';
+    var legend = $('line-legend');
+    legend.textContent = '';
+    var series = [
+      { name: 'Visits', short: 'Visits', color: cssVar('--series-visits'), get: function (r) { return r.visits; } },
+      { name: 'Deposit clicks', short: 'Clicks', color: cssVar('--series-clicks'), get: function (r) { return r.clicks; } }
+    ];
+    series.forEach(function (s) {
+      var item = el('span');
+      var key = el('span', 'key');
+      key.style.borderTopColor = s.color;
+      item.appendChild(key);
+      item.appendChild(document.createTextNode(s.name));
+      legend.appendChild(item);
+    });
+
+    var svg = svgEl('svg', { viewBox: '0 0 ' + CHART_W + ' ' + CHART_H, role: 'img', 'aria-label': 'Daily visits and deposit clicks' });
+    var maxVal = 0;
+    daily.forEach(function (r) { maxVal = Math.max(maxVal, r.visits, r.clicks); });
+    var yMax = niceMax(maxVal);
+    var dims = frame(svg, yMax);
+    var n = daily.length;
+    var xAt = function (i) { return PAD.left + (n === 1 ? dims.plotW / 2 : (i / (n - 1)) * dims.plotW); };
+    var yAt = function (v) { return PAD.top + dims.plotH - (v / yMax) * dims.plotH; };
+    xLabels(svg, daily, xAt);
+
+    var endLabelYs = [];
+    series.forEach(function (s) {
+      var pts = daily.map(function (r, i) { return [xAt(i), yAt(s.get(r))]; });
+      var path = 'M' + pts.map(function (p) { return p[0].toFixed(1) + ' ' + p[1].toFixed(1); }).join(' L');
+      svg.appendChild(svgEl('path', { d: path, fill: 'none', stroke: s.color, 'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }));
+      var last = pts[pts.length - 1];
+      svg.appendChild(svgEl('circle', { cx: last[0], cy: last[1], r: 4.5, fill: s.color, stroke: cssVar('--surface-1'), 'stroke-width': 2 }));
+      // direct end label; nudge with a leader if it would collide with a prior label
+      var ly = last[1] + 4;
+      endLabelYs.forEach(function (prev) { if (Math.abs(prev - ly) < 14) ly = prev + 14; });
+      endLabelYs.push(ly);
+      if (ly !== last[1] + 4) {
+        svg.appendChild(svgEl('line', { x1: last[0] + 6, y1: last[1], x2: last[0] + 10, y2: ly - 4, stroke: cssVar('--baseline'), 'stroke-width': 1 }));
+      }
+      var lbl = svgEl('text', { x: last[0] + 12, y: ly, 'font-size': 10, fill: cssVar('--text-secondary') });
+      lbl.textContent = s.short;
+      svg.appendChild(lbl);
+    });
+
+    // crosshair + shared tooltip
+    var cross = svgEl('line', { y1: PAD.top, y2: PAD.top + dims.plotH, stroke: cssVar('--baseline'), 'stroke-width': 1, visibility: 'hidden' });
+    svg.appendChild(cross);
+    var hit = svgEl('rect', { x: PAD.left, y: PAD.top, width: dims.plotW, height: dims.plotH, fill: 'transparent' });
+    svg.appendChild(hit);
+    wrapper.appendChild(svg);
+    var tt = attachTooltip(wrapper);
+
+    function onMove(evt) {
+      var rect = svg.getBoundingClientRect();
+      var sx = CHART_W / rect.width;
+      var px = (evt.clientX - rect.left) * sx;
+      var i = Math.round(((px - PAD.left) / dims.plotW) * (n - 1));
+      i = Math.max(0, Math.min(n - 1, i));
+      var x = xAt(i);
+      cross.setAttribute('x1', x); cross.setAttribute('x2', x);
+      cross.setAttribute('visibility', 'visible');
+      tt.textContent = '';
+      tt.appendChild(el('div', 'tt-date', daily[i].date));
+      series.forEach(function (s) { tooltipRow(tt, s.color, fmt(s.get(daily[i])), s.name); });
+      tt.style.display = 'block';
+      placeTooltip(tt, wrapper, evt.clientX, evt.clientY);
+    }
+    hit.addEventListener('pointermove', onMove);
+    hit.addEventListener('pointerleave', function () {
+      cross.setAttribute('visibility', 'hidden');
+      tt.style.display = 'none';
+    });
+  }
+
+  function renderBarChart(daily) {
+    var wrapper = $('bar-chart');
+    wrapper.textContent = '';
+    var svg = svgEl('svg', { viewBox: '0 0 ' + CHART_W + ' ' + CHART_H, role: 'img', 'aria-label': 'Deposits per day' });
+    var maxVal = 0;
+    daily.forEach(function (r) { maxVal = Math.max(maxVal, r.deposits); });
+    var yMax = niceMax(maxVal);
+    var dims = frame(svg, yMax);
+    var n = daily.length;
+    var band = dims.plotW / n;
+    var barW = Math.min(24, Math.max(3, band - 2));
+    var xAt = function (i) { return PAD.left + band * i + band / 2; };
+    xLabels(svg, daily, xAt);
+    wrapper.appendChild(svg);
+    var tt = attachTooltip(wrapper);
+    var color = cssVar('--series-deposits');
+    var labelCaps = n <= 31;
+
+    daily.forEach(function (r, i) {
+      var h = (r.deposits / yMax) * dims.plotH;
+      var x = xAt(i) - barW / 2;
+      var y = PAD.top + dims.plotH - h;
+      var radius = Math.min(4, barW / 2, h);
+      // rounded data-end (top), square at the baseline
+      var dPath = h <= 0 ? null : (
+        'M' + x + ' ' + (PAD.top + dims.plotH) +
+        ' V' + (y + radius) +
+        ' Q' + x + ' ' + y + ' ' + (x + radius) + ' ' + y +
+        ' H' + (x + barW - radius) +
+        ' Q' + (x + barW) + ' ' + y + ' ' + (x + barW) + ' ' + (y + radius) +
+        ' V' + (PAD.top + dims.plotH) + ' Z'
+      );
+      var bar = dPath ? svgEl('path', { d: dPath, fill: color }) : null;
+      if (bar) svg.appendChild(bar);
+      if (labelCaps && r.deposits > 0) {
+        var cap = svgEl('text', { x: xAt(i), y: y - 4, 'text-anchor': 'middle', 'font-size': 10, fill: cssVar('--text-secondary') });
+        cap.textContent = String(r.deposits);
+        svg.appendChild(cap);
+      }
+      // hit target spans the full band height, wider than the mark
+      var hit = svgEl('rect', { x: PAD.left + band * i, y: PAD.top, width: band, height: dims.plotH, fill: 'transparent' });
+      svg.appendChild(hit);
+      hit.addEventListener('pointermove', function (evt) {
+        if (bar) bar.setAttribute('opacity', '0.8');
+        tt.textContent = '';
+        tt.appendChild(el('div', 'tt-date', r.date));
+        tooltipRow(tt, color, fmt(r.deposits), r.deposits === 1 ? 'deposit' : 'deposits');
+        tt.style.display = 'block';
+        placeTooltip(tt, wrapper, evt.clientX, evt.clientY);
+      });
+      hit.addEventListener('pointerleave', function () {
+        if (bar) bar.removeAttribute('opacity');
+        tt.style.display = 'none';
+      });
+    });
+  }
+
+  function mergedDaily(d) {
+    var f = (d.funnel && d.funnel.daily) || [];
+    var dep = (d.deposits && d.deposits.daily) || [];
+    if (!f.length && !dep.length) return [];
+    var byDate = new Map();
+    f.forEach(function (r) { byDate.set(r.date, { date: r.date, visits: r.visits, clicks: r.clicks, confirmations: r.confirmations, deposits: 0 }); });
+    dep.forEach(function (r) {
+      var row = byDate.get(r.date) || { date: r.date, visits: 0, clicks: 0, confirmations: 0, deposits: 0 };
+      row.deposits = r.deposits;
+      byDate.set(r.date, row);
+    });
+    return [...byDate.values()].sort(function (a, b) { return a.date < b.date ? -1 : 1; });
+  }
+
+  function renderCharts(d) {
+    var daily = mergedDaily(d);
+    if (!daily.length) {
+      $('line-chart').textContent = 'No data yet.';
+      $('bar-chart').textContent = 'No data yet.';
+      $('line-legend').textContent = '';
+      return;
+    }
+    renderLineChart(daily);
+    renderBarChart(daily);
+  }
+
+  function renderDailyTable(d) {
+    var box = $('daily-table');
+    box.textContent = '';
+    var daily = mergedDaily(d);
+    if (!daily.length) { box.appendChild(el('p', 'empty', 'No data yet.')); return; }
+    var table = el('table');
+    var thead = el('thead');
+    var hr = el('tr');
+    ['Date', 'Visits', 'Deposit clicks', 'Confirmations', 'Deposits'].forEach(function (h, i) {
+      hr.appendChild(el('th', i ? 'num' : '', h));
+    });
+    thead.appendChild(hr);
+    table.appendChild(thead);
+    var tbody = el('tbody');
+    daily.forEach(function (r) {
+      var tr = el('tr');
+      tr.appendChild(el('td', '', r.date));
+      [r.visits, r.clicks, r.confirmations, r.deposits].forEach(function (v) { tr.appendChild(el('td', 'num', fmt(v))); });
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    box.appendChild(table);
+  }
+
+  function renderHealth(d) {
+    var list = $('health-list');
+    list.textContent = '';
+    if (!Array.isArray(d.health)) {
+      list.appendChild(el('li', 'empty', d.health && d.health.error || 'Health checks unavailable.'));
+      return;
+    }
+    var sorted = d.health.slice().sort(function (a, b) { return Number(a.ok) - Number(b.ok); });
+    sorted.forEach(function (c) {
+      var li = el('li');
+      li.appendChild(el('span', 'status-ic ' + (c.ok ? 'ok' : 'bad'), c.ok ? '✓' : '✕'));
+      li.appendChild(el('span', '', c.name));
+      if (c.detail) li.appendChild(el('span', 'status-detail', '— ' + c.detail));
+      list.appendChild(li);
+    });
+  }
+
+  function renderAlerts(d) {
+    var box = $('alerts');
+    box.textContent = '';
+    var a = d.alerts || {};
+    if (a.error) { box.appendChild(el('p', 'empty', a.error)); return; }
+    var undelivered = a.undelivered_events || [];
+    var errors = a.webhook_errors;
+    if (!undelivered.length && (!errors || !errors.length)) {
+      box.appendChild(el('p', 'empty', '✓ All clear — no undelivered Stripe events, no webhook errors.'));
+      return;
+    }
+    if (undelivered.length) {
+      box.appendChild(el('h2', '', 'Stripe events not yet delivered'));
+      var t1 = el('table');
+      var b1 = el('tbody');
+      undelivered.forEach(function (evt) {
+        var tr = el('tr');
+        tr.appendChild(el('td', '', new Date(evt.created * 1000).toLocaleString()));
+        tr.appendChild(el('td', '', evt.type));
+        tr.appendChild(el('td', '', evt.id));
+        b1.appendChild(tr);
+      });
+      t1.appendChild(b1);
+      box.appendChild(t1);
+    }
+    if (errors && errors.length) {
+      box.appendChild(el('h2', '', 'Recent webhook errors'));
+      var t2 = el('table');
+      var b2 = el('tbody');
+      errors.forEach(function (row) {
+        var tr = el('tr');
+        tr.appendChild(el('td', '', new Date(row.ts).toLocaleString()));
+        tr.appendChild(el('td', '', row.message));
+        b2.appendChild(tr);
+      });
+      t2.appendChild(b2);
+      box.appendChild(t2);
+    }
+  }
+
+  function renderRecent(d) {
+    var box = $('recent-deposits');
+    box.textContent = '';
+    var recent = d.deposits && d.deposits.recent;
+    if (!recent || !recent.length) { box.appendChild(el('p', 'empty', 'No deposits in this period.')); return; }
+    var table = el('table');
+    var thead = el('thead');
+    var hr = el('tr');
+    ['When', 'Name', 'Email', 'Amount'].forEach(function (h, i) { hr.appendChild(el('th', i === 3 ? 'num' : '', h)); });
+    thead.appendChild(hr);
+    table.appendChild(thead);
+    var tbody = el('tbody');
+    recent.forEach(function (r) {
+      var tr = el('tr');
+      tr.appendChild(el('td', '', new Date(r.created * 1000).toLocaleString()));
+      tr.appendChild(el('td', '', r.name || '—'));
+      tr.appendChild(el('td', '', r.email || '—'));
+      tr.appendChild(el('td', 'num', fmtUsd(r.amount_cents)));
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    box.appendChild(table);
+  }
+
+  /* ---------- wire up ---------- */
+  $('token-go').addEventListener('click', function () {
+    var v = $('token-input').value.trim();
+    if (!v) return;
+    setToken(v);
+    load();
+  });
+  $('token-input').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('token-go').click(); });
+  $('refresh').addEventListener('click', load);
+  $('signout').addEventListener('click', function () { setToken(''); state.data = null; showGate(''); });
+  document.querySelectorAll('.filters button').forEach(function (b) {
+    b.addEventListener('click', function () { state.days = Number(b.dataset.days); load(); });
+  });
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function () {
+    if (state.data) render();
+  });
+  state.timer = setInterval(function () { if (state.data && !document.hidden) load(); }, 5 * 60 * 1000);
+
+  if (getToken()) load(); else showGate('');
+})();
+</script>
+</body>
+</html>

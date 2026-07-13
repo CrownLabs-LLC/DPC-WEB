@@ -47,6 +47,41 @@ function isPaidFoundingDeposit(session) {
   return true;
 }
 
+// Best-effort ops log feeding the /dashboard alerts panel. Uses the Supabase
+// service role key (bypasses RLS on webhook_logs). Must never fail the
+// webhook: silently skips when unconfigured, swallows its own errors.
+async function logOps(level, message, fields = {}) {
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!supabaseUrl || !serviceKey) return;
+  try {
+    // Hard 1.5s budget: a stalled Supabase must never eat the webhook's 15s
+    // limit — a timeout here would make Stripe retry an already-sent email.
+    const resp = await fetch(`${supabaseUrl}/rest/v1/webhook_logs`, {
+      method: 'POST',
+      signal: AbortSignal.timeout(1500),
+      headers: {
+        apikey: serviceKey,
+        authorization: `Bearer ${serviceKey}`,
+        'content-type': 'application/json',
+        prefer: 'return=minimal',
+      },
+      body: JSON.stringify({
+        level,
+        message: String(message).slice(0, 500),
+        event_id: fields.event_id || null,
+        session_id: fields.session_id || null,
+        detail: fields.detail || null,
+      }),
+    });
+    if (!resp.ok) {
+      console.error('stripe-webhook: ops log rejected (non-fatal)', resp.status);
+    }
+  } catch (err) {
+    console.error('stripe-webhook: ops log failed (non-fatal)', err?.message || err);
+  }
+}
+
 // The Resend v4 SDK does not throw on API errors — it resolves with
 // { data, error }. Every Resend call must check `error` explicitly or
 // failures are silently swallowed.
@@ -199,7 +234,9 @@ export default async function handler(req, res) {
     return res.status(500).json({ received: false, error: 'Server not configured', missing: missingEnv });
   }
 
-  const stripe = new Stripe(stripeSecretKey);
+  // Fail a hung Stripe call before Vercel kills the function (15s limit),
+  // so Stripe gets a clean 500-and-retry instead of an opaque timeout.
+  const stripe = new Stripe(stripeSecretKey, { timeout: 10000 });
   const resend = new Resend(resendApiKey);
   const signature = req.headers['stripe-signature'];
 
@@ -223,6 +260,9 @@ export default async function handler(req, res) {
       `stripe-webhook: mode mismatch — received a ${eventMode}-mode event but STRIPE_SECRET_KEY is a ${keyMode}-mode key. ` +
       'Set the matching Stripe secret key in Vercel env vars and redeploy.'
     );
+    await logOps('error', `mode mismatch: ${eventMode}-mode event with ${keyMode}-mode API key`, {
+      event_id: event.id,
+    });
     return res.status(500).json({
       received: false,
       error: `Server misconfigured: ${eventMode}-mode event with ${keyMode}-mode API key`,
@@ -232,6 +272,13 @@ export default async function handler(req, res) {
   try {
     if (event.type === 'checkout.session.completed') {
       const result = await handleCheckoutSessionCompleted(stripe, resend, event.data.object);
+      if (result.processed) {
+        await logOps('info', 'founding deposit processed', {
+          event_id: event.id,
+          session_id: result.session_id,
+          detail: { email: result.email },
+        });
+      }
       return res.status(200).json({ received: true, ...result });
     }
 
@@ -243,6 +290,10 @@ export default async function handler(req, res) {
       code: err?.code,
       statusCode: err?.statusCode,
     }, err);
+    await logOps('error', `handler failed: ${String(err?.message || err)}`, {
+      event_id: event?.id,
+      detail: { type: err?.type || null, code: err?.code || null, statusCode: err?.statusCode || null },
+    });
     return res.status(500).json({
       received: false,
       error: 'Webhook handler failed',

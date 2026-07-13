@@ -132,6 +132,78 @@ stripe listen --forward-to localhost:3000/api/stripe-webhook
 
 Copy the printed `whsec_…` into a local `.env` for `vercel dev`.
 
+### 2c. Ops dashboard — /dashboard
+
+A token-protected operations view at `https://www.downtownpourcollective.com/dashboard`:
+site visits and deposit-CTA clicks (first-party, anonymous), deposits pulled
+live from Stripe, undelivered Stripe webhook events, webhook error log, and
+health checks that verify the Stripe/Resend/Supabase keys actually work (not
+just that they're set — this is the check that catches a rotated key).
+
+Setup (one time):
+
+1. **Supabase** → open the project → SQL Editor → paste the contents of
+   [`db/setup.sql`](db/setup.sql) → Run. Creates `site_events` (anonymous
+   funnel beacons; anon key can only append) and `webhook_logs` (service-role
+   only).
+2. **Supabase** → Project Settings → API: copy the **Project URL**, the
+   **anon public** key, and the **service_role** key (keep the last one secret).
+3. **Vercel** → Environment Variables (Production):
+   - `SUPABASE_URL` — the project URL
+   - `SUPABASE_ANON_KEY` — anon public key (append-only funnel writes)
+   - `SUPABASE_SERVICE_ROLE_KEY` — service role key (dashboard reads, webhook log)
+   - `DASHBOARD_TOKEN` — any long random string; this is the dashboard password
+     (e.g. run `openssl rand -hex 24`). Store it in 1Password.
+4. Redeploy.
+
+Acceptance: visit `/dashboard`, enter the token → KPI tiles, charts, and every
+health row green. Browse the homepage and click a deposit CTA → the visit and
+click appear on the dashboard within a minute. The dashboard works without the
+Supabase vars too (Stripe/health sections only) — funnel tiles show
+"not configured" until step 3 is done.
+
+Privacy note: the funnel beacons store event name, page, path, and referrer
+hostname only — no cookies, IPs, or identifiers — matching the privacy
+policy's "aggregated, de-identified analytics".
+
+### 2d. Hourly health alert — /api/health-check
+
+A Vercel cron (see `vercel.json` → `crons`) hits `/api/health-check` at the
+top of every hour. It runs the same live checks as the dashboard and **emails
+an alert** to `nick@` + `hello@` (override with `ALERT_TO` / `ALERT_FROM`)
+when anything is wrong: a missing env var, a Stripe key that fails a
+capability the app needs (reading Checkout Sessions, PaymentIntents, or
+Events), a test-mode key, a rejected Resend key, Supabase unreachable, Stripe
+events undelivered for over 30 minutes, or webhook errors logged in the last
+75 minutes. Every probe has a bounded timeout so the checker survives the
+outages it exists to detect.
+
+Alerts are throttled **per incident**: the set of problems is fingerprinted,
+and the same fingerprint stays quiet for 6 hours while a *different* problem
+alerts immediately (tracked in `webhook_logs`, so throttling needs the
+Supabase vars; without them every hourly run emails while a problem persists).
+
+Setup (required — the endpoint refuses to run without it):
+
+1. **Vercel** → Environment Variables (Production): add `CRON_SECRET` — any
+   long random string (`openssl rand -hex 24`). Vercel automatically sends it
+   as a Bearer token on cron invocations; the endpoint **fails closed** with
+   503 when the secret is missing and 401 for any caller without it (the
+   dashboard token also works, for manual runs).
+2. Redeploy. Vercel → Project → Settings → Cron Jobs should list the hourly
+   job after the deploy. (Hourly schedules require the Pro plan.)
+
+To test it: `curl -H "Authorization: Bearer $CRON_SECRET" https://www.downtownpourcollective.com/api/health-check`
+returns `{"ok":true,...}` when everything is green.
+
+Known limitations: (1) if `RESEND_API_KEY` itself is the thing that breaks,
+the alert email can't send — the failure still shows on the dashboard and in
+the Vercel cron logs; (2) the Stripe probes cover **read** capabilities only —
+the webhook also needs Checkout Session **write** (it stamps `welcome_sent`
+metadata), which has no safe probe. If you ever switch to a restricted key,
+grant Checkout Sessions read *and* write, PaymentIntents read, and Events
+read.
+
 ---
 
 ## 3. GA4 — measurement ID

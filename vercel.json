@@ -8,13 +8,29 @@
   "functions": {
     "api/stripe-webhook.js": {
       "maxDuration": 15
+    },
+    "api/dashboard-data.js": {
+      "maxDuration": 15
+    },
+    "api/health-check.js": {
+      "maxDuration": 15
     }
   },
+  "crons": [
+    { "path": "/api/health-check", "schedule": "0 * * * *" }
+  ],
   "headers": [
     {
       "source": "/reserved-confirmation",
       "headers": [
         { "key": "X-Robots-Tag", "value": "noindex, nofollow" }
+      ]
+    },
+    {
+      "source": "/dashboard",
+      "headers": [
+        { "key": "X-Robots-Tag", "value": "noindex, nofollow" },
+        { "key": "Cache-Control", "value": "no-store" }
       ]
     },
     {
