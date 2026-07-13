@@ -627,6 +627,19 @@ img, svg { display: block; max-width: 100%; }
   color: rgba(13, 27, 42, 0.6);
   margin: 0;
 }
+.kit__gallery {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin: 28px auto 18px;
+}
+.kit__photo {
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
+  border: 1px solid rgba(196, 163, 90, 0.35);
+  display: block;
+}
 
 /* ============ SECTION 8 · PICK YOUR CIRCLE ============ */
 .circle {
@@ -644,59 +657,6 @@ img, svg { display: block; max-width: 100%; }
   text-align: center;
   max-width: 600px;
   margin: 20px auto 0;
-  text-wrap: pretty;
-}
-.stack {
-  max-width: 700px;
-  margin: 48px auto 0;
-  background: var(--liquid);
-  border: 0.5px solid rgba(196, 163, 90, 0.25);
-  border-radius: 12px;
-  padding: 36px 40px;
-}
-.stack__lede {
-  font-family: var(--body);
-  font-weight: 400;
-  font-size: 16px;
-  line-height: 1.75;
-  color: rgba(245, 240, 232, 0.75);
-  margin: 0 0 28px;
-  text-wrap: pretty;
-}
-.stack__lede strong { color: var(--cream); font-weight: 500; }
-.stack__list { margin: 0; padding: 0; list-style: none; }
-.stack__list li {
-  position: relative;
-  padding: 16px 0 16px 24px;
-  border-bottom: 0.5px solid rgba(196, 163, 90, 0.12);
-}
-.stack__list li:last-child { border-bottom: 0; padding-bottom: 0; }
-.stack__list li:first-child { padding-top: 0; }
-.stack__list li::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 22px;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--gold);
-}
-.stack__list li:first-child::before { top: 6px; }
-.stack__item-label {
-  font-family: var(--body);
-  font-weight: 500;
-  font-size: 15px;
-  color: var(--cream);
-  display: block;
-  margin-bottom: 3px;
-}
-.stack__item-body {
-  font-family: var(--body);
-  font-weight: 400;
-  font-size: 15px;
-  line-height: 1.5;
-  color: rgba(245, 240, 232, 0.8);
   text-wrap: pretty;
 }
 .circle__grid {
@@ -1138,10 +1098,10 @@ img, svg { display: block; max-width: 100%; }
   .offer__title { font-size: 28px; }
   .offer__intro { font-size: 16px; }
   .offer__cards { grid-template-columns: 1fr; gap: 16px; }
+  .kit__gallery { grid-template-columns: 1fr; gap: 14px; max-width: 340px; }
 
   .circle { padding: 72px 24px; }
   .circle__title { font-size: 26px; }
-  .stack { padding: 28px 24px; }
   .circle__grid { grid-template-columns: 1fr; gap: 16px; }
   .circle-card { padding: 32px 28px; }
 
@@ -1374,8 +1334,8 @@ img, svg { display: block; max-width: 100%; }
             <path d="M9 38h30"></path>
           </svg>
         </div>
-        <h3 class="also-item__title">BIRTHDAY CHOICE</h3>
-        <p class="also-item__body">In your birthday month, pick a bonus Pour. An extra for yourself, or one to sponsor a guest.</p>
+        <h3 class="also-item__title">BIRTHDAY POUR</h3>
+        <p class="also-item__body">During your birthday month, a sixth Pour lands in your account. An extra one, on us.</p>
       </div>
       <div class="also-item">
         <div class="also-item__icon" aria-hidden="true">
@@ -1457,8 +1417,14 @@ img, svg { display: block; max-width: 100%; }
 
     <div class="kit">
       <h3 class="kit__label">WHAT YOU GET WHEN YOU CONFIRM</h3>
-      <p class="kit__body">When you confirm your Founding Membership, you receive a wooden keepsake box. Inside is a rocks glass, etched with a map of downtown Livermore on one side and the Downtown Pour Collective mark on the other.</p>
-      <!-- Welcome Kit value line blocked pending Nick's recalculated value. Do not publish the old value. -->
+      <p class="kit__body">When you confirm your Founding Membership, you receive the Founding Welcome Kit: a set of rocks glasses, each etched with a map of downtown Livermore on one side and the Downtown Pour Collective mark on the other, presented in a latched wooden keepsake box bearing the DPC seal. Made for Founding Members only.</p>
+      <div class="kit__gallery">
+        <img class="kit__photo" src="assets/kit/glass-map.jpg" alt="Etched rocks glass showing a detailed map of downtown Livermore" width="800" height="800" loading="lazy">
+        <img class="kit__photo" src="assets/kit/glass-logo.jpg" alt="Etched rocks glass showing the Downtown Pour Collective mark" width="800" height="800" loading="lazy">
+        <img class="kit__photo" src="assets/kit/keepsake-box.jpg" alt="Wooden keepsake box with the Downtown Pour Collective seal" width="800" height="800" loading="lazy">
+      </div>
+      <!-- $50 Welcome Kit value published per Brandi, 2026-07-13. -->
+      <p class="kit__value">A $50 value, included with your Founding Membership.</p>
     </div>
   </div>
 </section>
@@ -1528,41 +1494,7 @@ img, svg { display: block; max-width: 100%; }
 
     <p class="circle__fineprint">Your $49 deposit holds your founding slot and is refundable until we launch on August 1. Reservations close at launch. From launch through the end of August, you confirm your membership to lock in your founding status. When you confirm, your $49 goes toward your Welcome Kit and Activation Fee. If you do not confirm by the end of August, your deposit is refunded and your slot is released.</p>
 
-    <p class="circle__sub">Every Circle is the same membership — the only difference is what you drink and the price. Here&#8217;s what every one includes:</p>
-
-    <div class="stack">
-      <p class="stack__lede">Every month, five Pours at downtown Livermore&#8217;s best spots. Over twelve months, that is <strong>60 Pours</strong> at the places you already love going.</p>
-      <ul class="stack__list">
-        <li>
-          <span class="stack__item-label">The Coaster Passport</span>
-          <span class="stack__item-body">36 original collectible coasters over 12 months, created by a Livermore artist. Picked up at the venues you visit. Included with membership.</span>
-        </li>
-        <li>
-          <span class="stack__item-label">Your Welcome Kit</span>
-          <span class="stack__item-body">A wooden keepsake box with an etched rocks glass inside.</span>
-        </li>
-        <li>
-          <span class="stack__item-label">A birthday Pour, on us</span>
-          <span class="stack__item-body">During your birthday month, a sixth Pour lands in your account. Keep it for yourself or bring someone along and hand it to them. The choice is yours.</span>
-        </li>
-        <li>
-          <span class="stack__item-label">The Introduction</span>
-          <span class="stack__item-body">Four times a year, a Pour lands in your account so you can bring someone new into the Collective. It never comes out of your own five. Their first Pour is on us.</span>
-        </li>
-        <li>
-          <span class="stack__item-label">A seat at every member event</span>
-          <span class="stack__item-body">The Kickoff Party in August to kick things off, the Annual celebration to close out the first year, and every gathering we add in between.</span>
-        </li>
-        <li>
-          <span class="stack__item-label">Your name in the Founder Ledger</span>
-          <span class="stack__item-body">The permanent record of the people who started all of this.</span>
-        </li>
-        <li>
-          <span class="stack__item-label">Five years of founding pricing</span>
-          <span class="stack__item-body">Locked from the day you activate, regardless of where standard pricing goes.</span>
-        </li>
-      </ul>
-    </div>
+    <p class="circle__sub">Every Circle is the same membership — the only difference is what you drink and the price. Five Pours a month, the Coaster Passport, your Welcome Kit, a birthday Pour, four Introduction Pours a year, every member event, your name in the Founder Ledger, and five years of founding pricing. All of it, in every Circle.</p>
   </div>
 </section>
 
@@ -1585,6 +1517,14 @@ img, svg { display: block; max-width: 100%; }
       <div class="partner-tile">
         <img class="partner-tile__logo" src="assets/partners/the-cheese-parlor.png" alt="The Cheese Parlor logo" width="438" height="460" loading="lazy">
         <p class="partner-tile__name">The Cheese Parlor</p>
+      </div>
+      <div class="partner-tile">
+        <img class="partner-tile__logo" src="assets/partners/stampede.png" alt="Stampede Bar &amp; Grill logo" width="371" height="300" loading="lazy">
+        <p class="partner-tile__name">Stampede Bar &amp; Grill</p>
+      </div>
+      <div class="partner-tile">
+        <img class="partner-tile__logo" src="assets/partners/calamari-bistro-bar.png" alt="Calamari Bistro &amp; Bar logo" width="450" height="300" loading="lazy">
+        <p class="partner-tile__name">Calamari Bistro &amp; Bar</p>
       </div>
     </div>
     <p class="partners__foot">New Founding Partners are added every week between now and launch. Every confirmed venue is named here and live in the app the day it signs.</p>
