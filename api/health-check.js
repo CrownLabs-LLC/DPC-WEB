@@ -27,11 +27,17 @@ import {
   supabaseInsert,
   listUndeliveredEvents,
   healthChecks,
+  withTimeout,
 } from './lib/ops-checks.js';
 
 const UNDELIVERED_GRACE_MIN = 30;
 const RECENT_ERROR_WINDOW_MIN = 75;
 const THROTTLE_HOURS = 6;
+// End-to-end budget: gather is ~4s (bounded probes, concurrent). The alert
+// path below gets 2s + 4s + 2s, keeping the worst case around 12s — inside
+// the 15s function limit with margin to return the diagnostic response.
+const THROTTLE_IO_TIMEOUT_MS = 2000;
+const ALERT_SEND_TIMEOUT_MS = 4000;
 const DASHBOARD_URL = 'https://www.downtownpourcollective.com/dashboard';
 const ALERT_TO = (process.env.ALERT_TO || process.env.NOTIFY_DEPOSIT_TO || 'nick@downtownpourcollective.com,hello@downtownpourcollective.com')
   .split(',')
@@ -129,10 +135,13 @@ async function recentlyAlerted(now, fingerprint) {
   if (!supabaseConfigured()) return false;
   try {
     const sinceIso = new Date(now - THROTTLE_HOURS * 3600000).toISOString();
+    // Filter by fingerprint server-side so a burst of distinct incidents can
+    // never push a still-active fingerprint out of the result window.
     const rows = await supabaseSelect(
-      `webhook_logs?select=ts,detail&source=eq.health-check&level=eq.info&ts=gte.${sinceIso}&order=ts.desc&limit=10`
+      `webhook_logs?select=ts&source=eq.health-check&level=eq.info&detail->>fingerprint=eq.${fingerprint}&ts=gte.${sinceIso}&limit=1`,
+      THROTTLE_IO_TIMEOUT_MS
     );
-    return rows.some((row) => row?.detail?.fingerprint === fingerprint);
+    return rows.length > 0;
   } catch {
     return false; // if the throttle store is down, prefer alerting to silence
   }
@@ -141,7 +150,9 @@ async function recentlyAlerted(now, fingerprint) {
 async function sendAlert(problems, now) {
   const resend = new Resend(process.env.RESEND_API_KEY);
   const items = problems.map((p) => `<li>${escapeHtml(p.text)}</li>`).join('');
-  const result = await resend.emails.send({
+  // Bounded: during a Resend outage this very request would otherwise hang
+  // past the function deadline and the handler would never report anything.
+  const result = await withTimeout(resend.emails.send({
     from: ALERT_FROM,
     to: ALERT_TO,
     subject: `⚠ DPC ops alert: ${problems.length} problem${problems.length === 1 ? '' : 's'} detected`,
@@ -153,7 +164,7 @@ async function sendAlert(problems, now) {
       <p>You'll get at most one email every ${THROTTLE_HOURS} hours for this same set of problems;
       a different problem alerts immediately.</p>
     `,
-  });
+  }), ALERT_SEND_TIMEOUT_MS, 'resend.emails.send');
   if (result?.error) {
     throw new Error(`alert email failed: ${result.error.message || result.error.name || 'resend error'}`);
   }
@@ -184,22 +195,26 @@ export default async function handler(req, res) {
 
   if (problems.length) {
     console.error('health-check: problems detected', problems.map((p) => p.text));
+    // When the gather phase already established Supabase is down, skip the
+    // throttle read/write entirely — they would only burn deadline budget.
+    // Trade-off: during a Supabase outage the alert repeats hourly.
+    const supabaseDown = problems.some((p) => p.key === 'check:Supabase reachable');
     if (!process.env.RESEND_API_KEY) {
       alertError = 'cannot email: RESEND_API_KEY missing';
-    } else if (await recentlyAlerted(now, fingerprint)) {
+    } else if (!supabaseDown && (await recentlyAlerted(now, fingerprint))) {
       throttled = true;
     } else {
       try {
         await sendAlert(problems, now);
         alerted = true;
-        if (supabaseConfigured()) {
+        if (supabaseConfigured() && !supabaseDown) {
           try {
             await supabaseInsert('webhook_logs', {
               level: 'info',
               source: 'health-check',
               message: 'alert email sent',
               detail: { fingerprint, keys: problems.map((p) => p.key), problems: problems.map((p) => p.text) },
-            });
+            }, THROTTLE_IO_TIMEOUT_MS);
           } catch (err) {
             console.error('health-check: could not record alert (throttle may not apply)', err?.message || err);
           }

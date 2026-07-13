@@ -19,9 +19,9 @@ export function supabaseConfigured() {
   return Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
 }
 
-export async function supabaseSelect(pathAndQuery) {
+export async function supabaseSelect(pathAndQuery, timeoutMs = PROBE_TIMEOUT_MS) {
   const resp = await fetch(`${process.env.SUPABASE_URL}/rest/v1/${pathAndQuery}`, {
-    signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
+    signal: AbortSignal.timeout(timeoutMs),
     headers: {
       apikey: process.env.SUPABASE_SERVICE_ROLE_KEY,
       authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
@@ -31,10 +31,10 @@ export async function supabaseSelect(pathAndQuery) {
   return resp.json();
 }
 
-export async function supabaseInsert(table, row) {
+export async function supabaseInsert(table, row, timeoutMs = PROBE_TIMEOUT_MS) {
   const resp = await fetch(`${process.env.SUPABASE_URL}/rest/v1/${table}`, {
     method: 'POST',
-    signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
+    signal: AbortSignal.timeout(timeoutMs),
     headers: {
       apikey: process.env.SUPABASE_SERVICE_ROLE_KEY,
       authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,

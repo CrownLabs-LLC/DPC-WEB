@@ -77,30 +77,32 @@ function mockStripeHttps({ keyOk = true, staleEvent = false } = {}) {
   };
 }
 
-// fetch mock for Resend + Supabase; records sent alert emails.
-function mockFetch({ priorAlertFingerprint = null, recentWebhookErrors = false } = {}, sentEmails) {
+// fetch mock for Resend + Supabase; records sent alert emails + throttle reads.
+function mockFetch({ priorAlertFingerprint = null, recentWebhookErrors = false, supabaseDown = false, hangEmail = false } = {}, sentEmails, stats) {
   return async (url, opts) => {
     const u = String(url);
     if (u.includes('api.resend.com/domains')) {
       return new Response(JSON.stringify({ data: { data: [] } }), { status: 200, headers: { 'content-type': 'application/json' } });
     }
     if (u.includes('api.resend.com/emails')) {
+      if (hangEmail) return new Promise(() => {}); // stalled Resend: never settles
       sentEmails.push(JSON.parse(opts.body));
       return new Response(JSON.stringify({ id: 'email_mock' }), { status: 200, headers: { 'content-type': 'application/json' } });
     }
-    if (u.includes('/rest/v1/webhook_logs')) {
-      if (opts?.method === 'POST') return new Response(null, { status: 201 });
-      if (u.includes('source=eq.health-check')) {
-        const rows = priorAlertFingerprint
-          ? [{ ts: new Date().toISOString(), detail: { fingerprint: priorAlertFingerprint } }]
-          : [];
-        return new Response(JSON.stringify(rows), { status: 200, headers: { 'content-type': 'application/json' } });
+    if (u.includes('/rest/v1/')) {
+      if (supabaseDown) return new Response('unavailable', { status: 503 });
+      if (u.includes('/rest/v1/webhook_logs')) {
+        if (opts?.method === 'POST') return new Response(null, { status: 201 });
+        if (u.includes('source=eq.health-check')) {
+          stats.throttleReads += 1;
+          const requested = u.match(/fingerprint=eq\.([0-9a-f]+)/)?.[1];
+          const rows = requested && requested === priorAlertFingerprint ? [{ ts: new Date().toISOString() }] : [];
+          return new Response(JSON.stringify(rows), { status: 200, headers: { 'content-type': 'application/json' } });
+        }
+        return new Response(JSON.stringify(
+          recentWebhookErrors ? [{ ts: new Date().toISOString(), message: 'handler failed: boom' }] : []
+        ), { status: 200, headers: { 'content-type': 'application/json' } });
       }
-      return new Response(JSON.stringify(
-        recentWebhookErrors ? [{ ts: new Date().toISOString(), message: 'handler failed: boom' }] : []
-      ), { status: 200, headers: { 'content-type': 'application/json' } });
-    }
-    if (u.includes('/rest/v1/site_events')) {
       return new Response(JSON.stringify([]), { status: 200, headers: { 'content-type': 'application/json' } });
     }
     throw new Error('unexpected fetch: ' + u);
@@ -111,16 +113,23 @@ async function run(mockOpts = {}, envTweaks = null, reqHeaders = { authorization
   setHealthyEnv();
   if (envTweaks) envTweaks();
   const sentEmails = [];
+  const stats = { throttleReads: 0 };
   const origFetch = globalThis.fetch;
   const origHttps = https.request;
-  globalThis.fetch = mockFetch(mockOpts, sentEmails);
+  globalThis.fetch = mockFetch(mockOpts, sentEmails, stats);
   https.request = mockStripeHttps(mockOpts);
   const handler = await fresh();
   const { res, out } = mockRes();
+  // withTimeout/AbortSignal timers are unref'ed; socketless mocks would let
+  // the event loop drain before they fire, so hold the loop open.
+  const keepAlive = setTimeout(() => {}, 20000);
+  const startedAt = Date.now();
   await handler({ method: 'GET', headers: reqHeaders }, res);
+  const elapsed = Date.now() - startedAt;
+  clearTimeout(keepAlive);
   globalThis.fetch = origFetch;
   https.request = origHttps;
-  return { out, sentEmails };
+  return { out, sentEmails, stats, elapsed };
 }
 
 // Case 1: CRON_SECRET missing -> fail closed with 503
@@ -183,6 +192,23 @@ let brokenKeyFingerprint = null;
 {
   const { out, sentEmails } = await run({ keyOk: false, priorAlertFingerprint: 'deadbeef00000000' });
   check('new incident alerts despite recent unrelated alert', out.body.alerted === true && sentEmails.length === 1, out.body);
+}
+
+// Case 10: Resend hangs on the alert send -> handler still returns before the
+// function deadline with alert_error populated (bounded by ALERT_SEND timeout)
+{
+  const { out, elapsed } = await run({ keyOk: false, hangEmail: true });
+  check('hanging alert send -> handler still returns 200', out.status === 200, out);
+  check('hanging alert send -> alert_error populated', /timed out/.test(out.body.alert_error || ''), out.body);
+  check('hanging alert send -> within time budget', elapsed < 10000, `took ${elapsed}ms`);
+}
+
+// Case 11: Supabase down -> throttle I/O skipped entirely, alert still sends
+{
+  const { out, sentEmails, stats } = await run({ supabaseDown: true });
+  check('supabase down flagged', out.body.problems.some((p) => p.includes('Supabase reachable')), out.body.problems);
+  check('supabase down -> alert still sent', out.body.alerted === true && sentEmails.length === 1, out.body);
+  check('supabase down -> throttle read skipped', stats.throttleReads === 0, stats);
 }
 
 process.exit(failures ? 1 : 0);
