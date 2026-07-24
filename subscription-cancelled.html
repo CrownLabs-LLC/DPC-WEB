@@ -1,0 +1,439 @@
+<!doctype html>
+<html lang="en-US">
+<head>
+<meta charset="UTF-8">
+<title>Checkout Incomplete | Downtown Pour Collective</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="description" content="Your Downtown Pour Collective membership checkout wasn’t completed. Return to membership options to try again, or contact us if you ran into a payment problem.">
+<link rel="canonical" href="https://www.downtownpourcollective.com/subscription-cancelled">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Barlow+Condensed:wght@600;700&family=Barlow:ital,wght@0,400;0,500;1,400" rel="stylesheet">
+<style>
+:root {
+  --navy: #0D1B2A; --liquid: #1E3A5A; --gold: #C4A35A; --gold-hover: #D4B370;
+  --gold-press: #B0915C; --gold-deep: #9C7E50; --cream: #F5F0E8; --muted-gray: #5A6475;
+  --display: 'Playfair Display', Georgia, serif;
+  --support: 'Barlow Condensed', 'Arial Narrow', sans-serif;
+  --body: 'Barlow', system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: var(--body);
+  background: var(--navy);
+  color: var(--cream);
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+svg { display: block; }
+a:focus-visible { outline: 2px solid rgba(196, 163, 90, 0.5); outline-offset: 4px; }
+
+.top {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background: var(--navy);
+  border-bottom: 1px solid rgba(196, 163, 90, 0.25);
+}
+.top__inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 32px;
+  height: 66px;
+}
+.top__home { display: flex; align-items: center; border: 0; text-decoration: none; }
+.top__lockup { height: 38px; width: auto; }
+.top__nav { display: flex; gap: 28px; align-items: center; }
+.top__nav a {
+  font-family: var(--support);
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(245, 240, 232, 0.72);
+  text-decoration: none;
+  padding: 4px 0;
+  transition: color 160ms ease;
+}
+.top__nav a:hover { color: var(--gold); }
+
+.page {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  padding: 72px 32px 80px;
+  position: relative;
+}
+.page__border {
+  position: absolute;
+  inset: 24px;
+  border: 1px solid rgba(196, 163, 90, 0.2);
+  pointer-events: none;
+}
+.confirm {
+  position: relative;
+  max-width: 640px;
+  text-align: center;
+  z-index: 1;
+}
+.confirm__lockup { width: 200px; height: auto; margin: 0 auto 40px; }
+.confirm__eyebrow {
+  font-family: var(--support);
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 0.4em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin: 0 0 24px;
+}
+.confirm__headline {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 44px;
+  line-height: 1.1;
+  color: var(--cream);
+  margin: 0;
+  text-wrap: balance;
+}
+.confirm__rule {
+  display: block;
+  width: 80px;
+  height: 2px;
+  background: var(--gold);
+  border: 0;
+  margin: 32px auto 36px;
+}
+.confirm__body p {
+  font-family: var(--body);
+  font-weight: 400;
+  font-size: 18px;
+  line-height: 1.7;
+  color: rgba(245, 240, 232, 0.85);
+  max-width: 600px;
+  margin: 0 auto 22px;
+  text-wrap: pretty;
+}
+.confirm__actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  margin-top: 40px;
+}
+.btn {
+  display: inline-block;
+  font-family: var(--support);
+  font-weight: 700;
+  font-size: 16px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  background: var(--gold);
+  color: var(--navy);
+  padding: 18px 36px;
+  border: 0;
+  border-radius: 4px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 200ms ease, transform 100ms ease;
+  min-height: 44px;
+}
+.btn:hover { background: var(--gold-press); }
+.btn:active { background: var(--gold-deep); transform: scale(0.98); }
+.btn:focus-visible { outline: 2px solid rgba(196, 163, 90, 0.5); outline-offset: 4px; }
+.btn--ghost {
+  background: transparent;
+  color: var(--cream);
+  border: 1px solid rgba(196, 163, 90, 0.55);
+}
+.btn--ghost:hover {
+  background: rgba(196, 163, 90, 0.12);
+  color: var(--cream);
+}
+.btn--ghost:active { background: rgba(196, 163, 90, 0.18); transform: scale(0.98); }
+.confirm__help {
+  font-family: var(--body);
+  font-weight: 400;
+  font-size: 14px;
+  color: rgba(245, 240, 232, 0.6);
+  margin: 12px 0 0;
+}
+.confirm__help a {
+  color: rgba(245, 240, 232, 0.75);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+}
+.confirm__help a:hover { color: var(--gold); }
+
+.footer { background: var(--navy); padding: 0 32px 40px; position: relative; z-index: 1; }
+.footer__divider {
+  border: 0;
+  height: 1px;
+  background: rgba(196, 163, 90, 0.25);
+  margin: 0 0 40px;
+}
+.footer__inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1.6fr 1fr 1fr;
+  gap: 48px;
+  align-items: start;
+}
+.footer__lockup { width: 180px; height: auto; margin-bottom: 20px; }
+.footer__brand-line {
+  font-family: var(--body);
+  font-size: 13px;
+  line-height: 1.7;
+  color: rgba(245, 240, 232, 0.55);
+  margin: 0;
+}
+.footer__head {
+  font-family: var(--support);
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.34em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin: 0 0 16px;
+}
+.footer__line {
+  font-family: var(--body);
+  font-size: 14px;
+  line-height: 1.7;
+  color: rgba(245, 240, 232, 0.8);
+  margin: 0;
+}
+.footer__line a { color: rgba(245, 240, 232, 0.8); text-decoration: none; transition: color 160ms ease; }
+.footer__line a:hover { color: var(--gold); }
+.footer__social { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+.footer__social a {
+  font-family: var(--body);
+  font-size: 14px;
+  color: rgba(245, 240, 232, 0.8);
+  text-decoration: none;
+  transition: color 160ms ease;
+}
+.footer__social a:hover { color: var(--gold-hover); }
+.footer__legal {
+  max-width: 1100px;
+  margin: 36px auto 0;
+  padding-top: 28px;
+  border-top: 1px solid rgba(245, 240, 232, 0.08);
+  font-family: var(--body);
+  font-size: 12px;
+  color: rgba(245, 240, 232, 0.4);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  justify-content: space-between;
+}
+.footer__legal-links a {
+  color: rgba(245, 240, 232, 0.45);
+  text-decoration: none;
+  margin: 0 4px;
+}
+.footer__legal-links a:hover { color: var(--gold); }
+
+.cookie {
+  position: fixed;
+  left: 16px;
+  right: 16px;
+  bottom: 16px;
+  z-index: 100;
+  max-width: 720px;
+  margin: 0 auto;
+  background: rgba(13, 27, 42, 0.96);
+  border: 1px solid rgba(196, 163, 90, 0.4);
+  border-radius: 6px;
+  padding: 18px 22px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+}
+.cookie[hidden] { display: none; }
+.cookie__text {
+  font-family: var(--body);
+  font-weight: 400;
+  font-size: 13px;
+  line-height: 1.6;
+  color: rgba(245, 240, 232, 0.85);
+  margin: 0;
+  flex: 1;
+}
+.cookie__text a { color: var(--gold); text-decoration: underline; text-underline-offset: 2px; }
+.cookie__accept {
+  flex-shrink: 0;
+  font-family: var(--support);
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  background: var(--gold);
+  color: var(--navy);
+  border: 0;
+  border-radius: 4px;
+  padding: 12px 24px;
+  min-height: 44px;
+  cursor: pointer;
+}
+.cookie__accept:hover { background: var(--gold-press); }
+
+@media (max-width: 767px) {
+  .top__inner { padding: 0 20px; height: 58px; }
+  .top__lockup { height: 32px; }
+  .top__nav { gap: 18px; }
+  .top__nav a { font-size: 11px; letter-spacing: 0.12em; }
+  .page { padding: 48px 24px 64px; }
+  .page__border { inset: 14px; }
+  .confirm__lockup { width: 170px; }
+  .confirm__headline { font-size: 30px; }
+  .confirm__body p { font-size: 16px; }
+  .btn { width: 100%; text-align: center; }
+  .footer { padding: 0 24px 32px; }
+  .footer__inner { grid-template-columns: 1fr; gap: 36px; text-align: center; justify-items: center; }
+  .footer__lockup { margin: 0 auto 16px; }
+  .footer__social { align-items: center; }
+  .cookie { flex-direction: column; align-items: stretch; gap: 14px; text-align: center; }
+  .cookie__accept { width: 100%; }
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="top__inner">
+    <a class="top__home" href="/" aria-label="Downtown Pour Collective home">
+      <svg class="top__lockup" viewBox="0 0 540 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Downtown Pour Collective">
+        <defs><clipPath id="lk-glass"><path d="M -16,-46 L 16,-46 L 22,37 L -22,37 Z"/></clipPath></defs>
+        <g transform="translate(74,100) rotate(38)">
+          <path d="M -22,-54 L 22,-54 L 28,44 L -28,44 Z" fill="#C4A35A"/>
+          <path d="M -16,-46 L 16,-46 L 22,37 L -22,37 Z" fill="#0D1B2A"/>
+          <g clip-path="url(#lk-glass)">
+            <path d="M -21,23 L 19,-9 L 22,37 L -22,37 Z" fill="#1E3A5A"/>
+            <line x1="-24" y1="23" x2="22" y2="-10" stroke="#C4A35A" stroke-width="1.4" stroke-linecap="round" opacity="0.75"/>
+          </g>
+          <rect x="-24" y="-58" width="48" height="7" rx="2" fill="#C4A35A"/>
+          <rect x="-32" y="42" width="64" height="8" rx="2" fill="#C4A35A"/>
+        </g>
+        <text x="178" y="74" font-family="'Barlow Condensed',sans-serif" font-weight="700" font-size="17" letter-spacing="7" fill="#C4A35A">DOWNTOWN</text>
+        <text x="174" y="124" font-family="'Playfair Display',serif" font-weight="700" font-size="54" letter-spacing="2" fill="#F5F0E8">POUR</text>
+        <text x="178" y="150" font-family="'Barlow Condensed',sans-serif" font-weight="700" font-size="17" letter-spacing="7" fill="#C4A35A">COLLECTIVE</text>
+      </svg>
+    </a>
+    <nav class="top__nav" aria-label="Primary">
+      <a href="/">Home</a>
+    </nav>
+  </div>
+</header>
+
+<main class="page">
+  <div class="page__border" aria-hidden="true"></div>
+  <div class="confirm">
+    <svg class="confirm__lockup" viewBox="0 0 680 470" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Downtown Pour Collective primary lockup logo">
+      <defs>
+        <clipPath id="c-glass"><path d="M -23,-62 L 23,-62 L 30,50 L -30,50 Z"></path></clipPath>
+      </defs>
+      <g transform="translate(340,150) rotate(38)">
+        <path d="M -30,-72 L 30,-72 L 38,58 L -38,58 Z" fill="#C4A35A"></path>
+        <path d="M -23,-62 L 23,-62 L 30,50 L -30,50 Z" fill="#0D1B2A"></path>
+        <g clip-path="url(#c-glass)">
+          <path d="M -28.8,30.5 L 26.1,-12.4 L 30,50 L -30,50 Z" fill="#1E3A5A"></path>
+          <line x1="-32" y1="30.5" x2="30" y2="-14" stroke="#C4A35A" stroke-width="1.8" stroke-linecap="round" opacity="0.75"></line>
+        </g>
+        <rect x="-32" y="-77" width="64" height="9" rx="3" fill="#C4A35A"></rect>
+        <rect x="-42" y="56" width="84" height="10" rx="3" fill="#C4A35A"></rect>
+      </g>
+      <line x1="210" y1="258" x2="470" y2="258" stroke="#C4A35A" stroke-width="0.6" opacity="0.4"></line>
+      <text x="340" y="278" text-anchor="middle" font-family="'Barlow Condensed',sans-serif" font-weight="700" font-size="22" letter-spacing="10" fill="#C4A35A">DOWNTOWN</text>
+      <text x="340" y="338" text-anchor="middle" font-family="'Playfair Display',serif" font-weight="700" font-size="68" letter-spacing="3" fill="#F5F0E8">POUR</text>
+      <text x="340" y="364" text-anchor="middle" font-family="'Barlow Condensed',sans-serif" font-weight="700" font-size="22" letter-spacing="10" fill="#C4A35A">COLLECTIVE</text>
+      <line x1="210" y1="380" x2="470" y2="380" stroke="#C4A35A" stroke-width="0.6" opacity="0.4"></line>
+      <text x="340" y="402" text-anchor="middle" font-family="'Barlow Condensed',sans-serif" font-weight="600" font-size="13" letter-spacing="4" fill="#5A6475">LIVERMORE  ·  TRI-VALLEY</text>
+    </svg>
+
+    <p class="confirm__eyebrow">Checkout Incomplete</p>
+    <h1 class="confirm__headline">Your Membership Checkout Wasn’t Completed</h1>
+    <hr class="confirm__rule">
+    <div class="confirm__body">
+      <p>No worries. You can return to membership options and try again whenever you are ready.</p>
+      <p>If you started checkout, your founding reservation may still be held for a short time while the session is active. Nothing has been finalized on this visit.</p>
+      <p>Ran into a payment problem? Reach out and we will help you sort it out.</p>
+    </div>
+    <div class="confirm__actions">
+      <a class="btn" href="/#membership">Return to Membership Options</a>
+      <a class="btn btn--ghost" href="/">Return Home</a>
+      <p class="confirm__help">Questions or payment trouble? <a href="mailto:hello@downtownpourcollective.com">hello@downtownpourcollective.com</a></p>
+    </div>
+  </div>
+</main>
+
+<footer class="footer">
+  <hr class="footer__divider">
+  <div class="footer__inner">
+    <div>
+      <svg class="footer__lockup" viewBox="0 0 540 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Downtown Pour Collective horizontal lockup logo">
+        <defs>
+          <clipPath id="foot-glass-clip"><path d="M -16,-46 L 16,-46 L 22,37 L -22,37 Z"></path></clipPath>
+        </defs>
+        <g transform="translate(80,100) rotate(38)">
+          <path d="M -22,-54 L 22,-54 L 28,44 L -28,44 Z" fill="#C4A35A"></path>
+          <path d="M -16,-46 L 16,-46 L 22,37 L -22,37 Z" fill="#0D1B2A"></path>
+          <g clip-path="url(#foot-glass-clip)">
+            <path d="M -21,23 L 19,-9 L 22,37 L -22,37 Z" fill="#1E3A5A"></path>
+            <line x1="-24" y1="23" x2="22" y2="-10" stroke="#C4A35A" stroke-width="1.4" stroke-linecap="round" opacity="0.75"></line>
+          </g>
+          <rect x="-24" y="-58" width="48" height="7" rx="2" fill="#C4A35A"></rect>
+          <rect x="-32" y="42" width="64" height="8" rx="2" fill="#C4A35A"></rect>
+        </g>
+        <line x1="170" y1="36" x2="170" y2="164" stroke="#C4A35A" stroke-width="0.8" opacity="0.4"></line>
+        <text x="190" y="72" font-family="'Barlow Condensed',sans-serif" font-weight="700" font-size="18" letter-spacing="8" fill="#C4A35A">DOWNTOWN</text>
+        <text x="185" y="122" font-family="'Playfair Display',serif" font-weight="700" font-size="56" letter-spacing="2" fill="#F5F0E8">POUR</text>
+        <text x="190" y="148" font-family="'Barlow Condensed',sans-serif" font-weight="700" font-size="18" letter-spacing="8" fill="#C4A35A">COLLECTIVE</text>
+        <text x="190" y="170" font-family="'Barlow Condensed',sans-serif" font-weight="600" font-size="11" letter-spacing="3" fill="#5A6475">LIVERMORE · TRI-VALLEY</text>
+      </svg>
+      <p class="footer__brand-line">Downtown Pour Collective is a community of Table &amp; Town LLC.<br>Livermore, California.</p>
+    </div>
+    <div>
+      <p class="footer__head">CONTACT</p>
+      <p class="footer__line"><a href="mailto:hello@downtownpourcollective.com">hello@downtownpourcollective.com</a></p>
+    </div>
+    <div>
+      <p class="footer__head">FOLLOW</p>
+      <nav class="footer__social" aria-label="Social">
+        <a href="https://instagram.com/downtownpourcollective" target="_blank" rel="noopener">Instagram</a>
+        <a href="https://facebook.com/profile.php?id=61576618345988" target="_blank" rel="noopener">Facebook</a>
+        <a href="https://linkedin.com/company/downtown-pour-collective" target="_blank" rel="noopener">LinkedIn</a>
+      </nav>
+    </div>
+  </div>
+  <div class="footer__legal">
+    <div>&copy; 2026 Table &amp; Town LLC. All rights reserved.</div>
+    <div class="footer__legal-links">
+      <a href="/privacy">Privacy Policy</a>
+      <span aria-hidden="true">·</span>
+      <a href="/terms">Terms of Service</a>
+      <span aria-hidden="true">·</span>
+      <a href="/partners">For Operators</a>
+    </div>
+  </div>
+</footer>
+
+<div class="cookie" id="cookie-banner" role="region" aria-label="Cookie notice" hidden>
+  <p class="cookie__text">By using this site you agree to our use of analytics cookies. <a href="/privacy">Privacy Policy</a></p>
+  <button class="cookie__accept" type="button" id="cookie-accept">Accept</button>
+</div>
+<script src="assets/analytics.js"></script>
+<script>DPCAnalytics.init({ page: 'subscription-cancelled' });</script>
+</body>
+</html>
