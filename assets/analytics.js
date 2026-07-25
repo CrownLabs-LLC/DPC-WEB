@@ -75,6 +75,8 @@
 
   function track(event, params) {
     if (event === 'form_submit') sendEvent('form_submit');
+    if (event === 'join_submit') sendEvent('join_submit');
+    if (event === 'join_checkout_redirect') sendEvent('join_checkout_redirect');
     if (window.gtag) window.gtag('event', event, params || {});
   }
 
@@ -87,6 +89,9 @@
       if (page === 'member') initMemberTracking();
       else if (page === 'partners') initPartnersTracking();
       else if (page === 'confirmation') initConfirmationTracking();
+      else if (page === 'join') initJoinTracking();
+      else if (page === 'subscription-success') initSubscriptionSuccessTracking();
+      else if (page === 'subscription-cancelled') initSubscriptionCancelledTracking();
     });
   }
 
@@ -185,6 +190,29 @@
     track('founding_deposit_complete');
   }
 
+  function initJoinTracking() {
+    initScrollDepth();
+  }
+
+  var MEMBERSHIP_SUCCESS_KEY = 'dpc_membership_success_tracked';
+  var MEMBERSHIP_CANCEL_KEY = 'dpc_membership_cancel_tracked';
+
+  function initSubscriptionSuccessTracking() {
+    try {
+      if (sessionStorage.getItem(MEMBERSHIP_SUCCESS_KEY) === '1') return;
+      sessionStorage.setItem(MEMBERSHIP_SUCCESS_KEY, '1');
+    } catch (e) {}
+    track('membership_checkout_complete');
+  }
+
+  function initSubscriptionCancelledTracking() {
+    try {
+      if (sessionStorage.getItem(MEMBERSHIP_CANCEL_KEY) === '1') return;
+      sessionStorage.setItem(MEMBERSHIP_CANCEL_KEY, '1');
+    } catch (e) {}
+    track('membership_checkout_cancelled');
+  }
+
   function initCookieBanner() {
     var banner = document.getElementById('cookie-banner');
     var accept = document.getElementById('cookie-accept');
@@ -210,6 +238,22 @@
         else sessionStorage.setItem(DEPOSIT_BEACON_KEY, '1');
       } catch (e) {}
       if (send) sendEvent('deposit_confirmed');
+    }
+    if (config.page === 'subscription-success') {
+      var sendSuccess = true;
+      try {
+        if (sessionStorage.getItem('dpc_membership_success_beacon') === '1') sendSuccess = false;
+        else sessionStorage.setItem('dpc_membership_success_beacon', '1');
+      } catch (e) {}
+      if (sendSuccess) sendEvent('membership_checkout_complete');
+    }
+    if (config.page === 'subscription-cancelled') {
+      var sendCancel = true;
+      try {
+        if (sessionStorage.getItem('dpc_membership_cancel_beacon') === '1') sendCancel = false;
+        else sessionStorage.setItem('dpc_membership_cancel_beacon', '1');
+      } catch (e) {}
+      if (sendCancel) sendEvent('membership_checkout_cancelled');
     }
     initCookieBanner();
   }
