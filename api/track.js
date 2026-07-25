@@ -9,6 +9,10 @@ const ALLOWED_EVENTS = new Set([
   'deposit_click',
   'deposit_confirmed',
   'form_submit',
+  'join_submit',
+  'join_checkout_redirect',
+  'membership_checkout_complete',
+  'membership_checkout_cancelled',
 ]);
 const MAX_LEN = 200;
 

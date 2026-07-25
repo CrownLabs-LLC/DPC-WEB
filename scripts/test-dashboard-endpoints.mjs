@@ -78,6 +78,24 @@ process.env.SUPABASE_ANON_KEY = 'anon_test_key';
   check('track rejects unknown event, sends nothing', out.body.stored === false && !called, out);
 }
 
+// Case: join funnel events are allowlisted
+{
+  const calls = [];
+  const origFetch = globalThis.fetch;
+  globalThis.fetch = async (url, opts) => {
+    calls.push(JSON.parse(opts.body).event);
+    return new Response(null, { status: 201 });
+  };
+  const handler = await fresh('../api/track.js');
+  for (const event of ['join_submit', 'join_checkout_redirect', 'membership_checkout_complete', 'membership_checkout_cancelled']) {
+    const { res, out } = mockRes();
+    await handler({ method: 'POST', body: { event, page: 'join', path: '/join' } }, res);
+    check(`track allows ${event}`, out.status === 202 && out.body.stored === true, out);
+  }
+  globalThis.fetch = origFetch;
+  check('track join funnel posted 4 events', calls.length === 4, calls);
+}
+
 // Case: GET -> 405
 {
   const handler = await fresh('../api/track.js');
