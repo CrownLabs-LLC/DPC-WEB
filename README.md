@@ -10,6 +10,8 @@ supporting pages, deployed to Vercel.
 | `/privacy` | `privacy.html` | Privacy Policy |
 | `/terms` | `terms.html` | Terms of Service |
 | `/reserved-confirmation` | `reserved-confirmation.html` | Post-deposit confirmation (noindex) |
+| `/stripe-connect/refresh` | `stripe-connect/refresh.html` | Stripe Connect Account Link expired/invalid (noindex) |
+| `/stripe-connect/return` | `stripe-connect/return.html` | Stripe Connect Account Link return (noindex) |
 
 ## Stack
 - Static HTML/CSS/inline JS (no build step). Fonts from Google CDN.

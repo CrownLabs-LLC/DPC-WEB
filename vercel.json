@@ -45,6 +45,18 @@
       ]
     },
     {
+      "source": "/stripe-connect/refresh",
+      "headers": [
+        { "key": "X-Robots-Tag", "value": "noindex, nofollow" }
+      ]
+    },
+    {
+      "source": "/stripe-connect/return",
+      "headers": [
+        { "key": "X-Robots-Tag", "value": "noindex, nofollow" }
+      ]
+    },
+    {
       "source": "/dashboard",
       "headers": [
         { "key": "X-Robots-Tag", "value": "noindex, nofollow" },
