@@ -2,6 +2,7 @@
   "rewrites": [
     { "source": "/partners", "destination": "/partners.html" },
     { "source": "/privacy", "destination": "/privacy.html" },
+    { "source": "/support", "destination": "/support.html" },
     { "source": "/terms", "destination": "/terms.html" },
     { "source": "/reserved-confirmation", "destination": "/reserved-confirmation.html" },
     { "source": "/stripe-connect/refresh", "destination": "/stripe-connect/refresh.html" },
