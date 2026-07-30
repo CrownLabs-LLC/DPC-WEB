@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en-US">
+<head>
+<meta charset="UTF-8">
+<title>Member Support | Downtown Pour Collective</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Get help with your Downtown Pour Collective membership, account, billing, or Membership Pours.">
+<link rel="canonical" href="https://www.downtownpourcollective.com/support">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy: #0D1B2A;
+  --liquid: #1E3A5A;
+  --gold: #C4A35A;
+  --cream: #F5F0E8;
+  --display: 'Playfair Display', Georgia, serif;
+  --support: 'Barlow Condensed', 'Arial Narrow', sans-serif;
+  --body: 'Barlow', system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  min-height: 100vh;
+  font-family: var(--body);
+  color: var(--cream);
+  background:
+    radial-gradient(circle at 50% 0%, rgba(30, 58, 90, 0.9), transparent 52%),
+    var(--navy);
+  -webkit-font-smoothing: antialiased;
+}
+a { color: inherit; }
+a:focus-visible, .btn:focus-visible {
+  outline: 2px solid rgba(196, 163, 90, 0.75);
+  outline-offset: 4px;
+}
+.top {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  border-bottom: 1px solid rgba(196, 163, 90, 0.25);
+  background: rgba(13, 27, 42, 0.96);
+}
+.top__inner {
+  width: min(1080px, calc(100% - 40px));
+  min-height: 68px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+.brand {
+  font-family: var(--support);
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 0.22em;
+  text-decoration: none;
+  text-transform: uppercase;
+}
+.top__nav { display: flex; gap: 24px; }
+.top__nav a {
+  font-family: var(--support);
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.14em;
+  text-decoration: none;
+  text-transform: uppercase;
+  color: rgba(245, 240, 232, 0.75);
+}
+.top__nav a:hover { color: var(--gold); }
+.page {
+  width: min(860px, calc(100% - 40px));
+  margin: 0 auto;
+  padding: 88px 0 96px;
+}
+.eyebrow {
+  margin: 0 0 18px;
+  font-family: var(--support);
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 0.34em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+h1 {
+  max-width: 720px;
+  margin: 0;
+  font-family: var(--display);
+  font-size: clamp(42px, 7vw, 68px);
+  line-height: 1.02;
+}
+.lede {
+  max-width: 680px;
+  margin: 28px 0 0;
+  font-size: 20px;
+  line-height: 1.65;
+  color: rgba(245, 240, 232, 0.8);
+}
+.support-card {
+  margin-top: 48px;
+  padding: clamp(28px, 5vw, 48px);
+  border: 1px solid rgba(196, 163, 90, 0.38);
+  border-radius: 8px;
+  background: rgba(245, 240, 232, 0.055);
+}
+.support-card h2 {
+  margin: 0 0 14px;
+  font-family: var(--display);
+  font-size: 30px;
+}
+.support-card p {
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.65;
+  color: rgba(245, 240, 232, 0.78);
+}
+.btn {
+  display: inline-block;
+  margin-top: 28px;
+  padding: 16px 26px;
+  border-radius: 4px;
+  background: var(--gold);
+  color: var(--navy);
+  font-family: var(--support);
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: 0.14em;
+  text-decoration: none;
+  text-transform: uppercase;
+}
+.btn:hover { background: #D4B370; }
+.topics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 40px;
+}
+.topic {
+  padding: 24px;
+  border-top: 1px solid rgba(196, 163, 90, 0.35);
+  background: rgba(13, 27, 42, 0.4);
+}
+.topic h2 {
+  margin: 0 0 8px;
+  font-family: var(--support);
+  font-size: 18px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+.topic p {
+  margin: 0;
+  line-height: 1.55;
+  color: rgba(245, 240, 232, 0.7);
+}
+.legal {
+  margin-top: 52px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 22px;
+  font-size: 14px;
+  color: rgba(245, 240, 232, 0.62);
+}
+.legal a:hover { color: var(--gold); }
+@media (max-width: 640px) {
+  .top__inner { min-height: 62px; }
+  .top__nav { gap: 14px; }
+  .top__nav a { font-size: 12px; }
+  .page { padding-top: 64px; }
+  .topics { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="top__inner">
+    <a class="brand" href="/">Downtown Pour Collective</a>
+    <nav class="top__nav" aria-label="Primary">
+      <a href="/join">Membership</a>
+      <a href="/">Home</a>
+    </nav>
+  </div>
+</header>
+
+<main class="page">
+  <p class="eyebrow">Member Support</p>
+  <h1>We’re here to help.</h1>
+  <p class="lede">Questions about your account, membership, billing, or a Pour? Send our support team a note and include the email address connected to your membership.</p>
+
+  <section class="support-card" aria-labelledby="contact-support">
+    <h2 id="contact-support">Contact DPC Support</h2>
+    <p>Email is the fastest way to reach us. Please do not send passwords, payment-card details, or identity documents.</p>
+    <a class="btn" href="mailto:support@downtownpourcollective.com?subject=DPC%20Member%20Support">Email Support</a>
+  </section>
+
+  <div class="topics" aria-label="Support topics">
+    <section class="topic">
+      <h2>Account access</h2>
+      <p>Help with sign-in, password recovery, account claims, and profile information.</p>
+    </section>
+    <section class="topic">
+      <h2>Membership &amp; billing</h2>
+      <p>Questions about Circle membership, renewals, cancellation, and checkout.</p>
+    </section>
+    <section class="topic">
+      <h2>Membership Pours</h2>
+      <p>Help with assigned venues, redemption, or an unexpected Pour status.</p>
+    </section>
+    <section class="topic">
+      <h2>Privacy &amp; safety</h2>
+      <p>Report an account concern or ask how DPC handles your information.</p>
+    </section>
+  </div>
+
+  <nav class="legal" aria-label="Legal and company links">
+    <span>&copy; 2026 Table &amp; Town LLC</span>
+    <a href="/privacy">Privacy Policy</a>
+    <a href="/terms">Terms of Service</a>
+    <a href="/partners">For Operators</a>
+  </nav>
+</main>
+</body>
+</html>
