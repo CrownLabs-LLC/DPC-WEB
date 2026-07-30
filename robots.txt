@@ -1,5 +1,6 @@
 User-agent: *
 Allow: /
 Disallow: /reserved-confirmation
+Disallow: /stripe-connect/
 
 Sitemap: https://www.downtownpourcollective.com/sitemap.xml
