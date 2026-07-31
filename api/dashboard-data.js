@@ -18,6 +18,20 @@ import {
 
 const DEPOSIT_AMOUNT_CENTS = 4900;
 const DAY_MS = 24 * 60 * 60 * 1000;
+const JOIN_ERROR_CODES = new Set([
+  'turnstile_unavailable',
+  'turnstile_incomplete',
+  'network',
+  'unknown',
+  'CHECKOUT_NOT_ENABLED',
+  'FOUNDING_UNAVAILABLE',
+  'SIGN_IN_REQUIRED',
+  'RATE_LIMITED',
+  'CHALLENGE_FAILED',
+  'LEGAL_VERSIONS_NOT_CURRENT',
+  'MEMBER_NOT_ELIGIBLE',
+  'DEPOSITOR_CONFIRMATION_INVALID',
+]);
 // Business days are Pacific — the collective is in Livermore, CA.
 const DAY_FMT = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Los_Angeles' });
 
@@ -51,17 +65,40 @@ async function funnelSection(days, now) {
   if (!supabaseConfigured()) return { configured: false };
   const currentStart = now - days * DAY_MS;
   const prevStart = now - 2 * days * DAY_MS;
-  const rows = await supabaseSelect(
-    `site_events?select=ts,event&ts=gte.${new Date(prevStart).toISOString()}&order=ts.desc&limit=20000`
-  );
+  const since = new Date(prevStart).toISOString();
+  const [funnelRows, errorRows] = await Promise.all([
+    supabaseSelect(
+      `site_events?select=ts,event&event=in.(page_view,deposit_click,deposit_confirmed)&ts=gte.${since}&order=ts.desc&limit=20000`
+    ),
+    supabaseSelect(
+      `site_events?select=ts,event,error_code&event=eq.join_error&ts=gte.${since}&order=ts.desc&limit=20000`
+    ),
+  ]);
+  const rows = [...funnelRows, ...errorRows];
   const daily = emptyDailyMap(days, now);
-  const totals = { visits: 0, clicks: 0, confirmations: 0 };
-  const prev = { visits: 0, clicks: 0, confirmations: 0 };
+  const totals = {
+    visits: 0,
+    clicks: 0,
+    confirmations: 0,
+    join_errors: 0,
+    join_error_codes: Object.create(null),
+  };
+  const prev = { visits: 0, clicks: 0, confirmations: 0, join_errors: 0 };
   const field = { page_view: 'visits', deposit_click: 'clicks', deposit_confirmed: 'confirmations' };
   for (const row of rows) {
+    const ts = Date.parse(row.ts);
+    if (row.event === 'join_error') {
+      if (ts >= currentStart) {
+        totals.join_errors += 1;
+        const code = JOIN_ERROR_CODES.has(row.error_code) ? row.error_code : 'unknown';
+        totals.join_error_codes[code] = (totals.join_error_codes[code] || 0) + 1;
+      } else {
+        prev.join_errors += 1;
+      }
+      continue;
+    }
     const key = field[row.event];
     if (!key) continue;
-    const ts = Date.parse(row.ts);
     if (ts >= currentStart) {
       totals[key] += 1;
       const bucket = daily.get(dayKey(ts));
@@ -70,7 +107,13 @@ async function funnelSection(days, now) {
       prev[key] += 1;
     }
   }
-  return { configured: true, daily: [...daily.values()], totals, prev, truncated: rows.length >= 20000 };
+  return {
+    configured: true,
+    daily: [...daily.values()],
+    totals,
+    prev,
+    truncated: funnelRows.length >= 20000 || errorRows.length >= 20000,
+  };
 }
 
 // Deposits straight from Stripe — the money ground truth, independent of our
