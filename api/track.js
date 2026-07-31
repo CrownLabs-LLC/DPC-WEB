@@ -13,6 +13,8 @@ const ALLOWED_EVENTS = new Set([
   'join_checkout_redirect',
   'membership_checkout_complete',
   'membership_checkout_cancelled',
+  'partner_subscription_checkout_submitted',
+  'partner_subscription_checkout_cancelled',
 ]);
 const MAX_LEN = 200;
 
