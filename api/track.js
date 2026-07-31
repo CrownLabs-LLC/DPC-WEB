@@ -16,6 +16,20 @@ const ALLOWED_EVENTS = new Set([
   'membership_checkout_complete',
   'membership_checkout_cancelled',
 ]);
+const ALLOWED_ERROR_CODES = new Set([
+  'turnstile_unavailable',
+  'turnstile_incomplete',
+  'network',
+  'unknown',
+  'CHECKOUT_NOT_ENABLED',
+  'FOUNDING_UNAVAILABLE',
+  'SIGN_IN_REQUIRED',
+  'RATE_LIMITED',
+  'CHALLENGE_FAILED',
+  'LEGAL_VERSIONS_NOT_CURRENT',
+  'MEMBER_NOT_ELIGIBLE',
+  'DEPOSITOR_CONFIRMATION_INVALID',
+]);
 const MAX_LEN = 200;
 
 function clean(value) {
@@ -37,7 +51,8 @@ function referrerHost(value) {
 function errorCode(value) {
   if (typeof value !== 'string') return null;
   const s = value.trim().slice(0, 100);
-  return /^[A-Za-z0-9_.:-]{1,100}$/.test(s) ? s : null;
+  if (!/^[A-Za-z0-9_.:-]{1,100}$/.test(s)) return null;
+  return ALLOWED_ERROR_CODES.has(s) ? s : 'unknown';
 }
 
 function httpStatus(value) {
@@ -74,6 +89,16 @@ export default async function handler(req, res) {
   }
 
   try {
+    const payload = {
+      event,
+      page: clean(body?.page),
+      path: clean(body?.path),
+      referrer: referrerHost(body?.referrer),
+    };
+    if (event === 'join_error') {
+      payload.error_code = errorCode(body?.error_code);
+      payload.http_status = httpStatus(body?.http_status);
+    }
     const resp = await fetch(`${supabaseUrl}/rest/v1/site_events`, {
       method: 'POST',
       signal: AbortSignal.timeout(3000),
@@ -83,14 +108,7 @@ export default async function handler(req, res) {
         'content-type': 'application/json',
         prefer: 'return=minimal',
       },
-      body: JSON.stringify({
-        event,
-        page: clean(body?.page),
-        path: clean(body?.path),
-        referrer: referrerHost(body?.referrer),
-        error_code: event === 'join_error' ? errorCode(body?.error_code) : null,
-        http_status: event === 'join_error' ? httpStatus(body?.http_status) : null,
-      }),
+      body: JSON.stringify(payload),
     });
     if (!resp.ok) {
       console.error('track: supabase insert rejected', resp.status);

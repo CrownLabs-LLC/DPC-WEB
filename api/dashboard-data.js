@@ -18,6 +18,20 @@ import {
 
 const DEPOSIT_AMOUNT_CENTS = 4900;
 const DAY_MS = 24 * 60 * 60 * 1000;
+const JOIN_ERROR_CODES = new Set([
+  'turnstile_unavailable',
+  'turnstile_incomplete',
+  'network',
+  'unknown',
+  'CHECKOUT_NOT_ENABLED',
+  'FOUNDING_UNAVAILABLE',
+  'SIGN_IN_REQUIRED',
+  'RATE_LIMITED',
+  'CHALLENGE_FAILED',
+  'LEGAL_VERSIONS_NOT_CURRENT',
+  'MEMBER_NOT_ELIGIBLE',
+  'DEPOSITOR_CONFIRMATION_INVALID',
+]);
 // Business days are Pacific — the collective is in Livermore, CA.
 const DAY_FMT = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Los_Angeles' });
 
@@ -55,7 +69,13 @@ async function funnelSection(days, now) {
     `site_events?select=ts,event,error_code&ts=gte.${new Date(prevStart).toISOString()}&order=ts.desc&limit=20000`
   );
   const daily = emptyDailyMap(days, now);
-  const totals = { visits: 0, clicks: 0, confirmations: 0, join_errors: 0, join_error_codes: {} };
+  const totals = {
+    visits: 0,
+    clicks: 0,
+    confirmations: 0,
+    join_errors: 0,
+    join_error_codes: Object.create(null),
+  };
   const prev = { visits: 0, clicks: 0, confirmations: 0, join_errors: 0 };
   const field = { page_view: 'visits', deposit_click: 'clicks', deposit_confirmed: 'confirmations' };
   for (const row of rows) {
@@ -63,7 +83,7 @@ async function funnelSection(days, now) {
     if (row.event === 'join_error') {
       if (ts >= currentStart) {
         totals.join_errors += 1;
-        const code = row.error_code || 'unknown';
+        const code = JOIN_ERROR_CODES.has(row.error_code) ? row.error_code : 'unknown';
         totals.join_error_codes[code] = (totals.join_error_codes[code] || 0) + 1;
       } else {
         prev.join_errors += 1;

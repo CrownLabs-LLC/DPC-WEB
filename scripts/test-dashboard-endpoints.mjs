@@ -105,8 +105,8 @@ process.env.SUPABASE_ANON_KEY = 'anon_test_key';
   );
   const joinSubmit = calls.find((call) => call.event === 'join_submit');
   check(
-    'track never attaches error detail to non-error events',
-    joinSubmit?.error_code === null && joinSubmit?.http_status === null,
+    'track omits error detail from non-error events',
+    !Object.hasOwn(joinSubmit, 'error_code') && !Object.hasOwn(joinSubmit, 'http_status'),
     joinSubmit
   );
 }
@@ -125,12 +125,22 @@ process.env.SUPABASE_ANON_KEY = 'anon_test_key';
     method: 'POST',
     body: { event: 'join_error', error_code: 'contains user@example.com', http_status: 999 },
   }, res);
+  const second = mockRes();
+  await handler({
+    method: 'POST',
+    body: { event: 'join_error', error_code: 'constructor', http_status: 503 },
+  }, second.res);
   globalThis.fetch = origFetch;
   check('track accepts join_error with discarded unsafe detail', out.body.stored === true, out);
   check(
     'track discards unsafe failure metadata',
     calls[0]?.error_code === null && calls[0]?.http_status === null,
     calls[0]
+  );
+  check(
+    'track buckets arbitrary valid identifiers as unknown',
+    second.out.body.stored === true && calls[1]?.error_code === 'unknown' && calls[1]?.http_status === 503,
+    calls[1]
   );
 }
 
@@ -196,6 +206,8 @@ function mockDashboardFetch() {
         { ts: new Date(now - 3400e3).toISOString(), event: 'join_error', error_code: 'turnstile_unavailable' },
         { ts: new Date(now - 3300e3).toISOString(), event: 'join_error', error_code: 'turnstile_unavailable' },
         { ts: new Date(now - 3200e3).toISOString(), event: 'join_error', error_code: 'CHECKOUT_NOT_ENABLED' },
+        { ts: new Date(now - 3100e3).toISOString(), event: 'join_error', error_code: 'constructor' },
+        { ts: new Date(now - 3000e3).toISOString(), event: 'join_error', error_code: '__proto__' },
         { ts: new Date(now - 40 * 86400e3).toISOString(), event: 'page_view' },
         { ts: new Date(now - 40 * 86400e3).toISOString(), event: 'join_error', error_code: 'network' },
       ]), { status: 200, headers: { 'content-type': 'application/json' } });
@@ -251,9 +263,11 @@ process.env.SUPABASE_SERVICE_ROLE_KEY = 'service_test_key';
   check('funnel counts current period only', f?.totals?.visits === 2 && f?.totals?.clicks === 1, f?.totals);
   check('funnel previous period counted', f?.prev?.visits === 1, f?.prev);
   check('join errors counted by code', (
-    f?.totals?.join_errors === 3
+    f?.totals?.join_errors === 5
     && f?.totals?.join_error_codes?.turnstile_unavailable === 2
     && f?.totals?.join_error_codes?.CHECKOUT_NOT_ENABLED === 1
+    && f?.totals?.join_error_codes?.unknown === 2
+    && Object.values(f?.totals?.join_error_codes || {}).reduce((sum, count) => sum + count, 0) === 5
   ), f?.totals);
   check('previous join errors counted', f?.prev?.join_errors === 1, f?.prev);
   const dep = out.body?.deposits;

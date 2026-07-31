@@ -996,12 +996,24 @@ window.DPC_JOIN = {
     var existing = document.getElementById(TURNSTILE_SCRIPT_ID);
     if (existing) existing.remove();
     var script = document.createElement('script');
+    var completed = false;
+    var timeout;
+    function complete(callback) {
+      if (completed) return;
+      completed = true;
+      clearTimeout(timeout);
+      callback();
+    }
     script.id = TURNSTILE_SCRIPT_ID;
     script.async = true;
     script.defer = true;
     script.src = TURNSTILE_SCRIPT_SRC + '&retry=' + Date.now();
-    script.onload = renderTurnstile;
-    script.onerror = showTurnstileUnavailable;
+    script.onload = function () { complete(renderTurnstile); };
+    script.onerror = function () { complete(showTurnstileUnavailable); };
+    timeout = setTimeout(function () {
+      if (script.parentNode) script.remove();
+      complete(showTurnstileUnavailable);
+    }, TURNSTILE_MAX_LOAD_ATTEMPTS * 200);
     document.head.appendChild(script);
   }
 

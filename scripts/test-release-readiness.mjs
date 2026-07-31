@@ -29,7 +29,8 @@ assert.match(join, /function reloadTurnstileScript\(\)/);
 assert.match(join, /document\.createElement\('script'\)/);
 assert.match(join, /existing\.remove\(\)/);
 assert.match(join, /TURNSTILE_SCRIPT_SRC \+ '&retry=' \+ Date\.now\(\)/);
-assert.match(join, /script\.onerror = showTurnstileUnavailable/);
+assert.match(join, /script\.onerror = function \(\) \{ complete\(showTurnstileUnavailable\); \}/);
+assert.match(join, /TURNSTILE_MAX_LOAD_ATTEMPTS \* 200/);
 
 const configScript = join.match(
   /function dpcTurnstileSiteKeyForHost[\s\S]*?window\.DPC_JOIN = \{[\s\S]*?\n\};/,
@@ -66,9 +67,10 @@ assert.match(deploy, /Do not\s+deploy the matching web change until both checks 
 assert.match(analytics, /sendEvent\('join_error', params\)/);
 assert.match(analytics, /error_code:/);
 assert.match(analytics, /http_status:/);
-assert.match(trackApi, /event === 'join_error' \? errorCode/);
-assert.match(trackApi, /event === 'join_error' \? httpStatus/);
+assert.match(trackApi, /if \(event === 'join_error'\)/);
+assert.match(trackApi, /ALLOWED_ERROR_CODES\.has\(s\) \? s : 'unknown'/);
 assert.match(dashboardApi, /join_error_codes/);
+assert.match(dashboardApi, /Object\.create\(null\)/);
 assert.match(dashboard, /Join errors/);
 assert.match(dashboard, /CHECKOUT_NOT_ENABLED|join_error_codes/);
 

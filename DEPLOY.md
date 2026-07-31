@@ -307,6 +307,10 @@ against production Supabase. It widens the existing event allowlist and adds
 the nullable, constrained `error_code` and `http_status` columns. The SQL is
 idempotent.
 
+Merging to `main` triggers the Vercel production deployment. Apply and verify
+this SQL **before merging the PR**; there is no separate post-merge deployment
+window.
+
 Verify the database change before deploying the site:
 
 ```sql
