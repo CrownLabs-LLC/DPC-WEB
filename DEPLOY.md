@@ -262,10 +262,39 @@ You said you have these — copy them in and commit.
 
 Acceptance:
 - `https://www.downtownpourcollective.com/` loads.
-- `/partners`, `/privacy`, `/terms`, `/reserved-confirmation` all load without
+- `/partners`, `/privacy`, `/terms`, `/support`, `/reserved-confirmation` all load without
   the `.html` suffix.
 - `/partner` (singular) 301-redirects to `/partners`.
 - `/reserved-confirmation` returns `X-Robots-Tag: noindex, nofollow`.
+
+### 5a. Cloudflare Turnstile — membership checkout
+
+The public production site key is committed in `join.html`; the secret remains
+only in the production Supabase secret manager as `TURNSTILE_SECRET_KEY`.
+Production is hostname-bound to `www.downtownpourcollective.com` and the action
+`circle_checkout`. Preview and local hosts automatically use Cloudflare's
+published always-pass test key so the client flow can be checked without
+weakening the production widget.
+
+1. Cloudflare → Turnstile → `DPC Production Membership Checkout`.
+2. Confirm widget mode is Managed and the production hostname is
+   `www.downtownpourcollective.com`.
+3. Confirm Supabase production has `DPC_TURNSTILE_MODE=hostname_bound` and
+   `TURNSTILE_SECRET_KEY`; never copy the secret into this repository.
+4. On a Vercel preview, confirm the widget resolves and form submission reaches
+   the backend's expected disabled response.
+5. On production, confirm the real widget resolves. With the checkout backend
+   still disabled, submission must not create a Stripe Checkout Session.
+6. If the widget secret is rotated, update the Supabase secret, redeploy the
+   checkout function, and run the production no-op smoke before retiring the
+   previous secret. The public site key changes only when the widget itself is
+   replaced.
+
+Acceptance:
+- a blocked or failed Turnstile script produces a visible support fallback and
+  a `join_error` event with `error_code=turnstile_unavailable`;
+- preview QA uses the test key; production uses the hostname-bound public key;
+- no secret value appears in HTML, git history, analytics, or browser logs.
 
 ---
 
