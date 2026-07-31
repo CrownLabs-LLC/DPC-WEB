@@ -65,9 +65,16 @@ async function funnelSection(days, now) {
   if (!supabaseConfigured()) return { configured: false };
   const currentStart = now - days * DAY_MS;
   const prevStart = now - 2 * days * DAY_MS;
-  const rows = await supabaseSelect(
-    `site_events?select=ts,event,error_code&ts=gte.${new Date(prevStart).toISOString()}&order=ts.desc&limit=20000`
-  );
+  const since = new Date(prevStart).toISOString();
+  const [funnelRows, errorRows] = await Promise.all([
+    supabaseSelect(
+      `site_events?select=ts,event&event=in.(page_view,deposit_click,deposit_confirmed)&ts=gte.${since}&order=ts.desc&limit=20000`
+    ),
+    supabaseSelect(
+      `site_events?select=ts,event,error_code&event=eq.join_error&ts=gte.${since}&order=ts.desc&limit=20000`
+    ),
+  ]);
+  const rows = [...funnelRows, ...errorRows];
   const daily = emptyDailyMap(days, now);
   const totals = {
     visits: 0,
@@ -100,7 +107,13 @@ async function funnelSection(days, now) {
       prev[key] += 1;
     }
   }
-  return { configured: true, daily: [...daily.values()], totals, prev, truncated: rows.length >= 20000 };
+  return {
+    configured: true,
+    daily: [...daily.values()],
+    totals,
+    prev,
+    truncated: funnelRows.length >= 20000 || errorRows.length >= 20000,
+  };
 }
 
 // Deposits straight from Stripe — the money ground truth, independent of our

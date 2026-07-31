@@ -199,7 +199,7 @@ function mockDashboardFetch() {
     const u = String(url);
     if (u.includes('/rest/v1/site_events')) {
       const now = Date.now();
-      return new Response(JSON.stringify([
+      const rows = [
         { ts: new Date(now - 3600e3).toISOString(), event: 'page_view' },
         { ts: new Date(now - 3600e3).toISOString(), event: 'page_view' },
         { ts: new Date(now - 3500e3).toISOString(), event: 'deposit_click' },
@@ -210,7 +210,11 @@ function mockDashboardFetch() {
         { ts: new Date(now - 3000e3).toISOString(), event: 'join_error', error_code: '__proto__' },
         { ts: new Date(now - 40 * 86400e3).toISOString(), event: 'page_view' },
         { ts: new Date(now - 40 * 86400e3).toISOString(), event: 'join_error', error_code: 'network' },
-      ]), { status: 200, headers: { 'content-type': 'application/json' } });
+      ];
+      const filtered = u.includes('event=eq.join_error')
+        ? rows.filter((row) => row.event === 'join_error')
+        : rows.filter((row) => ['page_view', 'deposit_click', 'deposit_confirmed'].includes(row.event));
+      return new Response(JSON.stringify(filtered), { status: 200, headers: { 'content-type': 'application/json' } });
     }
     if (u.includes('/rest/v1/webhook_logs')) {
       return new Response(JSON.stringify([
@@ -270,6 +274,9 @@ process.env.SUPABASE_SERVICE_ROLE_KEY = 'service_test_key';
     && Object.values(f?.totals?.join_error_codes || {}).reduce((sum, count) => sum + count, 0) === 5
   ), f?.totals);
   check('previous join errors counted', f?.prev?.join_errors === 1, f?.prev);
+  check('funnel and join-error events use separate query budgets', (
+    f?.truncated === false
+  ), f);
   const dep = out.body?.deposits;
   check('deposits filter to $49 succeeded', dep?.count === 1 && dep?.amount_cents === 4900, dep);
   check('deposit email surfaced', dep?.recent?.[0]?.email === 'buyer@example.com', dep?.recent);

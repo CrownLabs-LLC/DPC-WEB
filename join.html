@@ -978,10 +978,11 @@ window.DPC_JOIN = {
         turnstileLoadAttempts = 0;
         turnstileFailureTracked = false;
         setError('');
-        turnstileSlot.innerHTML = '';
         if (window.turnstile) {
+          turnstileSlot.innerHTML = '';
           renderTurnstile();
         } else {
+          turnstileSlot.innerHTML = '<p role="status" style="margin:0;font-size:13px;color:rgba(245,240,232,0.78)">Loading security check…</p>';
           reloadTurnstileScript();
         }
       });

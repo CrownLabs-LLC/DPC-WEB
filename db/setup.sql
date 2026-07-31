@@ -38,20 +38,7 @@ alter table public.site_events add constraint site_events_event_check check (
 
 alter table public.site_events drop constraint if exists site_events_error_code_check;
 alter table public.site_events add constraint site_events_error_code_check check (
-  error_code is null or error_code in (
-    'turnstile_unavailable',
-    'turnstile_incomplete',
-    'network',
-    'unknown',
-    'CHECKOUT_NOT_ENABLED',
-    'FOUNDING_UNAVAILABLE',
-    'SIGN_IN_REQUIRED',
-    'RATE_LIMITED',
-    'CHALLENGE_FAILED',
-    'LEGAL_VERSIONS_NOT_CURRENT',
-    'MEMBER_NOT_ELIGIBLE',
-    'DEPOSITOR_CONFIRMATION_INVALID'
-  )
+  error_code is null or error_code ~ '^[A-Za-z0-9_.:-]{1,100}$'
 );
 
 alter table public.site_events drop constraint if exists site_events_http_status_check;

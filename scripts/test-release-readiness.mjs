@@ -31,6 +31,7 @@ assert.match(join, /existing\.remove\(\)/);
 assert.match(join, /TURNSTILE_SCRIPT_SRC \+ '&retry=' \+ Date\.now\(\)/);
 assert.match(join, /script\.onerror = function \(\) \{ complete\(showTurnstileUnavailable\); \}/);
 assert.match(join, /TURNSTILE_MAX_LOAD_ATTEMPTS \* 200/);
+assert.match(join, /<p role="status"[^>]*>Loading security check…<\/p>/);
 
 const configScript = join.match(
   /function dpcTurnstileSiteKeyForHost[\s\S]*?window\.DPC_JOIN = \{[\s\S]*?\n\};/,
@@ -71,8 +72,22 @@ assert.match(trackApi, /if \(event === 'join_error'\)/);
 assert.match(trackApi, /ALLOWED_ERROR_CODES\.has\(s\) \? s : 'unknown'/);
 assert.match(dashboardApi, /join_error_codes/);
 assert.match(dashboardApi, /Object\.create\(null\)/);
+assert.match(dashboardApi, /event=in\.\(page_view,deposit_click,deposit_confirmed\)/);
+assert.match(dashboardApi, /event=eq\.join_error/);
 assert.match(dashboard, /Join errors/);
+assert.match(dashboard, /Funnel data reached its query limit; counts are incomplete/);
 assert.match(dashboard, /CHECKOUT_NOT_ENABLED|join_error_codes/);
+
+function setValues(source, name) {
+  const body = source.match(new RegExp(`const ${name} = new Set\\(\\[([\\s\\S]*?)\\]\\);`))?.[1];
+  assert.ok(body, `${name} must remain a literal Set`);
+  return [...body.matchAll(/'([^']+)'/g)].map((match) => match[1]).sort();
+}
+assert.deepEqual(
+  setValues(trackApi, 'ALLOWED_ERROR_CODES'),
+  setValues(dashboardApi, 'JOIN_ERROR_CODES'),
+  'track and dashboard error-code allowlists must stay aligned'
+);
 
 for (const sql of [setupSql, migrationSql]) {
   assert.match(sql, /add column if not exists error_code text/);
@@ -83,6 +98,7 @@ for (const sql of [setupSql, migrationSql]) {
   assert.match(sql, /'membership_checkout_complete'/);
   assert.match(sql, /'membership_checkout_cancelled'/);
   assert.match(sql, /site_events_error_code_check/);
+  assert.match(sql, /error_code is null or error_code ~ '\^\[A-Za-z0-9_.:-\]\{1,100\}\$'/);
   assert.match(sql, /site_events_http_status_check/);
 }
 
