@@ -39,6 +39,20 @@
       ]
     },
     {
+      "source": "/partner-subscription-success",
+      "headers": [
+        { "key": "X-Robots-Tag", "value": "noindex, nofollow" },
+        { "key": "Cache-Control", "value": "no-store" }
+      ]
+    },
+    {
+      "source": "/partner-subscription-cancelled",
+      "headers": [
+        { "key": "X-Robots-Tag", "value": "noindex, nofollow" },
+        { "key": "Cache-Control", "value": "no-store" }
+      ]
+    },
+    {
       "source": "/join",
       "headers": [
         { "key": "X-Robots-Tag", "value": "noindex, nofollow" }

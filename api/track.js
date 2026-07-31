@@ -15,6 +15,8 @@ const ALLOWED_EVENTS = new Set([
   'join_error',
   'membership_checkout_complete',
   'membership_checkout_cancelled',
+  'partner_subscription_checkout_submitted',
+  'partner_subscription_checkout_cancelled',
 ]);
 const ALLOWED_ERROR_CODES = new Set([
   'turnstile_unavailable',

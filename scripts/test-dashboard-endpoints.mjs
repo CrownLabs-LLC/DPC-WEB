@@ -87,7 +87,15 @@ process.env.SUPABASE_ANON_KEY = 'anon_test_key';
     return new Response(null, { status: 201 });
   };
   const handler = await fresh('../api/track.js');
-  for (const event of ['join_submit', 'join_checkout_redirect', 'join_error', 'membership_checkout_complete', 'membership_checkout_cancelled']) {
+  for (const event of [
+    'join_submit',
+    'join_checkout_redirect',
+    'join_error',
+    'membership_checkout_complete',
+    'membership_checkout_cancelled',
+    'partner_subscription_checkout_submitted',
+    'partner_subscription_checkout_cancelled',
+  ]) {
     const { res, out } = mockRes();
     const detail = event === 'join_error'
       ? { error_code: 'turnstile_unavailable', http_status: 503 }
@@ -96,7 +104,7 @@ process.env.SUPABASE_ANON_KEY = 'anon_test_key';
     check(`track allows ${event}`, out.status === 202 && out.body.stored === true, out);
   }
   globalThis.fetch = origFetch;
-  check('track join funnel posted 5 events', calls.length === 5, calls);
+  check('track checkout funnels posted 7 events', calls.length === 7, calls);
   const joinError = calls.find((call) => call.event === 'join_error');
   check(
     'track persists sanitized join error detail',
