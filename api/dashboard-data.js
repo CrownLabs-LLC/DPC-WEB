@@ -52,16 +52,26 @@ async function funnelSection(days, now) {
   const currentStart = now - days * DAY_MS;
   const prevStart = now - 2 * days * DAY_MS;
   const rows = await supabaseSelect(
-    `site_events?select=ts,event&ts=gte.${new Date(prevStart).toISOString()}&order=ts.desc&limit=20000`
+    `site_events?select=ts,event,error_code&ts=gte.${new Date(prevStart).toISOString()}&order=ts.desc&limit=20000`
   );
   const daily = emptyDailyMap(days, now);
-  const totals = { visits: 0, clicks: 0, confirmations: 0 };
-  const prev = { visits: 0, clicks: 0, confirmations: 0 };
+  const totals = { visits: 0, clicks: 0, confirmations: 0, join_errors: 0, join_error_codes: {} };
+  const prev = { visits: 0, clicks: 0, confirmations: 0, join_errors: 0 };
   const field = { page_view: 'visits', deposit_click: 'clicks', deposit_confirmed: 'confirmations' };
   for (const row of rows) {
+    const ts = Date.parse(row.ts);
+    if (row.event === 'join_error') {
+      if (ts >= currentStart) {
+        totals.join_errors += 1;
+        const code = row.error_code || 'unknown';
+        totals.join_error_codes[code] = (totals.join_error_codes[code] || 0) + 1;
+      } else {
+        prev.join_errors += 1;
+      }
+      continue;
+    }
     const key = field[row.event];
     if (!key) continue;
-    const ts = Date.parse(row.ts);
     if (ts >= currentStart) {
       totals[key] += 1;
       const bucket = daily.get(dayKey(ts));

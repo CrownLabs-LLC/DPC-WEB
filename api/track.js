@@ -1,6 +1,7 @@
 // First-party, anonymous funnel beacon. Stores only the event name, page
-// label, path, and referrer hostname — no cookies, IPs, or user identifiers,
-// consistent with the privacy policy's "aggregated, de-identified analytics".
+// label, path, referrer hostname, and allowlisted join failure code/status —
+// no cookies, IPs, or user identifiers, consistent with the privacy policy's
+// "aggregated, de-identified analytics".
 //
 // Always responds 202: telemetry must never surface an error to the site.
 
@@ -31,6 +32,17 @@ function referrerHost(value) {
   } catch {
     return null;
   }
+}
+
+function errorCode(value) {
+  if (typeof value !== 'string') return null;
+  const s = value.trim().slice(0, 100);
+  return /^[A-Za-z0-9_.:-]{1,100}$/.test(s) ? s : null;
+}
+
+function httpStatus(value) {
+  const n = Number(value);
+  return Number.isInteger(n) && n >= 100 && n <= 599 ? n : null;
 }
 
 export default async function handler(req, res) {
@@ -76,6 +88,8 @@ export default async function handler(req, res) {
         page: clean(body?.page),
         path: clean(body?.path),
         referrer: referrerHost(body?.referrer),
+        error_code: event === 'join_error' ? errorCode(body?.error_code) : null,
+        http_status: event === 'join_error' ? httpStatus(body?.http_status) : null,
       }),
     });
     if (!resp.ok) {

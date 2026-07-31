@@ -83,17 +83,55 @@ process.env.SUPABASE_ANON_KEY = 'anon_test_key';
   const calls = [];
   const origFetch = globalThis.fetch;
   globalThis.fetch = async (url, opts) => {
-    calls.push(JSON.parse(opts.body).event);
+    calls.push(JSON.parse(opts.body));
     return new Response(null, { status: 201 });
   };
   const handler = await fresh('../api/track.js');
   for (const event of ['join_submit', 'join_checkout_redirect', 'join_error', 'membership_checkout_complete', 'membership_checkout_cancelled']) {
     const { res, out } = mockRes();
-    await handler({ method: 'POST', body: { event, page: 'join', path: '/join' } }, res);
+    const detail = event === 'join_error'
+      ? { error_code: 'turnstile_unavailable', http_status: 503 }
+      : {};
+    await handler({ method: 'POST', body: { event, page: 'join', path: '/join', ...detail } }, res);
     check(`track allows ${event}`, out.status === 202 && out.body.stored === true, out);
   }
   globalThis.fetch = origFetch;
   check('track join funnel posted 5 events', calls.length === 5, calls);
+  const joinError = calls.find((call) => call.event === 'join_error');
+  check(
+    'track persists sanitized join error detail',
+    joinError?.error_code === 'turnstile_unavailable' && joinError?.http_status === 503,
+    joinError
+  );
+  const joinSubmit = calls.find((call) => call.event === 'join_submit');
+  check(
+    'track never attaches error detail to non-error events',
+    joinSubmit?.error_code === null && joinSubmit?.http_status === null,
+    joinSubmit
+  );
+}
+
+// Case: unsafe or out-of-range failure metadata is discarded
+{
+  const calls = [];
+  const origFetch = globalThis.fetch;
+  globalThis.fetch = async (url, opts) => {
+    calls.push(JSON.parse(opts.body));
+    return new Response(null, { status: 201 });
+  };
+  const handler = await fresh('../api/track.js');
+  const { res, out } = mockRes();
+  await handler({
+    method: 'POST',
+    body: { event: 'join_error', error_code: 'contains user@example.com', http_status: 999 },
+  }, res);
+  globalThis.fetch = origFetch;
+  check('track accepts join_error with discarded unsafe detail', out.body.stored === true, out);
+  check(
+    'track discards unsafe failure metadata',
+    calls[0]?.error_code === null && calls[0]?.http_status === null,
+    calls[0]
+  );
 }
 
 // Case: GET -> 405
@@ -155,7 +193,11 @@ function mockDashboardFetch() {
         { ts: new Date(now - 3600e3).toISOString(), event: 'page_view' },
         { ts: new Date(now - 3600e3).toISOString(), event: 'page_view' },
         { ts: new Date(now - 3500e3).toISOString(), event: 'deposit_click' },
+        { ts: new Date(now - 3400e3).toISOString(), event: 'join_error', error_code: 'turnstile_unavailable' },
+        { ts: new Date(now - 3300e3).toISOString(), event: 'join_error', error_code: 'turnstile_unavailable' },
+        { ts: new Date(now - 3200e3).toISOString(), event: 'join_error', error_code: 'CHECKOUT_NOT_ENABLED' },
         { ts: new Date(now - 40 * 86400e3).toISOString(), event: 'page_view' },
+        { ts: new Date(now - 40 * 86400e3).toISOString(), event: 'join_error', error_code: 'network' },
       ]), { status: 200, headers: { 'content-type': 'application/json' } });
     }
     if (u.includes('/rest/v1/webhook_logs')) {
@@ -208,6 +250,12 @@ process.env.SUPABASE_SERVICE_ROLE_KEY = 'service_test_key';
   const f = out.body?.funnel;
   check('funnel counts current period only', f?.totals?.visits === 2 && f?.totals?.clicks === 1, f?.totals);
   check('funnel previous period counted', f?.prev?.visits === 1, f?.prev);
+  check('join errors counted by code', (
+    f?.totals?.join_errors === 3
+    && f?.totals?.join_error_codes?.turnstile_unavailable === 2
+    && f?.totals?.join_error_codes?.CHECKOUT_NOT_ENABLED === 1
+  ), f?.totals);
+  check('previous join errors counted', f?.prev?.join_errors === 1, f?.prev);
   const dep = out.body?.deposits;
   check('deposits filter to $49 succeeded', dep?.count === 1 && dep?.amount_cents === 4900, dep);
   check('deposit email surfaced', dep?.recent?.[0]?.email === 'buyer@example.com', dep?.recent);

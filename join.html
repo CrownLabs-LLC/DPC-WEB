@@ -18,7 +18,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Barlow+Condensed:wght@600;700&family=Barlow:ital,wght@0,400;0,500;1,400" rel="stylesheet">
-<script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
+<script id="turnstile-api-script" src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
 <style>
 :root {
   --navy: #0D1B2A; --liquid: #1E3A5A; --gold: #C4A35A; --gold-hover: #D4B370;
@@ -885,6 +885,8 @@ window.DPC_JOIN = {
   var turnstileFailureTracked = false;
   var submitting = false;
   var TURNSTILE_MAX_LOAD_ATTEMPTS = 50;
+  var TURNSTILE_SCRIPT_ID = 'turnstile-api-script';
+  var TURNSTILE_SCRIPT_SRC = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
 
   function offerType() {
     return Date.now() < (cfg.foundingEndsAtMs || 0) ? 'founding' : 'standard';
@@ -974,15 +976,33 @@ window.DPC_JOIN = {
       retryButton.addEventListener('click', function () {
         turnstileUnavailable = false;
         turnstileLoadAttempts = 0;
+        turnstileFailureTracked = false;
         setError('');
         turnstileSlot.innerHTML = '';
-        renderTurnstile();
+        if (window.turnstile) {
+          renderTurnstile();
+        } else {
+          reloadTurnstileScript();
+        }
       });
     }
     if (!turnstileFailureTracked) {
       turnstileFailureTracked = true;
       track('join_error', { error_code: 'turnstile_unavailable' });
     }
+  }
+
+  function reloadTurnstileScript() {
+    var existing = document.getElementById(TURNSTILE_SCRIPT_ID);
+    if (existing) existing.remove();
+    var script = document.createElement('script');
+    script.id = TURNSTILE_SCRIPT_ID;
+    script.async = true;
+    script.defer = true;
+    script.src = TURNSTILE_SCRIPT_SRC + '&retry=' + Date.now();
+    script.onload = renderTurnstile;
+    script.onerror = showTurnstileUnavailable;
+    document.head.appendChild(script);
   }
 
   function renderTurnstile() {

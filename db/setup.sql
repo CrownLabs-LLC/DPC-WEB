@@ -3,7 +3,8 @@
 -- Safe to re-run: everything is IF NOT EXISTS / re-created idempotently.
 
 -- Anonymous site funnel events, written by /api/track with the anon key.
--- Contains no identifying data: event name, page label, path, referrer host.
+-- Contains no identifying data: event name, page label, path, referrer host,
+-- and allowlisted join failure code/status.
 create table if not exists public.site_events (
   id bigint generated always as identity primary key,
   ts timestamptz not null default now(),
@@ -11,8 +12,38 @@ create table if not exists public.site_events (
   page text,
   path text,
   referrer text,
-  constraint site_events_event_check
-    check (event in ('page_view', 'deposit_click', 'deposit_confirmed', 'form_submit'))
+  error_code text,
+  http_status integer
+);
+
+-- CREATE TABLE IF NOT EXISTS does not update an existing production table.
+-- Keep these ALTER statements idempotent so this file remains safe to re-run.
+alter table public.site_events add column if not exists error_code text;
+alter table public.site_events add column if not exists http_status integer;
+
+alter table public.site_events drop constraint if exists site_events_event_check;
+alter table public.site_events add constraint site_events_event_check check (
+  event in (
+    'page_view',
+    'deposit_click',
+    'deposit_confirmed',
+    'form_submit',
+    'join_submit',
+    'join_checkout_redirect',
+    'join_error',
+    'membership_checkout_complete',
+    'membership_checkout_cancelled'
+  )
+);
+
+alter table public.site_events drop constraint if exists site_events_error_code_check;
+alter table public.site_events add constraint site_events_error_code_check check (
+  error_code is null or error_code ~ '^[A-Za-z0-9_.:-]{1,100}$'
+);
+
+alter table public.site_events drop constraint if exists site_events_http_status_check;
+alter table public.site_events add constraint site_events_http_status_check check (
+  http_status is null or http_status between 100 and 599
 );
 
 create index if not exists site_events_event_ts_idx on public.site_events (event, ts desc);

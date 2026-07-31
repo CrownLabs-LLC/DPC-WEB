@@ -143,7 +143,7 @@ just that they're set — this is the check that catches a rotated key).
 Setup (one time):
 
 1. **Supabase** → open the project → SQL Editor → paste the contents of
-   [`db/setup.sql`](db/setup.sql) → Run. Creates `site_events` (anonymous
+   [`db/setup.sql`](db/setup.sql) → Run. Creates or updates `site_events` (anonymous
    funnel beacons; anon key can only append) and `webhook_logs` (service-role
    only).
 2. **Supabase** → Project Settings → API: copy the **Project URL**, the
@@ -163,8 +163,9 @@ Supabase vars too (Stripe/health sections only) — funnel tiles show
 "not configured" until step 3 is done.
 
 Privacy note: the funnel beacons store event name, page, path, and referrer
-hostname only — no cookies, IPs, or identifiers — matching the privacy
-policy's "aggregated, de-identified analytics".
+hostname plus a sanitized join failure code and HTTP status only — no cookies,
+IPs, or identifiers — matching the privacy policy's "aggregated,
+de-identified analytics".
 
 ### 2d. Hourly health alert — /api/health-check
 
@@ -293,8 +294,39 @@ weakening the production widget.
 Acceptance:
 - a blocked or failed Turnstile script produces a visible support fallback and
   a `join_error` event with `error_code=turnstile_unavailable`;
+- after disabling content blocking, **Try security check again** issues a fresh
+  Turnstile script request without requiring a page reload;
 - preview QA uses the test key; production uses the hostname-bound public key;
 - no secret value appears in HTML, git history, analytics, or browser logs.
+
+### Join-error observability deployment order
+
+Before deploying the web commit that persists join failure details, run
+[`db/20260730_join_error_observability.sql`](db/20260730_join_error_observability.sql)
+against production Supabase. It widens the existing event allowlist and adds
+the nullable, constrained `error_code` and `http_status` columns. The SQL is
+idempotent.
+
+Verify the database change before deploying the site:
+
+```sql
+select column_name, data_type
+from information_schema.columns
+where table_schema = 'public'
+  and table_name = 'site_events'
+  and column_name in ('error_code', 'http_status')
+order by column_name;
+
+select pg_get_constraintdef(oid)
+from pg_constraint
+where conrelid = 'public.site_events'::regclass
+  and conname = 'site_events_event_check';
+```
+
+The first query must return both columns. The second must include
+`join_submit`, `join_checkout_redirect`, `join_error`,
+`membership_checkout_complete`, and `membership_checkout_cancelled`. Do not
+deploy the matching web change until both checks pass.
 
 ---
 

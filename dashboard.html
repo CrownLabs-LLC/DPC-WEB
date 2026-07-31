@@ -305,6 +305,14 @@ details.tableview summary { cursor: pointer; color: var(--text-secondary); font-
     if (f.configured && f.totals) {
       box.appendChild(tile('Visits', fmt(f.totals.visits), f.totals.visits, f.prev.visits, true));
       box.appendChild(tile('Deposit clicks', fmt(f.totals.clicks), f.totals.clicks, f.prev.clicks, true));
+      var joinErrorTile = tile('Join errors', fmt(f.totals.join_errors || 0), f.totals.join_errors || 0, f.prev.join_errors || 0, false);
+      var errorCodes = f.totals.join_error_codes || {};
+      var breakdown = Object.keys(errorCodes)
+        .sort(function (a, b) { return errorCodes[b] - errorCodes[a]; })
+        .map(function (code) { return code + ': ' + fmt(errorCodes[code]); })
+        .join(' · ');
+      joinErrorTile.appendChild(el('div', 'delta', breakdown || 'No join failures'));
+      box.appendChild(joinErrorTile);
     } else {
       var note = el('div', 'card tile');
       note.appendChild(el('div', 'label', 'Visits & clicks'));
