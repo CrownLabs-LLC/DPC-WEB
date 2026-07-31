@@ -18,7 +18,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Barlow+Condensed:wght@600;700&family=Barlow:ital,wght@0,400;0,500;1,400" rel="stylesheet">
-<script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
+<script id="turnstile-api-script" src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
 <style>
 :root {
   --navy: #0D1B2A; --liquid: #1E3A5A; --gold: #C4A35A; --gold-hover: #D4B370;
@@ -818,6 +818,8 @@ body:has(.cookie:not([hidden])) .page {
       <span aria-hidden="true">·</span>
       <a href="/terms">Terms of Service</a>
       <span aria-hidden="true">·</span>
+      <a href="/support">Support</a>
+      <span aria-hidden="true">·</span>
       <a href="/partners">For Operators</a>
     </div>
   </div>
@@ -830,11 +832,19 @@ body:has(.cookie:not([hidden])) .page {
 
 <script>
 /* Join page config — keep legalVersions aligned with circle-checkout REQUIRED_CHECKOUT_LEGAL_VERSIONS.
-   turnstileSiteKey: set the production Cloudflare Turnstile site key before go-live (W6 gate).
-   Until then checkout stays disabled server-side (CHECKOUT_NOT_ENABLED). */
+   Production uses the hostname-bound DPC Turnstile widget. Preview and local
+   hosts use Cloudflare's published always-pass test key for client-side QA.
+   Checkout remains disabled server-side pending the reviewed backend enablement. */
+function dpcTurnstileSiteKeyForHost(hostname) {
+  var isProductionJoinHost = hostname === 'www.downtownpourcollective.com'
+    || hostname === 'downtownpourcollective.com';
+  return isProductionJoinHost
+    ? '0x4AAAAAAECO2A5oKsePqsOg'
+    : '1x00000000000000000000AA';
+}
 window.DPC_JOIN = {
   checkoutEndpoint: 'https://ebiuspbgzggrdiaswpcc.supabase.co/functions/v1/circle-checkout',
-  turnstileSiteKey: 'REPLACE_ME',
+  turnstileSiteKey: dpcTurnstileSiteKeyForHost(window.location.hostname),
   turnstileAction: 'circle_checkout',
   legalVersions: {
     tos: '1.0',
@@ -870,7 +880,13 @@ window.DPC_JOIN = {
   var turnstileSlot = document.getElementById('turnstile-slot');
   var turnstileWidgetId = null;
   var turnstileToken = '';
+  var turnstileUnavailable = false;
+  var turnstileLoadAttempts = 0;
+  var turnstileFailureTracked = false;
   var submitting = false;
+  var TURNSTILE_MAX_LOAD_ATTEMPTS = 50;
+  var TURNSTILE_SCRIPT_ID = 'turnstile-api-script';
+  var TURNSTILE_SCRIPT_SRC = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
 
   function offerType() {
     return Date.now() < (cfg.foundingEndsAtMs || 0) ? 'founding' : 'standard';
@@ -946,6 +962,62 @@ window.DPC_JOIN = {
     }
   }
 
+  function showTurnstileUnavailable() {
+    if (turnstileWidgetId != null && window.turnstile && typeof window.turnstile.remove === 'function') {
+      try { window.turnstile.remove(turnstileWidgetId); } catch (e) {}
+    }
+    turnstileWidgetId = null;
+    turnstileToken = '';
+    turnstileUnavailable = true;
+    turnstileSlot.innerHTML = '<div style="font-size:13px;line-height:1.5;color:rgba(245,240,232,0.78)"><p style="margin:0 0 10px">The security check could not load. Disable content blocking, then try again, or <a href="/support" style="color:#D4AE62">contact support</a>.</p><button type="button" id="turnstile-retry" style="border:1px solid rgba(196,163,90,0.7);border-radius:4px;background:transparent;color:#F5F0E8;padding:8px 12px;font:inherit;cursor:pointer">Try security check again</button></div>';
+    setError('The security check could not load. Disable content blocking and try again.');
+    var retryButton = document.getElementById('turnstile-retry');
+    if (retryButton) {
+      retryButton.addEventListener('click', function () {
+        turnstileUnavailable = false;
+        turnstileLoadAttempts = 0;
+        turnstileFailureTracked = false;
+        setError('');
+        if (window.turnstile) {
+          turnstileSlot.innerHTML = '';
+          renderTurnstile();
+        } else {
+          turnstileSlot.innerHTML = '<p role="status" style="margin:0;font-size:13px;color:rgba(245,240,232,0.78)">Loading security check…</p>';
+          reloadTurnstileScript();
+        }
+      });
+    }
+    if (!turnstileFailureTracked) {
+      turnstileFailureTracked = true;
+      track('join_error', { error_code: 'turnstile_unavailable' });
+    }
+  }
+
+  function reloadTurnstileScript() {
+    var existing = document.getElementById(TURNSTILE_SCRIPT_ID);
+    if (existing) existing.remove();
+    var script = document.createElement('script');
+    var completed = false;
+    var timeout;
+    function complete(callback) {
+      if (completed) return;
+      completed = true;
+      clearTimeout(timeout);
+      callback();
+    }
+    script.id = TURNSTILE_SCRIPT_ID;
+    script.async = true;
+    script.defer = true;
+    script.src = TURNSTILE_SCRIPT_SRC + '&retry=' + Date.now();
+    script.onload = function () { complete(renderTurnstile); };
+    script.onerror = function () { complete(showTurnstileUnavailable); };
+    timeout = setTimeout(function () {
+      if (script.parentNode) script.remove();
+      complete(showTurnstileUnavailable);
+    }, TURNSTILE_MAX_LOAD_ATTEMPTS * 200);
+    document.head.appendChild(script);
+  }
+
   function renderTurnstile() {
     var key = cfg.turnstileSiteKey || '';
     if (!key || key.indexOf('REPLACE_ME') !== -1) {
@@ -953,18 +1025,31 @@ window.DPC_JOIN = {
       return;
     }
     if (!window.turnstile) {
+      turnstileLoadAttempts += 1;
+      if (turnstileLoadAttempts >= TURNSTILE_MAX_LOAD_ATTEMPTS) {
+        showTurnstileUnavailable();
+        return;
+      }
       setTimeout(renderTurnstile, 200);
       return;
     }
     turnstileSlot.innerHTML = '';
-    turnstileWidgetId = window.turnstile.render(turnstileSlot, {
-      sitekey: key,
-      action: cfg.turnstileAction || 'circle_checkout',
-      theme: 'dark',
-      callback: function (token) { turnstileToken = token || ''; },
-      'expired-callback': function () { turnstileToken = ''; },
-      'error-callback': function () { turnstileToken = ''; }
-    });
+    try {
+      turnstileWidgetId = window.turnstile.render(turnstileSlot, {
+        sitekey: key,
+        action: cfg.turnstileAction || 'circle_checkout',
+        theme: 'dark',
+        callback: function (token) {
+          turnstileToken = token || '';
+          turnstileUnavailable = false;
+          setError('');
+        },
+        'expired-callback': function () { turnstileToken = ''; },
+        'error-callback': showTurnstileUnavailable
+      });
+    } catch (error) {
+      showTurnstileUnavailable();
+    }
   }
 
   form.addEventListener('change', function (e) {
@@ -1010,8 +1095,13 @@ window.DPC_JOIN = {
       setError('Please accept the membership terms to continue.');
       return;
     }
+    if (needsTurnstile && turnstileUnavailable) {
+      setError('The security check could not load. Use “Try security check again” or contact support.');
+      return;
+    }
     if (needsTurnstile && !turnstileToken) {
       setError('Complete the security check to continue.');
+      track('join_error', { error_code: 'turnstile_incomplete' });
       return;
     }
     if (!cfg.checkoutEndpoint) {

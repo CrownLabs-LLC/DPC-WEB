@@ -83,24 +83,73 @@ process.env.SUPABASE_ANON_KEY = 'anon_test_key';
   const calls = [];
   const origFetch = globalThis.fetch;
   globalThis.fetch = async (url, opts) => {
-    calls.push(JSON.parse(opts.body).event);
+    calls.push(JSON.parse(opts.body));
     return new Response(null, { status: 201 });
   };
   const handler = await fresh('../api/track.js');
   for (const event of [
     'join_submit',
     'join_checkout_redirect',
+    'join_error',
     'membership_checkout_complete',
     'membership_checkout_cancelled',
     'partner_subscription_checkout_submitted',
     'partner_subscription_checkout_cancelled',
   ]) {
     const { res, out } = mockRes();
-    await handler({ method: 'POST', body: { event, page: 'join', path: '/join' } }, res);
+    const detail = event === 'join_error'
+      ? { error_code: 'turnstile_unavailable', http_status: 503 }
+      : {};
+    await handler({ method: 'POST', body: { event, page: 'join', path: '/join', ...detail } }, res);
     check(`track allows ${event}`, out.status === 202 && out.body.stored === true, out);
   }
   globalThis.fetch = origFetch;
-  check('track checkout funnels posted 6 events', calls.length === 6, calls);
+  check('track checkout funnels posted 7 events', calls.length === 7, calls);
+  const joinError = calls.find((call) => call.event === 'join_error');
+  check(
+    'track persists sanitized join error detail',
+    joinError?.error_code === 'turnstile_unavailable' && joinError?.http_status === 503,
+    joinError
+  );
+  const joinSubmit = calls.find((call) => call.event === 'join_submit');
+  check(
+    'track omits error detail from non-error events',
+    !Object.hasOwn(joinSubmit, 'error_code') && !Object.hasOwn(joinSubmit, 'http_status'),
+    joinSubmit
+  );
+}
+
+// Case: unsafe or out-of-range failure metadata is discarded
+{
+  const calls = [];
+  const origFetch = globalThis.fetch;
+  globalThis.fetch = async (url, opts) => {
+    calls.push(JSON.parse(opts.body));
+    return new Response(null, { status: 201 });
+  };
+  const handler = await fresh('../api/track.js');
+  const { res, out } = mockRes();
+  await handler({
+    method: 'POST',
+    body: { event: 'join_error', error_code: 'contains user@example.com', http_status: 999 },
+  }, res);
+  const second = mockRes();
+  await handler({
+    method: 'POST',
+    body: { event: 'join_error', error_code: 'constructor', http_status: 503 },
+  }, second.res);
+  globalThis.fetch = origFetch;
+  check('track accepts join_error with discarded unsafe detail', out.body.stored === true, out);
+  check(
+    'track discards unsafe failure metadata',
+    calls[0]?.error_code === null && calls[0]?.http_status === null,
+    calls[0]
+  );
+  check(
+    'track buckets arbitrary valid identifiers as unknown',
+    second.out.body.stored === true && calls[1]?.error_code === 'unknown' && calls[1]?.http_status === 503,
+    calls[1]
+  );
 }
 
 // Case: GET -> 405
@@ -158,12 +207,22 @@ function mockDashboardFetch() {
     const u = String(url);
     if (u.includes('/rest/v1/site_events')) {
       const now = Date.now();
-      return new Response(JSON.stringify([
+      const rows = [
         { ts: new Date(now - 3600e3).toISOString(), event: 'page_view' },
         { ts: new Date(now - 3600e3).toISOString(), event: 'page_view' },
         { ts: new Date(now - 3500e3).toISOString(), event: 'deposit_click' },
+        { ts: new Date(now - 3400e3).toISOString(), event: 'join_error', error_code: 'turnstile_unavailable' },
+        { ts: new Date(now - 3300e3).toISOString(), event: 'join_error', error_code: 'turnstile_unavailable' },
+        { ts: new Date(now - 3200e3).toISOString(), event: 'join_error', error_code: 'CHECKOUT_NOT_ENABLED' },
+        { ts: new Date(now - 3100e3).toISOString(), event: 'join_error', error_code: 'constructor' },
+        { ts: new Date(now - 3000e3).toISOString(), event: 'join_error', error_code: '__proto__' },
         { ts: new Date(now - 40 * 86400e3).toISOString(), event: 'page_view' },
-      ]), { status: 200, headers: { 'content-type': 'application/json' } });
+        { ts: new Date(now - 40 * 86400e3).toISOString(), event: 'join_error', error_code: 'network' },
+      ];
+      const filtered = u.includes('event=eq.join_error')
+        ? rows.filter((row) => row.event === 'join_error')
+        : rows.filter((row) => ['page_view', 'deposit_click', 'deposit_confirmed'].includes(row.event));
+      return new Response(JSON.stringify(filtered), { status: 200, headers: { 'content-type': 'application/json' } });
     }
     if (u.includes('/rest/v1/webhook_logs')) {
       return new Response(JSON.stringify([
@@ -215,6 +274,17 @@ process.env.SUPABASE_SERVICE_ROLE_KEY = 'service_test_key';
   const f = out.body?.funnel;
   check('funnel counts current period only', f?.totals?.visits === 2 && f?.totals?.clicks === 1, f?.totals);
   check('funnel previous period counted', f?.prev?.visits === 1, f?.prev);
+  check('join errors counted by code', (
+    f?.totals?.join_errors === 5
+    && f?.totals?.join_error_codes?.turnstile_unavailable === 2
+    && f?.totals?.join_error_codes?.CHECKOUT_NOT_ENABLED === 1
+    && f?.totals?.join_error_codes?.unknown === 2
+    && Object.values(f?.totals?.join_error_codes || {}).reduce((sum, count) => sum + count, 0) === 5
+  ), f?.totals);
+  check('previous join errors counted', f?.prev?.join_errors === 1, f?.prev);
+  check('funnel and join-error events use separate query budgets', (
+    f?.truncated === false
+  ), f);
   const dep = out.body?.deposits;
   check('deposits filter to $49 succeeded', dep?.count === 1 && dep?.amount_cents === 4900, dep);
   check('deposit email surfaced', dep?.recent?.[0]?.email === 'buyer@example.com', dep?.recent);

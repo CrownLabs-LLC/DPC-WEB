@@ -12,15 +12,20 @@
   var currentPageConfig = null;
 
   // First-party ops beacon (feeds the /dashboard funnel). Anonymous — event
-  // name, page label, path, referrer only — so it is not consent-gated the
-  // way GA4 is. Fire-and-forget: never throws, never blocks navigation.
-  function sendEvent(event) {
+  // name, page label, path, referrer, and sanitized join failure code/status
+  // only — so it is not consent-gated the way GA4 is. Fire-and-forget: never
+  // throws, never blocks navigation.
+  function sendEvent(event, params) {
+    params = params || {};
+    var status = Number(params.http_status);
     try {
       var payload = JSON.stringify({
         event: event,
         page: (currentPageConfig && currentPageConfig.page) || '',
         path: window.location.pathname,
-        referrer: document.referrer || ''
+        referrer: document.referrer || '',
+        error_code: typeof params.error_code === 'string' ? params.error_code.slice(0, 100) : null,
+        http_status: Number.isInteger(status) && status >= 100 && status <= 599 ? status : null
       });
       if (navigator.sendBeacon) {
         navigator.sendBeacon(TRACK_ENDPOINT, new Blob([payload], { type: 'application/json' }));
@@ -77,6 +82,7 @@
     if (event === 'form_submit') sendEvent('form_submit');
     if (event === 'join_submit') sendEvent('join_submit');
     if (event === 'join_checkout_redirect') sendEvent('join_checkout_redirect');
+    if (event === 'join_error') sendEvent('join_error', params);
     if (window.gtag) window.gtag('event', event, params || {});
   }
 

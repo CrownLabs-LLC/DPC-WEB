@@ -1,6 +1,7 @@
 // First-party, anonymous funnel beacon. Stores only the event name, page
-// label, path, and referrer hostname — no cookies, IPs, or user identifiers,
-// consistent with the privacy policy's "aggregated, de-identified analytics".
+// label, path, referrer hostname, and allowlisted join failure code/status —
+// no cookies, IPs, or user identifiers, consistent with the privacy policy's
+// "aggregated, de-identified analytics".
 //
 // Always responds 202: telemetry must never surface an error to the site.
 
@@ -11,10 +12,25 @@ const ALLOWED_EVENTS = new Set([
   'form_submit',
   'join_submit',
   'join_checkout_redirect',
+  'join_error',
   'membership_checkout_complete',
   'membership_checkout_cancelled',
   'partner_subscription_checkout_submitted',
   'partner_subscription_checkout_cancelled',
+]);
+const ALLOWED_ERROR_CODES = new Set([
+  'turnstile_unavailable',
+  'turnstile_incomplete',
+  'network',
+  'unknown',
+  'CHECKOUT_NOT_ENABLED',
+  'FOUNDING_UNAVAILABLE',
+  'SIGN_IN_REQUIRED',
+  'RATE_LIMITED',
+  'CHALLENGE_FAILED',
+  'LEGAL_VERSIONS_NOT_CURRENT',
+  'MEMBER_NOT_ELIGIBLE',
+  'DEPOSITOR_CONFIRMATION_INVALID',
 ]);
 const MAX_LEN = 200;
 
@@ -32,6 +48,18 @@ function referrerHost(value) {
   } catch {
     return null;
   }
+}
+
+function errorCode(value) {
+  if (typeof value !== 'string') return null;
+  const s = value.trim().slice(0, 100);
+  if (!/^[A-Za-z0-9_.:-]{1,100}$/.test(s)) return null;
+  return ALLOWED_ERROR_CODES.has(s) ? s : 'unknown';
+}
+
+function httpStatus(value) {
+  const n = Number(value);
+  return Number.isInteger(n) && n >= 100 && n <= 599 ? n : null;
 }
 
 export default async function handler(req, res) {
@@ -63,6 +91,16 @@ export default async function handler(req, res) {
   }
 
   try {
+    const payload = {
+      event,
+      page: clean(body?.page),
+      path: clean(body?.path),
+      referrer: referrerHost(body?.referrer),
+    };
+    if (event === 'join_error') {
+      payload.error_code = errorCode(body?.error_code);
+      payload.http_status = httpStatus(body?.http_status);
+    }
     const resp = await fetch(`${supabaseUrl}/rest/v1/site_events`, {
       method: 'POST',
       signal: AbortSignal.timeout(3000),
@@ -72,12 +110,7 @@ export default async function handler(req, res) {
         'content-type': 'application/json',
         prefer: 'return=minimal',
       },
-      body: JSON.stringify({
-        event,
-        page: clean(body?.page),
-        path: clean(body?.path),
-        referrer: referrerHost(body?.referrer),
-      }),
+      body: JSON.stringify(payload),
     });
     if (!resp.ok) {
       console.error('track: supabase insert rejected', resp.status);
