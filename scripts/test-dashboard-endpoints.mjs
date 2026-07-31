@@ -87,13 +87,13 @@ process.env.SUPABASE_ANON_KEY = 'anon_test_key';
     return new Response(null, { status: 201 });
   };
   const handler = await fresh('../api/track.js');
-  for (const event of ['join_submit', 'join_checkout_redirect', 'membership_checkout_complete', 'membership_checkout_cancelled']) {
+  for (const event of ['join_submit', 'join_checkout_redirect', 'join_error', 'membership_checkout_complete', 'membership_checkout_cancelled']) {
     const { res, out } = mockRes();
     await handler({ method: 'POST', body: { event, page: 'join', path: '/join' } }, res);
     check(`track allows ${event}`, out.status === 202 && out.body.stored === true, out);
   }
   globalThis.fetch = origFetch;
-  check('track join funnel posted 4 events', calls.length === 4, calls);
+  check('track join funnel posted 5 events', calls.length === 5, calls);
 }
 
 // Case: GET -> 405

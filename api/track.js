@@ -11,6 +11,7 @@ const ALLOWED_EVENTS = new Set([
   'form_submit',
   'join_submit',
   'join_checkout_redirect',
+  'join_error',
   'membership_checkout_complete',
   'membership_checkout_cancelled',
 ]);

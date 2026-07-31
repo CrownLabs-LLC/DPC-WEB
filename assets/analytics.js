@@ -77,6 +77,7 @@
     if (event === 'form_submit') sendEvent('form_submit');
     if (event === 'join_submit') sendEvent('join_submit');
     if (event === 'join_checkout_redirect') sendEvent('join_checkout_redirect');
+    if (event === 'join_error') sendEvent('join_error');
     if (window.gtag) window.gtag('event', event, params || {});
   }
 

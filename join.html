@@ -835,13 +835,16 @@ body:has(.cookie:not([hidden])) .page {
    Production uses the hostname-bound DPC Turnstile widget. Preview and local
    hosts use Cloudflare's published always-pass test key for client-side QA.
    Checkout remains disabled server-side pending the reviewed backend enablement. */
-var isProductionJoinHost = window.location.hostname === 'www.downtownpourcollective.com'
-  || window.location.hostname === 'downtownpourcollective.com';
+function dpcTurnstileSiteKeyForHost(hostname) {
+  var isProductionJoinHost = hostname === 'www.downtownpourcollective.com'
+    || hostname === 'downtownpourcollective.com';
+  return isProductionJoinHost
+    ? '0x4AAAAAAECO2A5oKsePqsOg'
+    : '1x00000000000000000000AA';
+}
 window.DPC_JOIN = {
   checkoutEndpoint: 'https://ebiuspbgzggrdiaswpcc.supabase.co/functions/v1/circle-checkout',
-  turnstileSiteKey: isProductionJoinHost
-    ? '0x4AAAAAAECO2A5oKsePqsOg'
-    : '1x00000000000000000000AA',
+  turnstileSiteKey: dpcTurnstileSiteKeyForHost(window.location.hostname),
   turnstileAction: 'circle_checkout',
   legalVersions: {
     tos: '1.0',
@@ -958,10 +961,24 @@ window.DPC_JOIN = {
   }
 
   function showTurnstileUnavailable() {
+    if (turnstileWidgetId != null && window.turnstile && typeof window.turnstile.remove === 'function') {
+      try { window.turnstile.remove(turnstileWidgetId); } catch (e) {}
+    }
+    turnstileWidgetId = null;
     turnstileToken = '';
     turnstileUnavailable = true;
-    turnstileSlot.innerHTML = '<p style="margin:0;font-size:13px;line-height:1.5;color:rgba(245,240,232,0.78)">The security check could not load. Please disable content blocking and retry, or <a href="/support" style="color:#D4AE62">contact support</a>.</p>';
-    setError('The security check could not load. Please retry or contact support.');
+    turnstileSlot.innerHTML = '<div style="font-size:13px;line-height:1.5;color:rgba(245,240,232,0.78)"><p style="margin:0 0 10px">The security check could not load. Disable content blocking, then try again, or <a href="/support" style="color:#D4AE62">contact support</a>.</p><button type="button" id="turnstile-retry" style="border:1px solid rgba(196,163,90,0.7);border-radius:4px;background:transparent;color:#F5F0E8;padding:8px 12px;font:inherit;cursor:pointer">Try security check again</button></div>';
+    setError('The security check could not load. Disable content blocking and try again.');
+    var retryButton = document.getElementById('turnstile-retry');
+    if (retryButton) {
+      retryButton.addEventListener('click', function () {
+        turnstileUnavailable = false;
+        turnstileLoadAttempts = 0;
+        setError('');
+        turnstileSlot.innerHTML = '';
+        renderTurnstile();
+      });
+    }
     if (!turnstileFailureTracked) {
       turnstileFailureTracked = true;
       track('join_error', { error_code: 'turnstile_unavailable' });
@@ -1046,7 +1063,7 @@ window.DPC_JOIN = {
       return;
     }
     if (needsTurnstile && turnstileUnavailable) {
-      showTurnstileUnavailable();
+      setError('The security check could not load. Use “Try security check again” or contact support.');
       return;
     }
     if (needsTurnstile && !turnstileToken) {
