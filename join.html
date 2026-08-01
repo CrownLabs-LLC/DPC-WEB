@@ -129,6 +129,34 @@ a:focus-visible, button:focus-visible, input:focus-visible, [tabindex]:focus-vis
   margin: 0 auto 28px;
   opacity: 0.7;
 }
+.launch-weekend {
+  border: 1px solid var(--gold);
+  background: rgba(196, 163, 90, 0.08);
+  padding: 18px 20px;
+  margin: 0 0 18px;
+  text-align: center;
+}
+.launch-weekend__title {
+  font-family: var(--display);
+  font-size: 21px;
+  line-height: 1.25;
+  color: var(--gold);
+  margin: 0 0 8px;
+}
+.launch-weekend__body {
+  font-size: 14px;
+  line-height: 1.55;
+  color: rgba(245, 240, 232, 0.84);
+  margin: 0;
+}
+.depositor-note {
+  font-size: 13px;
+  line-height: 1.55;
+  color: rgba(245, 240, 232, 0.72);
+  text-align: center;
+  margin: 0 0 28px;
+}
+.depositor-note strong { color: var(--cream); }
 
 .panel {
   background: rgba(30, 58, 90, 0.35);
@@ -668,8 +696,15 @@ body:has(.cookie:not([hidden])) .page {
   <div class="join">
     <p class="join__eyebrow">Founding Membership</p>
     <h1 class="join__title">Join The Collective</h1>
-    <p class="join__lede">Choose one Circle for launch. Pick monthly or annual, then continue to secure checkout.</p>
+    <p class="join__lede">Subscriptions opened August 1. Choose the Circle that matches what you like to drink—beer, wine, or cocktails. Start with one Circle today, pick monthly or annual, then continue to secure checkout.</p>
     <hr class="join__rule">
+
+    <!-- Temporary: remove this entire block when the member app is live. -->
+    <aside class="launch-weekend" aria-label="Launch weekend hosted Pour">
+      <h2 class="launch-weekend__title">Launch weekend, your first Pour is personally hosted.</h2>
+      <p class="launch-weekend__body">Join this weekend and we set up your first Pour with you directly. Tell us where you want it and DPC handles the rest with the venue. The member app lands on your phone this week and takes over from there.</p>
+    </aside>
+    <p class="depositor-note"><strong>Already paid a $49 Founding Slot Deposit?</strong> Please don’t use this public checkout. We’ll email your private membership-confirmation link shortly. Your deposit is already recorded, and you won’t be charged it again.</p>
 
     <form id="join-form" novalidate>
       <div class="panel">
@@ -1162,7 +1197,7 @@ window.DPC_JOIN = {
       track('join_error', { error_code: code || 'unknown', http_status: result.status });
 
       var messages = {
-        CHECKOUT_NOT_ENABLED: 'Membership checkout opens August 1. Check back then — or email hello@downtownpourcollective.com if you already reserved a spot.',
+        CHECKOUT_NOT_ENABLED: 'Membership checkout is temporarily unavailable. Please try again shortly or email hello@downtownpourcollective.com for help.',
         FOUNDING_UNAVAILABLE: 'Founding memberships are full. Standard membership may still be available — email hello@downtownpourcollective.com.',
         SIGN_IN_REQUIRED: 'This email already has an active membership. Please sign in through the app.',
         RATE_LIMITED: 'Too many attempts. Please wait a moment and try again.',
