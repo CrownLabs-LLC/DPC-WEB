@@ -12,15 +12,20 @@
   var currentPageConfig = null;
 
   // First-party ops beacon (feeds the /dashboard funnel). Anonymous — event
-  // name, page label, path, referrer only — so it is not consent-gated the
-  // way GA4 is. Fire-and-forget: never throws, never blocks navigation.
-  function sendEvent(event) {
+  // name, page label, path, referrer, and sanitized join failure code/status
+  // only — so it is not consent-gated the way GA4 is. Fire-and-forget: never
+  // throws, never blocks navigation.
+  function sendEvent(event, params) {
+    params = params || {};
+    var status = Number(params.http_status);
     try {
       var payload = JSON.stringify({
         event: event,
         page: (currentPageConfig && currentPageConfig.page) || '',
         path: window.location.pathname,
-        referrer: document.referrer || ''
+        referrer: document.referrer || '',
+        error_code: typeof params.error_code === 'string' ? params.error_code.slice(0, 100) : null,
+        http_status: Number.isInteger(status) && status >= 100 && status <= 599 ? status : null
       });
       if (navigator.sendBeacon) {
         navigator.sendBeacon(TRACK_ENDPOINT, new Blob([payload], { type: 'application/json' }));
@@ -77,6 +82,7 @@
     if (event === 'form_submit') sendEvent('form_submit');
     if (event === 'join_submit') sendEvent('join_submit');
     if (event === 'join_checkout_redirect') sendEvent('join_checkout_redirect');
+    if (event === 'join_error') sendEvent('join_error', params);
     if (window.gtag) window.gtag('event', event, params || {});
   }
 
@@ -92,6 +98,8 @@
       else if (page === 'join') initJoinTracking();
       else if (page === 'subscription-success') initSubscriptionSuccessTracking();
       else if (page === 'subscription-cancelled') initSubscriptionCancelledTracking();
+      else if (page === 'partner-subscription-success') initPartnerSubscriptionSuccessTracking();
+      else if (page === 'partner-subscription-cancelled') initPartnerSubscriptionCancelledTracking();
     });
   }
 
@@ -196,6 +204,8 @@
 
   var MEMBERSHIP_SUCCESS_KEY = 'dpc_membership_success_tracked';
   var MEMBERSHIP_CANCEL_KEY = 'dpc_membership_cancel_tracked';
+  var PARTNER_SUBSCRIPTION_SUCCESS_KEY = 'dpc_partner_subscription_success_tracked';
+  var PARTNER_SUBSCRIPTION_CANCEL_KEY = 'dpc_partner_subscription_cancel_tracked';
 
   function initSubscriptionSuccessTracking() {
     try {
@@ -211,6 +221,22 @@
       sessionStorage.setItem(MEMBERSHIP_CANCEL_KEY, '1');
     } catch (e) {}
     track('membership_checkout_cancelled');
+  }
+
+  function initPartnerSubscriptionSuccessTracking() {
+    try {
+      if (sessionStorage.getItem(PARTNER_SUBSCRIPTION_SUCCESS_KEY) === '1') return;
+      sessionStorage.setItem(PARTNER_SUBSCRIPTION_SUCCESS_KEY, '1');
+    } catch (e) {}
+    track('partner_subscription_checkout_submitted');
+  }
+
+  function initPartnerSubscriptionCancelledTracking() {
+    try {
+      if (sessionStorage.getItem(PARTNER_SUBSCRIPTION_CANCEL_KEY) === '1') return;
+      sessionStorage.setItem(PARTNER_SUBSCRIPTION_CANCEL_KEY, '1');
+    } catch (e) {}
+    track('partner_subscription_checkout_cancelled');
   }
 
   function initCookieBanner() {
@@ -254,6 +280,22 @@
         else sessionStorage.setItem('dpc_membership_cancel_beacon', '1');
       } catch (e) {}
       if (sendCancel) sendEvent('membership_checkout_cancelled');
+    }
+    if (config.page === 'partner-subscription-success') {
+      var sendPartnerSuccess = true;
+      try {
+        if (sessionStorage.getItem('dpc_partner_subscription_success_beacon') === '1') sendPartnerSuccess = false;
+        else sessionStorage.setItem('dpc_partner_subscription_success_beacon', '1');
+      } catch (e) {}
+      if (sendPartnerSuccess) sendEvent('partner_subscription_checkout_submitted');
+    }
+    if (config.page === 'partner-subscription-cancelled') {
+      var sendPartnerCancel = true;
+      try {
+        if (sessionStorage.getItem('dpc_partner_subscription_cancel_beacon') === '1') sendPartnerCancel = false;
+        else sessionStorage.setItem('dpc_partner_subscription_cancel_beacon', '1');
+      } catch (e) {}
+      if (sendPartnerCancel) sendEvent('partner_subscription_checkout_cancelled');
     }
     initCookieBanner();
   }
