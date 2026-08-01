@@ -16,6 +16,13 @@ const [join, support, deploy, serve, analytics, trackApi, dashboard, dashboardAp
   read('db/20260730_join_error_observability.sql'),
   ...['index.html', 'join.html', 'partners.html', 'privacy.html', 'terms.html'].map(read),
 ]);
+const home = linkedPages[0];
+
+assert.match(home, /Join The Collective/);
+assert.match(home, /one-time \$49 Founding Slot Deposit/);
+assert.doesNotMatch(home, /Pause feature|add (?:another|more) anytime|Welcome Kit fee|A \$50 value|THE COASTER PASSPORT|THE INTRODUCTION/);
+assert.match(join, /one-time \$49 FOUNDING SLOT DEPOSIT/i);
+assert.doesNotMatch(join, /add more anytime|Welcome Kit fee|ONE-TIME \$49 WELCOME KIT/);
 
 assert.match(join, /TURNSTILE_MAX_LOAD_ATTEMPTS = 50/);
 assert.match(join, /error_code: 'turnstile_unavailable'/);

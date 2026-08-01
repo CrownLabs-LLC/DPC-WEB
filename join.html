@@ -10,7 +10,7 @@
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://www.downtownpourcollective.com/join">
 <meta property="og:title" content="Join The Collective | Downtown Pour Collective">
-<meta property="og:description" content="Choose your Circle and join Downtown Pour Collective. Founding pricing through August — monthly or annual, plus a one-time $49 Welcome Kit.">
+<meta property="og:description" content="Choose your Circle and join Downtown Pour Collective. Founding pricing through August — monthly or annual, plus a one-time $49 Founding Slot Deposit.">
 <meta property="og:image" content="https://www.downtownpourcollective.com/assets/og-image.jpg">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Join The Collective | Downtown Pour Collective">
@@ -668,7 +668,7 @@ body:has(.cookie:not([hidden])) .page {
   <div class="join">
     <p class="join__eyebrow">Founding Membership</p>
     <h1 class="join__title">Join The Collective</h1>
-    <p class="join__lede">Choose one Circle to start — add more anytime. Pick monthly or annual, then continue to secure checkout.</p>
+    <p class="join__lede">Choose one Circle for launch. Pick monthly or annual, then continue to secure checkout.</p>
     <hr class="join__rule">
 
     <form id="join-form" novalidate>
@@ -765,7 +765,7 @@ body:has(.cookie:not([hidden])) .page {
           <p class="summary" id="order-summary" aria-live="polite"></p>
           <button class="btn" type="submit" id="submit-btn">Continue to Checkout</button>
           <p class="form__error" id="form-error" role="alert"></p>
-          <p class="fine" id="offer-fineprint">MONTHLY OR ANNUAL · ONE-TIME $49 WELCOME KIT · FOUNDING PRICING THROUGH AUGUST · 21+</p>
+          <p class="fine" id="offer-fineprint">MONTHLY OR ANNUAL · ONE-TIME $49 FOUNDING SLOT DEPOSIT · FOUNDING PRICING THROUGH AUGUST · 21+</p>
         </div>
       </div>
     </form>
@@ -919,7 +919,7 @@ window.DPC_JOIN = {
     });
     if (fineEl) {
       fineEl.textContent = offer === 'founding'
-        ? 'MONTHLY OR ANNUAL · ONE-TIME $49 WELCOME KIT · FOUNDING PRICING THROUGH AUGUST · 21+'
+        ? 'MONTHLY OR ANNUAL · ONE-TIME $49 FOUNDING SLOT DEPOSIT · FOUNDING PRICING THROUGH AUGUST · 21+'
         : 'MONTHLY MEMBERSHIP · STANDARD RATE · 21+';
     }
     refreshSummary();
@@ -938,11 +938,11 @@ window.DPC_JOIN = {
     var amount = interval === 'annual' ? p.annual : p.monthly;
     var label = circle.charAt(0).toUpperCase() + circle.slice(1);
     var period = interval === 'annual' ? 'year' : 'month';
-    var kit = offer === 'founding'
-      ? ' plus a one-time $49 Welcome Kit at signup'
+    var deposit = offer === 'founding'
+      ? ' plus a one-time $49 Founding Slot Deposit at signup'
       : '';
     summaryEl.innerHTML = 'You selected <strong>' + label + ' · ' + interval + '</strong> at <strong>' +
-      money(amount) + ' / ' + period + '</strong>' + kit + '.';
+      money(amount) + ' / ' + period + '</strong>' + deposit + '.';
   }
 
   function setError(msg) {
