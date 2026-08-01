@@ -1,0 +1,1260 @@
+<!doctype html>
+<html lang="en-US">
+<head>
+<meta charset="UTF-8">
+<title>Confirm Your Founding Membership | Downtown Pour Collective</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Private Founding Membership confirmation for an existing Downtown Pour Collective depositor.">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<meta name="referrer" content="no-referrer">
+<link rel="canonical" href="https://www.downtownpourcollective.com/depositor-confirmation">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<script id="depositor-token-bootstrap">
+/* Keep the one-time token in this closure only. A URL fragment is never sent
+   in HTTP or Referer headers, and replaceState scrubs it before third-party
+   fonts or Turnstile load. */
+(function () {
+  var match = /^#token=([A-Fa-f0-9]{64})$/.exec(window.location.hash || '');
+  var token = match ? match[1].toLowerCase() : '';
+  window.history.replaceState(null, '', window.location.pathname);
+  document.addEventListener('DOMContentLoaded', function () {
+    if (typeof window.__startDpcDepositorConfirmation === 'function') {
+      window.__startDpcDepositorConfirmation(token);
+    }
+    token = '';
+  }, { once: true });
+})();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Barlow+Condensed:wght@600;700&family=Barlow:ital,wght@0,400;0,500;1,400" rel="stylesheet">
+<script id="turnstile-api-script" src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
+<style>
+:root {
+  --navy: #0D1B2A; --liquid: #1E3A5A; --gold: #C4A35A; --gold-hover: #D4B370;
+  --gold-press: #B0915C; --cream: #F5F0E8; --muted-gray: #5A6475;
+  --display: 'Playfair Display', Georgia, serif;
+  --support: 'Barlow Condensed', 'Arial Narrow', sans-serif;
+  --body: 'Barlow', system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: var(--body);
+  background: var(--navy);
+  color: var(--cream);
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+svg { display: block; }
+a { color: var(--gold); }
+a:focus-visible, button:focus-visible, input:focus-visible, [tabindex]:focus-visible {
+  outline: 2px solid rgba(196, 163, 90, 0.5);
+  outline-offset: 4px;
+}
+
+.top {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background: var(--navy);
+  border-bottom: 1px solid rgba(196, 163, 90, 0.25);
+}
+.top__inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  height: 60px;
+}
+.top__home { display: flex; align-items: center; border: 0; text-decoration: none; }
+.top__lockup { height: 34px; width: auto; }
+.top__nav { display: flex; gap: 20px; align-items: center; }
+.top__nav a {
+  font-family: var(--support);
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(245, 240, 232, 0.72);
+  text-decoration: none;
+  padding: 4px 0;
+  transition: color 160ms ease;
+}
+.top__nav a:hover { color: var(--gold); }
+
+.page {
+  flex: 1;
+  padding: 40px 20px 96px;
+  position: relative;
+}
+.page__border {
+  display: none;
+}
+.join {
+  position: relative;
+  z-index: 1;
+  max-width: 720px;
+  margin: 0 auto;
+  width: 100%;
+}
+.join__eyebrow {
+  font-family: var(--support);
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(196, 163, 90, 0.85);
+  margin: 0 0 12px;
+  text-align: center;
+}
+.join__title {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: clamp(28px, 7vw, 44px);
+  line-height: 1.15;
+  text-align: center;
+  margin: 0 0 12px;
+  color: var(--cream);
+}
+.join__lede {
+  font-size: 16px;
+  line-height: 1.55;
+  color: rgba(245, 240, 232, 0.78);
+  text-align: center;
+  margin: 0 auto 28px;
+  max-width: 540px;
+  text-wrap: pretty;
+}
+.join__rule {
+  width: 56px;
+  height: 1px;
+  border: 0;
+  background: var(--gold);
+  margin: 0 auto 28px;
+  opacity: 0.7;
+}
+.launch-weekend {
+  border: 1px solid var(--gold);
+  background: rgba(196, 163, 90, 0.08);
+  padding: 18px 20px;
+  margin: 0 0 18px;
+  text-align: center;
+}
+.launch-weekend__title {
+  font-family: var(--display);
+  font-size: 21px;
+  line-height: 1.25;
+  color: var(--gold);
+  margin: 0 0 8px;
+}
+.launch-weekend__body {
+  font-size: 14px;
+  line-height: 1.55;
+  color: rgba(245, 240, 232, 0.84);
+  margin: 0;
+}
+.depositor-note {
+  font-size: 13px;
+  line-height: 1.55;
+  color: rgba(245, 240, 232, 0.72);
+  text-align: center;
+  margin: 0 0 28px;
+}
+.depositor-note strong { color: var(--cream); }
+
+.invite-state {
+  border: 1px solid rgba(196, 163, 90, 0.45);
+  background: rgba(30, 58, 90, 0.35);
+  padding: 28px 24px;
+  text-align: center;
+  margin: 0 auto 24px;
+}
+.invite-state__title {
+  font-family: var(--display);
+  font-size: 24px;
+  color: var(--cream);
+  margin: 0 0 10px;
+}
+.invite-state__body,
+.details-note {
+  font-size: 14px;
+  line-height: 1.55;
+  color: rgba(245, 240, 232, 0.74);
+}
+.invite-state__body { margin: 0; }
+.details-note { margin: 12px 0 0; }
+[hidden] { display: none !important; }
+
+.panel {
+  background: rgba(30, 58, 90, 0.35);
+  border: 1px solid rgba(196, 163, 90, 0.22);
+  padding: 20px 16px;
+  margin-bottom: 16px;
+}
+.panel__label {
+  font-family: var(--support);
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin: 0 0 14px;
+}
+
+.circles {
+  display: grid;
+  gap: 10px;
+}
+.circle-opt {
+  position: relative;
+  display: block;
+  cursor: pointer;
+}
+.circle-opt input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.circle-opt__card {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas:
+    "tag price"
+    "name price"
+    "desc note";
+  column-gap: 12px;
+  row-gap: 2px;
+  align-items: start;
+  border: 1px solid rgba(196, 163, 90, 0.28);
+  background: rgba(13, 27, 42, 0.55);
+  padding: 14px 14px;
+  text-align: left;
+  transition: border-color 160ms ease, background 160ms ease;
+  min-height: 72px;
+}
+.circle-opt:hover .circle-opt__card {
+  border-color: rgba(196, 163, 90, 0.55);
+}
+.circle-opt input:focus-visible + .circle-opt__card {
+  outline: 2px solid rgba(196, 163, 90, 0.5);
+  outline-offset: 3px;
+}
+.circle-opt input:checked + .circle-opt__card {
+  border-color: var(--gold);
+  background: rgba(196, 163, 90, 0.12);
+}
+.circle-opt__tag {
+  grid-area: tag;
+  font-family: var(--support);
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(245, 240, 232, 0.55);
+  margin: 0;
+}
+.circle-opt__name {
+  grid-area: name;
+  font-family: var(--support);
+  font-weight: 700;
+  font-size: 18px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--cream);
+  margin: 0;
+}
+.circle-opt__desc {
+  grid-area: desc;
+  font-size: 13px;
+  line-height: 1.35;
+  color: rgba(245, 240, 232, 0.65);
+  margin: 4px 0 0;
+}
+.circle-opt__price {
+  grid-area: price;
+  font-family: var(--support);
+  font-weight: 700;
+  font-size: 18px;
+  color: var(--gold);
+  margin: 0;
+  text-align: right;
+  white-space: nowrap;
+  align-self: center;
+}
+.circle-opt__price-note {
+  grid-area: note;
+  font-size: 12px;
+  color: rgba(245, 240, 232, 0.5);
+  margin: 4px 0 0;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.intervals {
+  display: grid;
+  gap: 10px;
+}
+.interval-opt { position: relative; display: block; cursor: pointer; }
+.interval-opt input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.interval-opt__card {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas:
+    "title badge"
+    "body body";
+  column-gap: 12px;
+  row-gap: 2px;
+  align-items: start;
+  border: 1px solid rgba(196, 163, 90, 0.28);
+  background: rgba(13, 27, 42, 0.55);
+  padding: 14px 14px;
+  text-align: left;
+  transition: border-color 160ms ease, background 160ms ease;
+  min-height: 72px;
+}
+.interval-opt:hover .interval-opt__card { border-color: rgba(196, 163, 90, 0.55); }
+.interval-opt input:focus-visible + .interval-opt__card {
+  outline: 2px solid rgba(196, 163, 90, 0.5);
+  outline-offset: 3px;
+}
+.interval-opt input:checked + .interval-opt__card {
+  border-color: var(--gold);
+  background: rgba(196, 163, 90, 0.12);
+}
+.interval-opt__title {
+  grid-area: title;
+  font-family: var(--support);
+  font-weight: 700;
+  font-size: 18px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin: 0;
+  color: var(--cream);
+  align-self: center;
+}
+.interval-opt__body {
+  grid-area: body;
+  font-size: 13px;
+  line-height: 1.35;
+  color: rgba(245, 240, 232, 0.65);
+  margin: 4px 0 0;
+}
+.interval-opt__badge {
+  grid-area: badge;
+  display: inline-block;
+  justify-self: end;
+  align-self: center;
+  margin: 0;
+  font-family: var(--support);
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--navy);
+  background: var(--gold);
+  padding: 5px 9px;
+  white-space: nowrap;
+}
+.interval-opt__note {
+  grid-area: badge;
+  font-size: 12px;
+  color: rgba(245, 240, 232, 0.5);
+  margin: 0;
+  text-align: right;
+  white-space: nowrap;
+  justify-self: end;
+  align-self: center;
+}
+
+.fields {
+  display: grid;
+  gap: 14px;
+}
+@media (min-width: 560px) {
+  .fields--split { grid-template-columns: 1fr 1fr; }
+}
+.field label {
+  display: block;
+  font-family: var(--support);
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(245, 240, 232, 0.65);
+  margin-bottom: 8px;
+}
+.field input {
+  width: 100%;
+  appearance: none;
+  border: 1px solid rgba(196, 163, 90, 0.3);
+  background: rgba(13, 27, 42, 0.7);
+  color: var(--cream);
+  font-family: var(--body);
+  font-size: 16px;
+  padding: 12px 14px;
+  border-radius: 0;
+}
+.field input::placeholder { color: rgba(245, 240, 232, 0.35); }
+.field input:focus {
+  outline: none;
+  border-color: var(--gold);
+}
+
+.check {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  margin: 0 0 12px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: rgba(245, 240, 232, 0.78);
+}
+.check input {
+  margin-top: 3px;
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  accent-color: var(--gold);
+}
+.check a { text-decoration: underline; text-underline-offset: 2px; }
+
+.hp {
+  position: absolute;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+.turnstile-wrap {
+  margin: 18px 0 8px;
+  min-height: 65px;
+}
+
+.actions {
+  margin-top: 4px;
+}
+.summary {
+  font-size: 14px;
+  line-height: 1.55;
+  color: rgba(245, 240, 232, 0.72);
+  margin: 0 0 14px;
+  text-align: left;
+}
+.summary:empty { display: none; }
+.summary strong { color: var(--cream); font-weight: 500; }
+
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 52px;
+  padding: 14px 16px;
+  border: 0;
+  background: var(--gold);
+  color: var(--navy);
+  font-family: var(--support);
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-decoration: none;
+  text-align: center;
+  white-space: nowrap;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: background 160ms ease;
+}
+.btn:hover { background: var(--gold-hover); }
+.btn:active { background: var(--gold-press); }
+.btn[disabled] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.form__error {
+  min-height: 0;
+  margin: 12px 0 0;
+  font-size: 14px;
+  line-height: 1.45;
+  color: #f0b4b4;
+  text-align: left;
+}
+.form__error:empty { display: none; }
+
+.fine {
+  margin: 14px 0 0;
+  font-size: 11px;
+  line-height: 1.55;
+  letter-spacing: 0.02em;
+  color: rgba(245, 240, 232, 0.45);
+  text-align: left;
+}
+
+.footer { background: var(--navy); padding: 0 32px 40px; }
+.footer__divider {
+  border: 0;
+  border-top: 1px solid rgba(196, 163, 90, 0.25);
+  margin: 0 0 36px;
+}
+.footer__inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: grid;
+  gap: 28px;
+}
+@media (min-width: 800px) {
+  .footer__inner { grid-template-columns: 1.4fr 1fr 1fr; gap: 40px; }
+}
+.footer__lockup { height: 56px; width: auto; margin-bottom: 12px; }
+.footer__brand-line {
+  font-size: 13px;
+  line-height: 1.55;
+  color: rgba(245, 240, 232, 0.5);
+  margin: 0;
+}
+.footer__head {
+  font-family: var(--support);
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin: 0 0 10px;
+}
+.footer__line { margin: 0 0 6px; font-size: 14px; }
+.footer__line a, .footer__social a {
+  color: rgba(245, 240, 232, 0.7);
+  text-decoration: none;
+}
+.footer__line a:hover, .footer__social a:hover { color: var(--gold); }
+.footer__social { display: flex; flex-direction: column; gap: 8px; }
+.footer__legal {
+  max-width: 1100px;
+  margin: 28px auto 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+  justify-content: space-between;
+  font-size: 12px;
+  color: rgba(245, 240, 232, 0.4);
+}
+.footer__legal-links { display: flex; gap: 10px; align-items: center; }
+.footer__legal-links a {
+  color: rgba(245, 240, 232, 0.5);
+  text-decoration: none;
+}
+.footer__legal-links a:hover { color: var(--gold); }
+
+.cookie {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: stretch;
+  padding: 14px 16px;
+  background: var(--liquid);
+  border: 1px solid rgba(196, 163, 90, 0.35);
+}
+.cookie[hidden] { display: none !important; }
+body:has(.cookie:not([hidden])) .page {
+  padding-bottom: 160px;
+}
+.cookie__text {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: rgba(245, 240, 232, 0.8);
+  text-align: left;
+}
+.cookie__text a { color: var(--gold); }
+.cookie__accept {
+  flex-shrink: 0;
+  border: 0;
+  background: var(--gold);
+  color: var(--navy);
+  font-family: var(--support);
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 12px 16px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+@media (min-width: 560px) {
+  .fields--split { grid-template-columns: 1fr 1fr; }
+  .cookie {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    max-width: 720px;
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    width: calc(100% - 40px);
+  }
+  body:has(.cookie:not([hidden])) .page {
+    padding-bottom: 120px;
+  }
+}
+
+@media (min-width: 720px) {
+  .top__inner {
+    padding: 0 32px;
+    height: 66px;
+  }
+  .top__lockup { height: 38px; }
+  .top__nav a {
+    font-size: 13px;
+    letter-spacing: 0.18em;
+  }
+  .page {
+    padding: 56px 32px 96px;
+  }
+  .page__border {
+    display: block;
+    position: absolute;
+    inset: 24px;
+    border: 1px solid rgba(196, 163, 90, 0.2);
+    pointer-events: none;
+  }
+  .panel {
+    padding: 28px 24px;
+    margin-bottom: 20px;
+  }
+  .panel__label {
+    font-size: 13px;
+    letter-spacing: 0.18em;
+    margin-bottom: 18px;
+  }
+  .circles {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+  }
+  .intervals {
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .circle-opt__card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 18px 14px;
+    min-height: 0;
+    height: 100%;
+  }
+  .circle-opt__tag,
+  .circle-opt__name,
+  .circle-opt__desc,
+  .circle-opt__price,
+  .circle-opt__price-note {
+    grid-area: unset;
+    text-align: center;
+    align-self: unset;
+  }
+  .circle-opt__tag { margin-bottom: 8px; }
+  .circle-opt__name { margin-bottom: 6px; }
+  .circle-opt__desc { margin: 0 0 12px; }
+  .circle-opt__price { margin: 0; font-size: 20px; }
+  .circle-opt__price-note { margin-top: 4px; }
+  .btn {
+    font-size: 15px;
+    letter-spacing: 0.12em;
+    padding: 0 24px;
+  }
+  .summary,
+  .form__error,
+  .fine {
+    text-align: center;
+  }
+}
+
+@media (max-width: 380px) {
+  .btn {
+    white-space: normal;
+    letter-spacing: 0.06em;
+    font-size: 13px;
+  }
+  .circle-opt__price-note { white-space: normal; }
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="top__inner">
+    <a class="top__home" href="/" aria-label="Downtown Pour Collective home">
+      <svg class="top__lockup" viewBox="0 0 540 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Downtown Pour Collective">
+        <defs><clipPath id="lk-glass"><path d="M -16,-46 L 16,-46 L 22,37 L -22,37 Z"/></clipPath></defs>
+        <g transform="translate(74,100) rotate(38)">
+          <path d="M -22,-54 L 22,-54 L 28,44 L -28,44 Z" fill="#C4A35A"/>
+          <path d="M -16,-46 L 16,-46 L 22,37 L -22,37 Z" fill="#0D1B2A"/>
+          <g clip-path="url(#lk-glass)">
+            <path d="M -21,23 L 19,-9 L 22,37 L -22,37 Z" fill="#1E3A5A"/>
+            <line x1="-24" y1="23" x2="22" y2="-10" stroke="#C4A35A" stroke-width="1.4" stroke-linecap="round" opacity="0.75"/>
+          </g>
+          <rect x="-24" y="-58" width="48" height="7" rx="2" fill="#C4A35A"/>
+          <rect x="-32" y="42" width="64" height="8" rx="2" fill="#C4A35A"/>
+        </g>
+        <text x="178" y="74" font-family="'Barlow Condensed',sans-serif" font-weight="700" font-size="17" letter-spacing="7" fill="#C4A35A">DOWNTOWN</text>
+        <text x="174" y="124" font-family="'Playfair Display',serif" font-weight="700" font-size="54" letter-spacing="2" fill="#F5F0E8">POUR</text>
+        <text x="178" y="150" font-family="'Barlow Condensed',sans-serif" font-weight="700" font-size="17" letter-spacing="7" fill="#C4A35A">COLLECTIVE</text>
+      </svg>
+    </a>
+    <nav class="top__nav" aria-label="Primary">
+      <a href="/">Home</a>
+    </nav>
+  </div>
+</header>
+
+<main class="page">
+  <div class="page__border" aria-hidden="true"></div>
+  <div class="join">
+    <p class="join__eyebrow">Private Depositor Confirmation</p>
+    <h1 class="join__title">Complete Your Founding Membership</h1>
+    <p class="join__lede">Your $49 Founding Slot Deposit is already recorded. You will not be charged it again. Choose one Circle and monthly or annual billing; Checkout contains only that recurring membership charge, which begins when payment is confirmed. Your paid deposit includes one Welcome Kit. Each active Circle includes up to five Membership Pours per monthly period.</p>
+    <hr class="join__rule">
+
+    <!-- Temporary: remove this entire block when the member app is live. -->
+    <aside class="launch-weekend" aria-label="Launch weekend hosted Pour">
+      <h2 class="launch-weekend__title">Launch weekend, your first Pour is personally hosted.</h2>
+      <p class="launch-weekend__body">Convert during launch weekend and we’ll set up one complimentary Pour with you directly. The member app is awaiting store approval; we’ll send fresh app and account-setup instructions when it is available.</p>
+    </aside>
+    <p class="depositor-note"><strong>Complete conversion before September 1, 2026 at 12:00 AM Pacific Time.</strong> Use only the private link sent to you, and do not forward it.</p>
+
+    <section class="invite-state" id="invite-error" role="alert" hidden>
+      <h2 class="invite-state__title">We couldn’t open this private confirmation.</h2>
+      <p class="invite-state__body">Use the complete private link from your invitation. If you still need help, email <a href="mailto:hello@downtownpourcollective.com">hello@downtownpourcollective.com</a>. For your privacy, this page cannot confirm whether a guessed link belongs to a member.</p>
+    </section>
+    <noscript>
+      <section class="invite-state" role="alert">
+        <h2 class="invite-state__title">JavaScript is required for secure confirmation.</h2>
+        <p class="invite-state__body">Enable JavaScript and reopen the complete private link, or email <a href="mailto:hello@downtownpourcollective.com">hello@downtownpourcollective.com</a>.</p>
+      </section>
+    </noscript>
+
+    <form id="join-form" novalidate hidden>
+      <div class="panel">
+        <p class="panel__label">1 · Choose your Circle</p>
+        <div class="circles" role="radiogroup" aria-label="Membership Circle">
+          <label class="circle-opt">
+            <input type="radio" name="circle" value="tap" required>
+            <span class="circle-opt__card">
+              <p class="circle-opt__tag">Beer drinkers</p>
+              <p class="circle-opt__name">Tap</p>
+              <p class="circle-opt__desc">Standard draft, bottle, or can</p>
+              <p class="circle-opt__price" data-price-for="tap">$55 / mo</p>
+              <p class="circle-opt__price-note" data-price-note-for="tap">or $550 / year</p>
+            </span>
+          </label>
+          <label class="circle-opt">
+            <input type="radio" name="circle" value="cellar" required>
+            <span class="circle-opt__card">
+              <p class="circle-opt__tag">Wine drinkers</p>
+              <p class="circle-opt__name">Cellar</p>
+              <p class="circle-opt__desc">Standard glass from the regular list</p>
+              <p class="circle-opt__price" data-price-for="cellar">$65 / mo</p>
+              <p class="circle-opt__price-note" data-price-note-for="cellar">or $650 / year</p>
+            </span>
+          </label>
+          <label class="circle-opt">
+            <input type="radio" name="circle" value="reserve" required>
+            <span class="circle-opt__card">
+              <p class="circle-opt__tag">Cocktail &amp; spirits</p>
+              <p class="circle-opt__name">Reserve</p>
+              <p class="circle-opt__desc">Standard cocktail or spirit pour</p>
+              <p class="circle-opt__price" data-price-for="reserve">$75 / mo</p>
+              <p class="circle-opt__price-note" data-price-note-for="reserve">or $750 / year</p>
+            </span>
+          </label>
+        </div>
+      </div>
+
+      <div class="panel">
+        <p class="panel__label">2 · Monthly or annual</p>
+        <div class="intervals" role="radiogroup" aria-label="Billing interval">
+          <label class="interval-opt">
+            <input type="radio" name="billingInterval" value="annual" checked required>
+            <span class="interval-opt__card">
+              <p class="interval-opt__title">Annual</p>
+              <p class="interval-opt__body">Pay the year up front. Best value.</p>
+              <span class="interval-opt__badge">2 months free</span>
+            </span>
+          </label>
+          <label class="interval-opt">
+            <input type="radio" name="billingInterval" value="monthly" required>
+            <span class="interval-opt__card">
+              <p class="interval-opt__title">Monthly</p>
+              <p class="interval-opt__body">Billed each month.</p>
+              <span class="interval-opt__note">Cancel anytime</span>
+            </span>
+          </label>
+        </div>
+      </div>
+
+      <div class="panel">
+        <p class="panel__label">3 · Your details</p>
+        <div class="fields fields--split">
+          <div class="field">
+            <label for="firstName">First name</label>
+            <input id="firstName" name="firstName" type="text" autocomplete="given-name" required maxlength="80">
+          </div>
+          <div class="field">
+            <label for="lastName">Last name</label>
+            <input id="lastName" name="lastName" type="text" autocomplete="family-name" required maxlength="80">
+          </div>
+        </div>
+        <div class="fields" style="margin-top:14px">
+          <div class="field">
+            <label for="email">Email</label>
+            <input id="email" name="email" type="email" autocomplete="email" required maxlength="200" inputmode="email">
+          </div>
+        </div>
+        <p class="details-note">Your secure invitation—not an edited email address—identifies the existing deposit and member record. Enter your current contact details so we can help if anything needs attention.</p>
+        <div class="hp" aria-hidden="true">
+          <label for="company">Company</label>
+          <input id="company" name="company" type="text" tabindex="-1" autocomplete="off">
+        </div>
+      </div>
+
+      <div class="panel">
+        <p class="panel__label">4 · Agree &amp; continue</p>
+        <label class="check">
+          <input id="legal" name="legal" type="checkbox" required>
+          <span>I agree to the <a href="/terms" target="_blank" rel="noopener">Terms of Service</a>, <a href="/privacy" target="_blank" rel="noopener">Privacy Policy</a>, Member Terms &amp; Redemption Policy, and automatic renewal terms. I am 21 or older.</span>
+        </label>
+        <div class="turnstile-wrap" id="turnstile-slot"></div>
+        <div class="actions">
+          <p class="summary" id="order-summary" aria-live="polite"></p>
+          <button class="btn" type="submit" id="submit-btn">Continue to Checkout</button>
+          <p class="form__error" id="form-error" role="alert"></p>
+          <p class="fine" id="offer-fineprint">YOUR $49 DEPOSIT IS ALREADY PAID · RECURRING MEMBERSHIP ONLY · DEADLINE SEPTEMBER 1 AT 12:00 AM PACIFIC · 21+</p>
+        </div>
+      </div>
+    </form>
+  </div>
+</main>
+
+<footer class="footer">
+  <hr class="footer__divider">
+  <div class="footer__inner">
+    <div>
+      <svg class="footer__lockup" viewBox="0 0 540 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Downtown Pour Collective horizontal lockup logo">
+        <defs>
+          <clipPath id="foot-glass-clip"><path d="M -16,-46 L 16,-46 L 22,37 L -22,37 Z"></path></clipPath>
+        </defs>
+        <g transform="translate(80,100) rotate(38)">
+          <path d="M -22,-54 L 22,-54 L 28,44 L -28,44 Z" fill="#C4A35A"></path>
+          <path d="M -16,-46 L 16,-46 L 22,37 L -22,37 Z" fill="#0D1B2A"></path>
+          <g clip-path="url(#foot-glass-clip)">
+            <path d="M -21,23 L 19,-9 L 22,37 L -22,37 Z" fill="#1E3A5A"></path>
+            <line x1="-24" y1="23" x2="22" y2="-10" stroke="#C4A35A" stroke-width="1.4" stroke-linecap="round" opacity="0.75"></line>
+          </g>
+          <rect x="-24" y="-58" width="48" height="7" rx="2" fill="#C4A35A"></rect>
+          <rect x="-32" y="42" width="64" height="8" rx="2" fill="#C4A35A"></rect>
+        </g>
+        <line x1="170" y1="36" x2="170" y2="164" stroke="#C4A35A" stroke-width="0.8" opacity="0.4"></line>
+        <text x="190" y="72" font-family="'Barlow Condensed',sans-serif" font-weight="700" font-size="18" letter-spacing="8" fill="#C4A35A">DOWNTOWN</text>
+        <text x="185" y="122" font-family="'Playfair Display',serif" font-weight="700" font-size="56" letter-spacing="2" fill="#F5F0E8">POUR</text>
+        <text x="190" y="148" font-family="'Barlow Condensed',sans-serif" font-weight="700" font-size="18" letter-spacing="8" fill="#C4A35A">COLLECTIVE</text>
+        <text x="190" y="170" font-family="'Barlow Condensed',sans-serif" font-weight="600" font-size="11" letter-spacing="3" fill="#5A6475">LIVERMORE · TRI-VALLEY</text>
+      </svg>
+      <p class="footer__brand-line">Downtown Pour Collective is a community of Table &amp; Town LLC.<br>Livermore, California.</p>
+    </div>
+    <div>
+      <p class="footer__head">CONTACT</p>
+      <p class="footer__line"><a href="mailto:hello@downtownpourcollective.com">hello@downtownpourcollective.com</a></p>
+    </div>
+    <div>
+      <p class="footer__head">FOLLOW</p>
+      <nav class="footer__social" aria-label="Social">
+        <a href="https://instagram.com/downtownpourcollective" target="_blank" rel="noopener">Instagram</a>
+        <a href="https://facebook.com/profile.php?id=61576618345988" target="_blank" rel="noopener">Facebook</a>
+        <a href="https://linkedin.com/company/downtown-pour-collective" target="_blank" rel="noopener">LinkedIn</a>
+      </nav>
+    </div>
+  </div>
+  <div class="footer__legal">
+    <div>&copy; 2026 Table &amp; Town LLC. All rights reserved.</div>
+    <div class="footer__legal-links">
+      <a href="/privacy">Privacy Policy</a>
+      <span aria-hidden="true">·</span>
+      <a href="/terms">Terms of Service</a>
+      <span aria-hidden="true">·</span>
+      <a href="/support">Support</a>
+      <span aria-hidden="true">·</span>
+      <a href="/partners">For Operators</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+/* Private depositor config — keep legalVersions aligned with circle-checkout REQUIRED_CHECKOUT_LEGAL_VERSIONS.
+   Production uses the hostname-bound DPC Turnstile widget. Preview and local
+   hosts use Cloudflare's published always-pass test key for client-side QA. */
+function dpcTurnstileSiteKeyForHost(hostname) {
+  var isProductionHost = hostname === 'www.downtownpourcollective.com'
+    || hostname === 'downtownpourcollective.com';
+  return isProductionHost
+    ? '0x4AAAAAAECO2A5oKsePqsOg'
+    : '1x00000000000000000000AA';
+}
+function dpcCheckoutEndpointForHost(hostname) {
+  return hostname === 'www.downtownpourcollective.com'
+    || hostname === 'downtownpourcollective.com'
+    ? 'https://ebiuspbgzggrdiaswpcc.supabase.co/functions/v1/circle-checkout'
+    : '';
+}
+window.DPC_DEPOSITOR_CONFIRMATION = {
+  checkoutEndpoint: dpcCheckoutEndpointForHost(window.location.hostname),
+  turnstileSiteKey: dpcTurnstileSiteKeyForHost(window.location.hostname),
+  turnstileAction: 'circle_checkout',
+  legalVersions: {
+    tos: '3.0',
+    privacy: '4.2',
+    memberTerms: '3.0',
+    autoRenewalTerms: '3.0'
+  },
+  /* Founding window ends 2026-09-01 00:00 America/Los_Angeles (PDT = UTC-7). */
+  foundingEndsAtMs: Date.parse('2026-09-01T07:00:00.000Z'),
+  prices: {
+    founding: {
+      tap: { monthly: 55, annual: 550 },
+      cellar: { monthly: 65, annual: 650 },
+      reserve: { monthly: 75, annual: 750 }
+    }
+  }
+};
+</script>
+<script>
+window.__startDpcDepositorConfirmation = function (depositorToken) {
+  var cfg = window.DPC_DEPOSITOR_CONFIRMATION || {};
+  var form = document.getElementById('join-form');
+  var inviteError = document.getElementById('invite-error');
+  var errorEl = document.getElementById('form-error');
+  var submitBtn = document.getElementById('submit-btn');
+  var summaryEl = document.getElementById('order-summary');
+  var fineEl = document.getElementById('offer-fineprint');
+  var turnstileSlot = document.getElementById('turnstile-slot');
+  var turnstileWidgetId = null;
+  var turnstileToken = '';
+  var turnstileUnavailable = false;
+  var turnstileLoadAttempts = 0;
+  var submitting = false;
+  var TURNSTILE_MAX_LOAD_ATTEMPTS = 50;
+  var TURNSTILE_SCRIPT_ID = 'turnstile-api-script';
+  var TURNSTILE_SCRIPT_SRC = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+
+  function showInviteUnavailable() {
+    depositorToken = '';
+    inviteError.hidden = false;
+    form.hidden = true;
+    if (turnstileWidgetId != null && window.turnstile && typeof window.turnstile.remove === 'function') {
+      try { window.turnstile.remove(turnstileWidgetId); } catch (error) {}
+    }
+    turnstileWidgetId = null;
+    turnstileToken = '';
+  }
+
+  if (!depositorToken || Date.now() >= (cfg.foundingEndsAtMs || 0)) {
+    showInviteUnavailable();
+    return;
+  }
+  form.hidden = false;
+
+  function offerType() { return 'founding'; }
+
+  function selected(name) {
+    var el = form.querySelector('input[name="' + name + '"]:checked');
+    return el ? el.value : '';
+  }
+
+  function money(n) {
+    return typeof n === 'number' ? '$' + n : '—';
+  }
+
+  function refreshPrices() {
+    var offer = offerType();
+    var table = (cfg.prices && cfg.prices[offer]) || {};
+    ['tap', 'cellar', 'reserve'].forEach(function (circle) {
+      var p = table[circle] || {};
+      var priceEl = document.querySelector('[data-price-for="' + circle + '"]');
+      var noteEl = document.querySelector('[data-price-note-for="' + circle + '"]');
+      if (!priceEl) return;
+      priceEl.textContent = money(p.monthly) + ' / mo';
+      if (noteEl) noteEl.textContent = 'or ' + money(p.annual) + ' / year';
+    });
+    if (fineEl) {
+      fineEl.textContent = 'YOUR $49 DEPOSIT IS ALREADY PAID · RECURRING MEMBERSHIP ONLY · DEADLINE SEPTEMBER 1 AT 12:00 AM PACIFIC · 21+';
+    }
+    refreshSummary();
+  }
+
+  function refreshSummary() {
+    if (!summaryEl) return;
+    var circle = selected('circle');
+    var interval = selected('billingInterval');
+    var offer = offerType();
+    if (!circle || !interval) {
+      summaryEl.textContent = '';
+      return;
+    }
+    var p = (((cfg.prices || {})[offer] || {})[circle] || {});
+    var amount = interval === 'annual' ? p.annual : p.monthly;
+    var label = circle.charAt(0).toUpperCase() + circle.slice(1);
+    var period = interval === 'annual' ? 'year' : 'month';
+    summaryEl.innerHTML = 'You selected <strong>' + label + ' · ' + interval + '</strong> at <strong>' +
+      money(amount) + ' / ' + period + '</strong>. Your existing $49 deposit will not be charged again.';
+  }
+
+  function setError(msg) {
+    errorEl.textContent = msg || '';
+  }
+
+  function resetTurnstile() {
+    turnstileToken = '';
+    if (turnstileWidgetId != null && window.turnstile) {
+      try { window.turnstile.reset(turnstileWidgetId); } catch (e) {}
+    }
+  }
+
+  function showTurnstileUnavailable() {
+    if (turnstileWidgetId != null && window.turnstile && typeof window.turnstile.remove === 'function') {
+      try { window.turnstile.remove(turnstileWidgetId); } catch (e) {}
+    }
+    turnstileWidgetId = null;
+    turnstileToken = '';
+    turnstileUnavailable = true;
+    turnstileSlot.innerHTML = '<div style="font-size:13px;line-height:1.5;color:rgba(245,240,232,0.78)"><p style="margin:0 0 10px">The security check could not load. Disable content blocking, then try again, or <a href="/support" style="color:#D4AE62">contact support</a>.</p><button type="button" id="turnstile-retry" style="border:1px solid rgba(196,163,90,0.7);border-radius:4px;background:transparent;color:#F5F0E8;padding:8px 12px;font:inherit;cursor:pointer">Try security check again</button></div>';
+    setError('The security check could not load. Disable content blocking and try again.');
+    var retryButton = document.getElementById('turnstile-retry');
+    if (retryButton) {
+      retryButton.addEventListener('click', function () {
+        turnstileUnavailable = false;
+        turnstileLoadAttempts = 0;
+        setError('');
+        if (window.turnstile) {
+          turnstileSlot.innerHTML = '';
+          renderTurnstile();
+        } else {
+          turnstileSlot.innerHTML = '<p role="status" style="margin:0;font-size:13px;color:rgba(245,240,232,0.78)">Loading security check…</p>';
+          reloadTurnstileScript();
+        }
+      });
+    }
+  }
+
+  function reloadTurnstileScript() {
+    var existing = document.getElementById(TURNSTILE_SCRIPT_ID);
+    if (existing) existing.remove();
+    var script = document.createElement('script');
+    var completed = false;
+    var timeout;
+    function complete(callback) {
+      if (completed) return;
+      completed = true;
+      clearTimeout(timeout);
+      callback();
+    }
+    script.id = TURNSTILE_SCRIPT_ID;
+    script.async = true;
+    script.defer = true;
+    script.src = TURNSTILE_SCRIPT_SRC + '&retry=' + Date.now();
+    script.onload = function () { complete(renderTurnstile); };
+    script.onerror = function () { complete(showTurnstileUnavailable); };
+    timeout = setTimeout(function () {
+      if (script.parentNode) script.remove();
+      complete(showTurnstileUnavailable);
+    }, TURNSTILE_MAX_LOAD_ATTEMPTS * 200);
+    document.head.appendChild(script);
+  }
+
+  function renderTurnstile() {
+    var key = cfg.turnstileSiteKey || '';
+    if (!key || key.indexOf('REPLACE_ME') !== -1) {
+      turnstileSlot.innerHTML = '<p style="margin:0;font-size:13px;color:rgba(245,240,232,0.55)">Checkout bot check will appear here once the Turnstile site key is configured.</p>';
+      return;
+    }
+    if (!window.turnstile) {
+      turnstileLoadAttempts += 1;
+      if (turnstileLoadAttempts >= TURNSTILE_MAX_LOAD_ATTEMPTS) {
+        showTurnstileUnavailable();
+        return;
+      }
+      setTimeout(renderTurnstile, 200);
+      return;
+    }
+    turnstileSlot.innerHTML = '';
+    try {
+      turnstileWidgetId = window.turnstile.render(turnstileSlot, {
+        sitekey: key,
+        action: cfg.turnstileAction || 'circle_checkout',
+        theme: 'dark',
+        callback: function (token) {
+          turnstileToken = token || '';
+          turnstileUnavailable = false;
+          setError('');
+        },
+        'expired-callback': function () { turnstileToken = ''; },
+        'error-callback': showTurnstileUnavailable
+      });
+    } catch (error) {
+      showTurnstileUnavailable();
+    }
+  }
+
+  form.addEventListener('change', function (e) {
+    var t = e.target;
+    if (!t || !t.name) return;
+    refreshSummary();
+  });
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    if (submitting) return;
+    setError('');
+
+    if (form.company && form.company.value) {
+      setError('Something went wrong. Please try again.');
+      return;
+    }
+
+    var circle = selected('circle');
+    var billingInterval = selected('billingInterval');
+    var firstName = (form.firstName.value || '').trim();
+    var lastName = (form.lastName.value || '').trim();
+    var email = (form.email.value || '').trim();
+    var legal = form.legal.checked;
+    var offer = offerType();
+    var key = cfg.turnstileSiteKey || '';
+    var needsTurnstile = !!key && key.indexOf('REPLACE_ME') === -1;
+
+    if (!circle) { setError('Choose a Circle to continue.'); return; }
+    if (!billingInterval) { setError('Choose monthly or annual billing.'); return; }
+    if (!firstName || !lastName) { setError('Enter your first and last name.'); return; }
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setError('Enter a valid email address.');
+      return;
+    }
+    if (!legal) {
+      setError('Please accept the membership terms to continue.');
+      return;
+    }
+    if (!needsTurnstile) {
+      setError('The security check is not configured. Email hello@downtownpourcollective.com for help.');
+      return;
+    }
+    if (turnstileUnavailable) {
+      setError('The security check could not load. Use “Try security check again” or contact support.');
+      return;
+    }
+    if (!turnstileToken) {
+      setError('Complete the security check to continue.');
+      return;
+    }
+    if (!cfg.checkoutEndpoint) {
+      setError('Checkout is not configured yet.');
+      return;
+    }
+
+    submitting = true;
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Starting checkout…';
+
+    var payload = {
+      email: email,
+      firstName: firstName,
+      lastName: lastName,
+      circle: circle,
+      billingInterval: billingInterval,
+      offerType: offer,
+      checkoutKind: 'deposit_conversion',
+      depositorConfirmationToken: depositorToken,
+      acceptedAt: new Date().toISOString(),
+      legalVersions: cfg.legalVersions,
+      challengeToken: turnstileToken
+    };
+
+    fetch(cfg.checkoutEndpoint, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(payload)
+    }).then(function (res) {
+      return res.json().then(function (body) {
+        return { status: res.status, body: body };
+      }).catch(function () {
+        return { status: res.status, body: null };
+      });
+    }).then(function (result) {
+      var body = result.body || {};
+      var code = (body.error && body.error.code) || '';
+      var url = safeStripeCheckoutUrl(body.data && body.data.checkout_url);
+
+      if (result.status === 200 && body.success && url) {
+        window.location.href = url;
+        return;
+      }
+
+      var messages = {
+        CHECKOUT_NOT_ENABLED: 'Membership checkout is temporarily unavailable. Please try again shortly or email hello@downtownpourcollective.com for help.',
+        FOUNDING_UNAVAILABLE: 'This private confirmation cannot be used. Check your invitation or email hello@downtownpourcollective.com for help.',
+        SIGN_IN_REQUIRED: 'This private confirmation cannot be used. Check your invitation or email hello@downtownpourcollective.com for help.',
+        RATE_LIMITED: 'Too many attempts. Please wait a moment and try again.',
+        CHALLENGE_FAILED: 'Security check failed. Refresh the page and try again.',
+        LEGAL_VERSIONS_NOT_CURRENT: 'Please refresh the page and accept the current terms.',
+        MEMBER_NOT_ELIGIBLE: 'This private confirmation cannot be used. Check your invitation or email hello@downtownpourcollective.com for help.',
+        DEPOSITOR_CONFIRMATION_INVALID: 'This private confirmation cannot be used. Check your invitation or email hello@downtownpourcollective.com for help.'
+      };
+      if (['FOUNDING_UNAVAILABLE', 'SIGN_IN_REQUIRED', 'MEMBER_NOT_ELIGIBLE', 'DEPOSITOR_CONFIRMATION_INVALID'].includes(code)) {
+        showInviteUnavailable();
+        return;
+      }
+      setError(messages[code] || 'Checkout could not be started. Please try again or email hello@downtownpourcollective.com.');
+      submitting = false;
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Continue to Checkout';
+      resetTurnstile();
+    }).catch(function () {
+      setError('Network error. Check your connection and try again.');
+      submitting = false;
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Continue to Checkout';
+      resetTurnstile();
+    });
+  });
+
+  function safeStripeCheckoutUrl(value) {
+    if (typeof value !== 'string') return '';
+    try {
+      var parsed = new URL(value);
+      return parsed.protocol === 'https:' && parsed.hostname === 'checkout.stripe.com'
+        ? parsed.href
+        : '';
+    } catch (error) {
+      return '';
+    }
+  }
+
+  refreshPrices();
+  renderTurnstile();
+};
+</script>
+</body>
+</html>
