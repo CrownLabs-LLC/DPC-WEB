@@ -17,6 +17,7 @@ const [join, support, deploy, serve, analytics, trackApi, dashboard, dashboardAp
   ...['index.html', 'join.html', 'partners.html', 'privacy.html', 'terms.html'].map(read),
 ]);
 const home = linkedPages[0];
+const privacy = linkedPages[3];
 const terms = linkedPages[4];
 const [success, cancelled] = await Promise.all([
   read('subscription-success.html'),
@@ -47,6 +48,9 @@ assert.match(terms, /September 1, 2026 at 12:00 AM Pacific Time/);
 assert.match(terms, /will not be charged again/);
 assert.match(terms, /Membership Pause is not currently available/);
 assert.doesNotMatch(terms, /Welcome Kit and Activation Fee|fourteen \(14\) calendar days|\[INSERT IN APP ROADMAP FOR CANCELLATION\]|Founding Annual memberships/);
+assert.match(privacy, /Version 4\.2/);
+assert.match(privacy, /Effective Date: August 1, 2026/);
+assert.doesNotMatch(privacy, /Effective Date: \[DATE\]/);
 
 assert.match(join, /TURNSTILE_MAX_LOAD_ATTEMPTS = 50/);
 assert.match(join, /error_code: 'turnstile_unavailable'/);
@@ -79,6 +83,15 @@ assert.equal(configFor('downtownpourcollective.com').turnstileSiteKey, '0x4AAAAA
 assert.equal(configFor('dpc-preview.vercel.app').turnstileSiteKey, testKey);
 assert.equal(configFor('127.0.0.1').turnstileSiteKey, testKey);
 assert.notEqual(configFor('www.downtownpourcollective.com').turnstileSiteKey, testKey);
+assert.deepEqual(
+  { ...configFor('www.downtownpourcollective.com').legalVersions },
+  {
+    tos: '3.0',
+    privacy: '4.2',
+    memberTerms: '3.0',
+    autoRenewalTerms: '3.0',
+  },
+);
 
 const rewrites = JSON.parse(serve).rewrites;
 assert.ok(rewrites.some(({ source, destination }) => (
