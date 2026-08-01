@@ -17,12 +17,36 @@ const [join, support, deploy, serve, analytics, trackApi, dashboard, dashboardAp
   ...['index.html', 'join.html', 'partners.html', 'privacy.html', 'terms.html'].map(read),
 ]);
 const home = linkedPages[0];
+const terms = linkedPages[4];
+const [success, cancelled] = await Promise.all([
+  read('subscription-success.html'),
+  read('subscription-cancelled.html'),
+]);
 
 assert.match(home, /Join The Collective/);
 assert.match(home, /one-time \$49 Founding Slot Deposit/);
+assert.match(home, /Launch weekend, your first Pour is personally hosted/);
+assert.doesNotMatch(home, /Plan My Pour/);
+assert.match(home, /Already paid a \$49 Founding Slot Deposit/);
+assert.match(home, /Wingen Bakery &amp; Restaurant[\s\S]*Coming Soon/);
+assert.match(home, /Start with one Circle today/);
 assert.doesNotMatch(home, /Pause feature|add (?:another|more) anytime|Welcome Kit fee|A \$50 value|THE COASTER PASSPORT|THE INTRODUCTION/);
+assert.doesNotMatch(home, /public launch checkout supports one Circle|between now and launch|Full launch August 1/);
 assert.match(join, /one-time \$49 FOUNDING SLOT DEPOSIT/i);
+assert.match(join, /Launch weekend, your first Pour is personally hosted/);
+assert.match(join, /Please don’t use this public checkout/);
+assert.match(join, /Membership checkout is temporarily unavailable/);
 assert.doesNotMatch(join, /add more anytime|Welcome Kit fee|ONE-TIME \$49 WELCOME KIT/);
+assert.doesNotMatch(join, /Membership checkout opens August 1/);
+
+assert.match(success, /app-download instructions as soon as the member app is available/);
+assert.match(success, /Launch weekend, your first Pour is personally hosted/);
+assert.match(success, /Plan My Pour/);
+assert.match(cancelled, /remain held for up to 24 hours/);
+assert.match(terms, /September 1, 2026 at 12:00 AM Pacific Time/);
+assert.match(terms, /will not be charged again/);
+assert.match(terms, /Membership Pause is not currently available/);
+assert.doesNotMatch(terms, /Welcome Kit and Activation Fee|fourteen \(14\) calendar days|\[INSERT IN APP ROADMAP FOR CANCELLATION\]|Founding Annual memberships/);
 
 assert.match(join, /TURNSTILE_MAX_LOAD_ATTEMPTS = 50/);
 assert.match(join, /error_code: 'turnstile_unavailable'/);

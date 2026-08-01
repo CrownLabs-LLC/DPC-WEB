@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <title>Downtown Pour Collective | A New Way to Go Out in Downtown Livermore</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="A members-only community for people who love downtown Livermore. Five Pours each month at five participating spots. Founding Membership class limited to 200. Full launch August 1, 2026. Kickoff Party August 18, 2026.">
+<meta name="description" content="Downtown Pour Collective subscriptions opened August 1, 2026. Join the Founding Membership and enjoy a complimentary hosted Pour during launch weekend while the member app awaits store approval.">
 <meta name="author" content="Downtown Pour Collective">
 <link rel="canonical" href="https://www.downtownpourcollective.com/">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
@@ -13,7 +13,7 @@
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://www.downtownpourcollective.com/">
 <meta property="og:title" content="Downtown Pour Collective | A New Way to Go Out in Downtown Livermore">
-<meta property="og:description" content="A members-only community for people who love downtown Livermore. Five Pours each month at five participating spots. Founding Membership class limited to 200. Full launch August 1, 2026. Kickoff Party August 18, 2026.">
+<meta property="og:description" content="Subscriptions are open. Join the Founding Membership and enjoy a complimentary hosted Pour during launch weekend while the member app awaits store approval.">
 <meta property="og:image" content="https://www.downtownpourcollective.com/assets/og-image.jpg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -24,7 +24,7 @@
 <!-- Twitter / X -->
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Downtown Pour Collective | A New Way to Go Out in Downtown Livermore">
-<meta name="twitter:description" content="A members-only community for people who love downtown Livermore. Five Pours each month at five participating spots. Founding Membership class limited to 200. Full launch August 1, 2026. Kickoff Party August 18, 2026.">
+<meta name="twitter:description" content="Subscriptions are open. Join the Founding Membership and enjoy a complimentary hosted Pour during launch weekend while the member app awaits store approval.">
 <meta name="twitter:image" content="https://www.downtownpourcollective.com/assets/og-image.jpg">
 <meta name="twitter:site" content="@DowntownPour">
 
@@ -56,7 +56,7 @@
       "name": "Downtown Pour Collective",
       "url": "https://www.downtownpourcollective.com/",
       "image": "https://www.downtownpourcollective.com/assets/og-image.jpg",
-      "description": "A members-only beverage community in downtown Livermore. Five Pours each month at five participating spots. Full launch August 1, 2026.",
+      "description": "A members-only beverage community in downtown Livermore. Subscriptions opened August 1, 2026, with a complimentary hosted Pour available to new members during launch weekend while the member app awaits store approval.",
       "address": {
         "@type": "PostalAddress",
         "addressLocality": "Livermore",
@@ -85,7 +85,7 @@
       "name": "How does the Downtown Pour Collective membership work?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Each month your membership covers five Pours at five different participating spots in downtown Livermore. A Pour is a drink redeemed in the app when you walk in. Pours redeem Sunday through Thursday any time, or before 4 PM on Friday and Saturday."
+        "text": "Each active Circle membership includes up to five Pours each membership month at participating spots in downtown Livermore. Five is the norm when eligible venue supply allows. A Pour is redeemed in the member app. Pours redeem Sunday through Thursday any time, or before 4 PM on Friday and Saturday."
       }
     },
     {
@@ -106,10 +106,10 @@
     },
     {
       "@type": "Question",
-      "name": "When does Downtown Pour Collective launch?",
+      "name": "When do Downtown Pour Collective subscriptions begin?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Full launch is August 1, 2026 in downtown Livermore, California. Founding Members celebrate at the Kickoff Party on August 18, 2026."
+        "text": "Subscriptions opened August 1, 2026 in downtown Livermore, California. During launch weekend, new members receive one complimentary hosted Pour while the member app awaits store approval. Founding Members celebrate at the Kickoff Party on August 18, 2026."
       }
     }
   ]
@@ -303,6 +303,36 @@ img, svg { display: block; max-width: 100%; }
   text-wrap: pretty;
 }
 
+/* Temporary launch-weekend offer. Remove when the member app is live. */
+.launch-weekend {
+  background: var(--navy);
+  padding: 28px 32px;
+  border-top: 1px solid rgba(196, 163, 90, 0.55);
+  border-bottom: 1px solid rgba(196, 163, 90, 0.55);
+}
+.launch-weekend__inner {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px 28px;
+  border: 1px solid var(--gold);
+  border-radius: 6px;
+  background: rgba(196, 163, 90, 0.08);
+}
+.launch-weekend__title {
+  font-family: var(--display);
+  font-size: 24px;
+  line-height: 1.2;
+  color: var(--gold);
+  margin: 0 0 8px;
+}
+.launch-weekend__body {
+  font-family: var(--body);
+  font-size: 16px;
+  line-height: 1.55;
+  color: rgba(245, 240, 232, 0.88);
+  margin: 0;
+  text-wrap: pretty;
+}
 /* ============ SECTION 2 · WHY THIS EXISTS ============ */
 .why {
   background: var(--cream);
@@ -820,6 +850,17 @@ img, svg { display: block; max-width: 100%; }
   margin: 0;
   text-wrap: balance;
 }
+.partner-tile__status {
+  font-family: var(--support);
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--navy);
+  background: var(--gold);
+  padding: 5px 9px;
+  margin: -6px 0 0;
+}
 .partners__foot {
   font-family: var(--body);
   font-style: italic;
@@ -1083,6 +1124,12 @@ img, svg { display: block; max-width: 100%; }
   .hero__eyebrow { font-size: 12px; letter-spacing: 0.32em; }
   .hero__border { inset: 14px; }
   .hero__accent { width: 220px; height: 220px; }
+  .launch-weekend { padding: 20px 18px; }
+  .launch-weekend__inner {
+    padding: 22px 20px;
+    text-align: center;
+  }
+  .launch-weekend__title { font-size: 22px; }
 
   .section-title { }
   .why { padding: 84px 24px; }
@@ -1208,10 +1255,20 @@ img, svg { display: block; max-width: 100%; }
       <!-- TODO Aug 1: wire href to create-circle-checkout join form (W1) — not the $49 Payment Link -->
       <a class="btn" href="/join" data-join-cta>Join The Collective</a>
       <p class="hero__micro">THE FOUNDING 200  ·  FIVE YEARS OF LOCKED-IN PRICING</p>
-      <p class="hero__note">Already reserved your spot? Check your email for your invite to confirm your founding membership — your $49 deposit is already applied.</p>
+      <p class="hero__note">Already paid a $49 Founding Slot Deposit? Please don’t use the public Join checkout. We’ll email your private membership-confirmation link shortly. Your deposit is already recorded, and you won’t be charged it again.</p>
     </div>
   </div>
 </header>
+
+<!-- Temporary: remove this entire block when the member app is live. -->
+<aside class="launch-weekend" aria-label="Launch weekend hosted Pour">
+  <div class="launch-weekend__inner">
+    <div>
+      <h2 class="launch-weekend__title">Launch weekend, your first Pour is personally hosted.</h2>
+      <p class="launch-weekend__body">Join this weekend and we set up your first Pour with you directly. Tell us where you want it and DPC handles the rest with the venue. The member app lands on your phone this week and takes over from there.</p>
+    </div>
+  </div>
+</aside>
 
 <!-- ===================== SECTION 2 · WHY THIS EXISTS ===================== -->
 <section class="why" data-screen-label="02 Why This Exists">
@@ -1296,7 +1353,7 @@ img, svg { display: block; max-width: 100%; }
         <div class="how-row__num">04</div>
         <div>
           <h3 class="how-row__title">CHOOSE ONE CIRCLE TO START</h3>
-          <p class="how-row__body">Choose the Circle that fits how you go out. The public launch checkout supports one Circle membership at a time.</p>
+          <p class="how-row__body">Choose the Circle that matches what you like to drink—beer, wine, or cocktails. Start with one Circle today.</p>
         </div>
       </div>
     </div>
@@ -1395,7 +1452,7 @@ img, svg { display: block; max-width: 100%; }
       <div class="offer-card">
         <p class="offer-card__num">04</p>
         <h3 class="offer-card__title">$49 FOUNDING SLOT DEPOSIT</h3>
-        <p class="offer-card__body">When you join, your first payment is billed — the full year if you chose annual, or your first month if you chose monthly — plus a one-time $49 Founding Slot Deposit. Once payment is confirmed, we email your account-setup instructions. Your paid deposit includes one Welcome Kit.</p>
+        <p class="offer-card__body">When you join, your first payment is billed — the full year if you chose annual, or your first month if you chose monthly — plus a one-time $49 Founding Slot Deposit. Your subscription begins when payment is confirmed, and your paid deposit includes one Welcome Kit (see below for Welcome Kit contents).</p>
       </div>
     </div>
 
@@ -1419,7 +1476,7 @@ img, svg { display: block; max-width: 100%; }
     <div class="section__head">
       <span class="eyebrow eyebrow--center">PICK YOUR CIRCLE</span>
       <h2 class="section-title circle__title">Choose your pour.</h2>
-      <p class="circle__sub">Choose the beverage that fits how you go out. The public launch checkout supports one Circle membership at a time.</p>
+      <p class="circle__sub">Choose the Circle that matches what you like to drink—beer, wine, or cocktails. Start with one Circle today.</p>
     </div>
 
     <div class="circle__grid">
@@ -1517,9 +1574,10 @@ img, svg { display: block; max-width: 100%; }
       <div class="partner-tile">
         <img class="partner-tile__logo" src="assets/partners/wingen-bakery.png" alt="Wingen Bakery &amp; Restaurant logo" width="600" height="292" loading="lazy">
         <p class="partner-tile__name">Wingen Bakery &amp; Restaurant</p>
+        <p class="partner-tile__status">Coming Soon</p>
       </div>
     </div>
-    <p class="partners__foot">New Partners are added every week between now and launch. Every confirmed venue is named here and live in the app the day it signs.</p>
+    <p class="partners__foot">Participating partners will continue to be added as agreements and app setup are completed. Venue availability in the member app may begin after website enrollment opens.</p>
   </div>
 </section>
 
@@ -1541,15 +1599,15 @@ img, svg { display: block; max-width: 100%; }
       <div class="tl-step">
         <div class="tl-step__num">2</div>
         <div>
-          <h3 class="tl-step__title">GET THE APP</h3>
-          <p class="tl-step__body">After payment is confirmed, we email your account-setup and app-download instructions. Your Pours appear after setup and venue assignments are ready.</p>
+          <h3 class="tl-step__title">LAUNCH WEEKEND POUR</h3>
+          <p class="tl-step__body">Join this weekend and DPC personally coordinates one complimentary hosted Pour with you and the venue.</p>
         </div>
       </div>
       <div class="tl-step">
         <div class="tl-step__num">3</div>
         <div>
-          <h3 class="tl-step__title">YOUR FIRST POUR</h3>
-          <p class="tl-step__body">Walk into one of your five spots and redeem right in the app.</p>
+          <h3 class="tl-step__title">GET THE APP</h3>
+          <p class="tl-step__body">The member app is awaiting store approval. We’ll email download and account-setup instructions as soon as it is available; your regular Pours appear after setup and venue assignments are ready.</p>
         </div>
       </div>
       <div class="tl-step">
