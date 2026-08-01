@@ -97,8 +97,15 @@ process.env.SUPABASE_ANON_KEY = ANON_JWT;
   assert.equal(out.body.projectRef, 'hohbsqkmrlhkstojfdgx');
 }
 
-// Case: a service-role key is refused rather than served to the browser
-for (const secret of [SERVICE_JWT, 'sb_secret_abc123']) {
+// Case: a service-role key is refused rather than served to the browser —
+// including values pasted with surrounding whitespace, which must not evade
+// the classifier.
+for (const secret of [
+  SERVICE_JWT,
+  'sb_secret_abc123',
+  ` ${SERVICE_JWT} `,
+  '\tsb_secret_abc123\n',
+]) {
   resetEnv();
   process.env.ADMIN_SUPABASE_URL = 'https://ebiuspbgzggrdiaswpcc.supabase.co';
   process.env.ADMIN_SUPABASE_ANON_KEY = secret;
@@ -108,16 +115,32 @@ for (const secret of [SERVICE_JWT, 'sb_secret_abc123']) {
   await handler({ method: 'GET' }, res);
   console.error = origError;
   assert.deepEqual(out.body, { configured: false, reason: 'service_role_key_refused' });
-  assert.ok(!JSON.stringify(out.body).includes(secret), 'refused key must not appear in the response');
+  assert.ok(!JSON.stringify(out.body).includes(secret.trim()), 'refused key must not appear in the response');
+}
+resetEnv();
+
+// Case: a legitimate anon key with surrounding whitespace is still served,
+// trimmed, rather than rejected as unconfigured.
+{
+  process.env.ADMIN_SUPABASE_URL = ' https://ebiuspbgzggrdiaswpcc.supabase.co/ ';
+  process.env.ADMIN_SUPABASE_ANON_KEY = ` ${ANON_JWT} `;
+  const { res, out } = mockRes();
+  await handler({ method: 'GET' }, res);
+  assert.equal(out.body.configured, true);
+  assert.equal(out.body.supabaseAnonKey, ANON_JWT);
+  assert.equal(out.body.supabaseUrl, 'https://ebiuspbgzggrdiaswpcc.supabase.co');
 }
 resetEnv();
 
 assert.equal(looksLikeSecretKey(ANON_JWT), false);
 assert.equal(looksLikeSecretKey('sb_publishable_abc123'), false);
 assert.equal(looksLikeSecretKey(''), false);
+assert.equal(looksLikeSecretKey('   '), false);
 assert.equal(looksLikeSecretKey('not.a.jwt'), false);
 assert.equal(looksLikeSecretKey(SERVICE_JWT), true);
 assert.equal(looksLikeSecretKey('sb_secret_abc123'), true);
+assert.equal(looksLikeSecretKey(` ${SERVICE_JWT} `), true, 'whitespace must not evade the service-role check');
+assert.equal(looksLikeSecretKey('\tsb_secret_abc123\n'), true, 'whitespace must not evade the sb_secret_ check');
 assert.equal(projectRefFrom('https://abc123.supabase.co'), 'abc123');
 assert.equal(projectRefFrom('http://localhost:54321'), null);
 
@@ -194,6 +217,32 @@ pageHas(
 );
 pageHas(/state\.feedbackFull = rows\.length === state\.limit/, 'same inference for feedback');
 pageHas(/Filters this page only/, 'the feedback filter must not imply it searches the whole table');
+
+/* ---------------- session / race guards ---------------- */
+
+pageHas(/var sessionGeneration = 0/, 'sign-out needs a generation counter so in-flight refresh cannot resurrect the session');
+pageHas(/function invalidateSessionWork\(\)/, 'sign-out must invalidate pending refresh work');
+pageHas(/invalidateSessionWork\(\);\s*\n\s*clearSession\(\)/, 'sign-out bumps generation before clearing storage');
+pageHas(
+  /if \(generation !== sessionGeneration\) throw authError\('signed_out'\)/,
+  'a refresh that finishes after sign-out must refuse to write credentials back',
+);
+pageHas(
+  /function saveSession\(next, expectedGeneration\)/,
+  'saveSession must accept a generation so stale writers are rejected',
+);
+pageHas(
+  /return \{ tickets: \(data && data\.tickets\) \|\| \[\] \}/,
+  'ticket loader must return data without mutating shared state',
+);
+pageHas(
+  /return \{ feedback: \(data && data\.feedbackSubmissions\) \|\| \[\] \}/,
+  'feedback loader must return data without mutating shared state',
+);
+pageHas(
+  /if \(seq !== state\.seq\) return;\s*\n\s*if \(tab === 'tickets'\) commitTickets/,
+  'commit must happen only after the sequence check so older requests cannot overwrite newer filters',
+);
 
 /* ---------------- auth states stay distinct ---------------- */
 

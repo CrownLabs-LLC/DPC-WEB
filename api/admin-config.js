@@ -19,9 +19,12 @@ const ADMIN_SUPABASE_ANON_KEY = () =>
 // and `sb_publishable_*` / `sb_secret_*` prefixed keys. Detect the privileged
 // variant of both.
 export function looksLikeSecretKey(key) {
-  if (!key) return false;
-  if (key.startsWith('sb_secret_')) return true;
-  const segments = key.split('.');
+  // Env pastes commonly pick up leading/trailing whitespace; classify the
+  // trimmed value so a spaced service-role key can't slip past the guard.
+  const trimmed = typeof key === 'string' ? key.trim() : '';
+  if (!trimmed) return false;
+  if (trimmed.startsWith('sb_secret_')) return true;
+  const segments = trimmed.split('.');
   if (segments.length !== 3) return false;
   try {
     const claims = JSON.parse(Buffer.from(segments[1], 'base64url').toString('utf8'));
@@ -44,8 +47,8 @@ export default async function handler(req, res) {
     return res.status(405).json({ configured: false, reason: 'method_not_allowed' });
   }
 
-  const supabaseUrl = ADMIN_SUPABASE_URL();
-  const supabaseAnonKey = ADMIN_SUPABASE_ANON_KEY();
+  const supabaseUrl = ADMIN_SUPABASE_URL().trim();
+  const supabaseAnonKey = ADMIN_SUPABASE_ANON_KEY().trim();
 
   if (!supabaseUrl || !supabaseAnonKey) {
     return res.status(200).json({ configured: false, reason: 'missing_env' });

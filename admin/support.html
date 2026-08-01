@@ -308,6 +308,9 @@ dl.facts dd { margin: 0; overflow-wrap: anywhere; }
   var cfg = null;
   var session = null;
   var refreshInFlight = null;
+  // Bumped on every sign-out (and start of a new sign-in) so an in-flight
+  // refresh that completes afterwards cannot write credentials back.
+  var sessionGeneration = 0;
 
   var state = {
     tab: 'tickets',
@@ -396,13 +399,19 @@ dl.facts dd { margin: 0; overflow-wrap: anywhere; }
       return parsed;
     } catch (e) { return null; }
   }
-  function saveSession(next) {
+  function saveSession(next, expectedGeneration) {
+    if (expectedGeneration !== undefined && expectedGeneration !== sessionGeneration) return false;
     session = next;
     try { localStorage.setItem(SESSION_KEY, JSON.stringify(next)); } catch (e) {}
+    return true;
   }
   function clearSession() {
     session = null;
     try { localStorage.removeItem(SESSION_KEY); } catch (e) {}
+  }
+  function invalidateSessionWork() {
+    sessionGeneration += 1;
+    refreshInFlight = null;
   }
 
   /* ---------- errors ---------- */
@@ -453,8 +462,12 @@ dl.facts dd { margin: 0; overflow-wrap: anywhere; }
   }
 
   function signIn(email, password) {
+    // Drop any in-flight refresh before issuing a new grant, then stamp the
+    // generation that this sign-in alone is allowed to write.
+    invalidateSessionWork();
+    var generation = sessionGeneration;
     return grant('password', { email: email, password: password }).then(function (next) {
-      saveSession(next);
+      if (!saveSession(next, generation)) throw authError('signed_out');
       return next;
     });
   }
@@ -467,16 +480,28 @@ dl.facts dd { margin: 0; overflow-wrap: anywhere; }
     var now = Math.floor(Date.now() / 1000);
     if (session.expires_at - now > REFRESH_SKEW_S) return Promise.resolve(session.access_token);
     if (!refreshInFlight) {
-      refreshInFlight = grant('refresh_token', { refresh_token: session.refresh_token })
+      var generation = sessionGeneration;
+      var refreshToken = session.refresh_token;
+      refreshInFlight = grant('refresh_token', { refresh_token: refreshToken })
         .then(function (next) {
+          // A refresh that finishes after sign-out must not resurrect the
+          // session — check the generation before writing anything back.
+          if (generation !== sessionGeneration) throw authError('signed_out');
           // A refresh response omits `user` in some GoTrue versions; keep the
           // known identity so the admin check doesn't spuriously fail.
           if (!next.user && session) next.user = session.user;
-          saveSession(next);
+          if (!saveSession(next, generation)) throw authError('signed_out');
           return next.access_token;
         })
-        .catch(function () { throw authError('expired'); })
-        .finally(function () { refreshInFlight = null; });
+        .catch(function (err) {
+          if (err && err.authKind) throw err;
+          throw authError('expired');
+        })
+        .finally(function () {
+          // Only clear the slot if this is still the active refresh; a
+          // later sign-in may have started a different one.
+          if (refreshInFlight && generation === sessionGeneration) refreshInFlight = null;
+        });
     }
     return refreshInFlight;
   }
@@ -484,6 +509,9 @@ dl.facts dd { margin: 0; overflow-wrap: anywhere; }
   function signOut() {
     var token = session && session.access_token;
     stopPolling();
+    // Invalidate before clearSession so any refresh already in flight sees
+    // the bumped generation and refuses to saveSession on completion.
+    invalidateSessionWork();
     clearSession();
     resetData();
     if (token && cfg) {
@@ -539,21 +567,16 @@ dl.facts dd { margin: 0; overflow-wrap: anywhere; }
     state.lastUpdated = null;
   }
 
+  // Loaders return payloads only — they must not write shared state. Commit
+  // happens in load() after the sequence check so a slow earlier request
+  // cannot overwrite newer filtered results.
   function loadTickets() {
     var body = { limit: state.limit, offset: state.ticketOffset };
     if (state.filters.status) body.status = state.filters.status;
     if (state.filters.severity) body.severity = state.filters.severity;
     if (state.filters.owner) body.owner = state.filters.owner;
     return callFunction('admin-support-queue', body).then(function (data) {
-      var rows = (data && data.tickets) || [];
-      state.tickets = rows;
-      // No total count exists in the response — a full page is the only hint
-      // that another page might follow.
-      state.ticketsFull = rows.length === state.limit;
-      if (state.detailTicket) {
-        var fresh = rows.filter(function (t) { return t.id === state.detailTicket.id; })[0];
-        if (fresh) state.detailTicket = fresh;
-      }
+      return { tickets: (data && data.tickets) || [] };
     });
   }
 
@@ -563,19 +586,36 @@ dl.facts dd { margin: 0; overflow-wrap: anywhere; }
     // returns are ignored here.
     return callFunction('admin-support-queue', { limit: state.limit, offset: state.feedbackOffset })
       .then(function (data) {
-        var rows = (data && data.feedbackSubmissions) || [];
-        state.feedback = rows;
-        state.feedbackFull = rows.length === state.limit;
+        return { feedback: (data && data.feedbackSubmissions) || [] };
       });
+  }
+
+  function commitTickets(rows) {
+    state.tickets = rows;
+    // No total count exists in the response — a full page is the only hint
+    // that another page might follow.
+    state.ticketsFull = rows.length === state.limit;
+    if (state.detailTicket) {
+      var fresh = rows.filter(function (t) { return t.id === state.detailTicket.id; })[0];
+      if (fresh) state.detailTicket = fresh;
+    }
+  }
+
+  function commitFeedback(rows) {
+    state.feedback = rows;
+    state.feedbackFull = rows.length === state.limit;
   }
 
   function load(opts) {
     var quiet = opts && opts.quiet;
     var seq = ++state.seq;
+    var tab = state.tab;
     if (!quiet) $('view-app').classList.add('loading');
-    var work = state.tab === 'tickets' ? loadTickets() : loadFeedback();
-    return work.then(function () {
+    var work = tab === 'tickets' ? loadTickets() : loadFeedback();
+    return work.then(function (payload) {
       if (seq !== state.seq) return;
+      if (tab === 'tickets') commitTickets(payload.tickets);
+      else commitFeedback(payload.feedback);
       state.lastUpdated = new Date();
       $('banner').hidden = true;
       render();
@@ -826,8 +866,13 @@ dl.facts dd { margin: 0; overflow-wrap: anywhere; }
           updated.members = t.members;
           state.detailTicket = updated;
           // Refetch so the list (and this ticket) reflect the server, not an
-          // optimistic guess.
-          return loadTickets();
+          // optimistic guess. Commit only after the sequence check so a
+          // concurrent filter change wins.
+          var seq = ++state.seq;
+          return loadTickets().then(function (payload) {
+            if (seq !== state.seq) return;
+            commitTickets(payload.tickets);
+          });
         })
         .then(function () { state.lastUpdated = new Date(); })
         .catch(function (err) {
