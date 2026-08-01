@@ -205,6 +205,61 @@ metadata), which has no safe probe. If you ever switch to a restricted key,
 grant Checkout Sessions read *and* write, PaymentIntents read, and Events
 read.
 
+### 2e. Support dashboard — /admin/support
+
+A triage view for member **support tickets** and **feedback submissions** at
+`https://www.downtownpourcollective.com/admin/support`. Until this existed,
+nothing notified anyone when a member filed a ticket — the only surface was
+the in-app `AdminScreen` in the mobile build, refreshed by hand.
+
+This is a different system from `/dashboard`. It does **not** use
+`DASHBOARD_TOKEN`; it signs in against **Supabase Auth** with a real admin
+account, because the two Edge Functions it calls (`admin-support-queue` and
+`admin-support-triage`, both deployed from the `DPC` repo) authorize on
+`app_metadata.role === 'admin'` in the caller's JWT.
+
+Setup (one time):
+
+1. **Supabase** → Project Settings → API: copy the **Project URL** and the
+   **anon public** key. The DPC app project is `ebiuspbgzggrdiaswpcc`
+   (production) or `hohbsqkmrlhkstojfdgx` (staging).
+2. **Vercel** → Environment Variables (Production):
+   - `ADMIN_SUPABASE_URL` — the project URL
+   - `ADMIN_SUPABASE_ANON_KEY` — anon public key
+   Both fall back to `SUPABASE_URL` / `SUPABASE_ANON_KEY` if unset, so set
+   them explicitly whenever the support dashboard should point at a different
+   Supabase project than the marketing funnel does.
+3. Redeploy.
+
+Never put the **service_role** key in `ADMIN_SUPABASE_ANON_KEY`.
+`/api/admin-config` serves this value to the browser, so a service-role key
+there would hand full, RLS-bypassing database access to every visitor. The
+endpoint detects the privileged key shapes (`sb_secret_*` and JWTs claiming
+`role: service_role`) and refuses to serve them, but don't rely on that.
+
+Admin accounts are provisioned out-of-band — `app_metadata.role` can only be
+set with the service-role key, which this repo does not hold. Today
+`brandi@crownlabsllc.com` is the only admin in production. Add more via the
+Supabase dashboard or Admin API.
+
+Acceptance: visit `/admin/support`, sign in with an admin account → the ticket
+queue loads. Sign in with a non-admin member account → "Not an admin account"
+rather than a generic error. The page shows which Supabase project it's
+pointed at on the sign-in screen, which is the fastest way to catch a
+staging/production mixup.
+
+Known limitations, all inherited from the Edge Function contract: there is no
+total count for either collection, so the dashboard shows "Showing 1–25" and
+infers a next page from a full one rather than claiming a total; the
+`status`/`severity`/`owner` filters are server-side but the feedback category
+filter only narrows the page already loaded; and the related venue, credit,
+and redemption columns come back as bare UUIDs, so the dashboard shows them
+with a copy button instead of expanding them into names.
+
+The queue refreshes every 60 seconds and on window focus. There's no realtime
+trigger on ticket creation — that would be a Supabase Realtime change in the
+backend repo.
+
 ---
 
 ## 3. GA4 — measurement ID
