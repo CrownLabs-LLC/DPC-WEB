@@ -4,8 +4,9 @@ import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
-const [page, serveSource, robots, vercelSource, sitemap] = await Promise.all([
+const [page, joinPage, serveSource, robots, vercelSource, sitemap] = await Promise.all([
   read('depositor-confirmation.html'),
+  read('join.html'),
   read('serve.json'),
   read('robots.txt'),
   read('vercel.json'),
@@ -54,6 +55,9 @@ assert.doesNotMatch(page, /pending-site-key/);
 assert.match(page, /id="invite-error"[^>]+hidden/);
 assert.match(page, /id="join-form"[^>]+hidden/);
 assert.match(page, /DEPOSITOR_CONFIRMATION_INVALID[\s\S]*showInviteUnavailable\(\)/);
+assert.match(page, /CHALLENGE_FAILED: 'Security check failed\. Complete the new security check below and try again\.'/);
+assert.match(page, /LEGAL_VERSIONS_NOT_CURRENT: 'The terms on this page are out of date\. Keep this page open and email hello@downtownpourcollective\.com for help\.'/);
+assert.doesNotMatch(page, /Date\.now\(\)\s*>=\s*\(cfg\.foundingEndsAtMs/);
 
 const configScript = page.match(
   /function dpcTurnstileSiteKeyForHost[\s\S]*?window\.DPC_DEPOSITOR_CONFIRMATION = \{[\s\S]*?\n\};/,
@@ -79,6 +83,18 @@ assert.deepEqual(
     memberTerms: '3.0',
     autoRenewalTerms: '3.0',
   },
+);
+
+const joinConfigScript = joinPage.match(
+  /function dpcTurnstileSiteKeyForHost[\s\S]*?window\.DPC_JOIN = \{[\s\S]*?\n\};/,
+)?.[0];
+assert.ok(joinConfigScript, 'public join config must remain executable in isolation');
+const joinContext = { window: { location: { hostname: 'www.downtownpourcollective.com' } }, Date };
+vm.runInNewContext(joinConfigScript, joinContext);
+assert.deepEqual(
+  { ...configFor('www.downtownpourcollective.com').legalVersions },
+  { ...joinContext.window.DPC_JOIN.legalVersions },
+  'public and private checkout pages must submit the same legal versions',
 );
 
 const bootstrap = page.match(

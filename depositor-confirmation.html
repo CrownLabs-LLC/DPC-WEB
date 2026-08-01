@@ -973,7 +973,9 @@ window.__startDpcDepositorConfirmation = function (depositorToken) {
     turnstileToken = '';
   }
 
-  if (!depositorToken || Date.now() >= (cfg.foundingEndsAtMs || 0)) {
+  // The server is authoritative for the Pacific-time conversion deadline.
+  // A member's incorrect device clock must not invalidate an otherwise usable link.
+  if (!depositorToken) {
     showInviteUnavailable();
     return;
   }
@@ -1217,8 +1219,8 @@ window.__startDpcDepositorConfirmation = function (depositorToken) {
         FOUNDING_UNAVAILABLE: 'This private confirmation cannot be used. Check your invitation or email hello@downtownpourcollective.com for help.',
         SIGN_IN_REQUIRED: 'This private confirmation cannot be used. Check your invitation or email hello@downtownpourcollective.com for help.',
         RATE_LIMITED: 'Too many attempts. Please wait a moment and try again.',
-        CHALLENGE_FAILED: 'Security check failed. Refresh the page and try again.',
-        LEGAL_VERSIONS_NOT_CURRENT: 'Please refresh the page and accept the current terms.',
+        CHALLENGE_FAILED: 'Security check failed. Complete the new security check below and try again.',
+        LEGAL_VERSIONS_NOT_CURRENT: 'The terms on this page are out of date. Keep this page open and email hello@downtownpourcollective.com for help.',
         MEMBER_NOT_ELIGIBLE: 'This private confirmation cannot be used. Check your invitation or email hello@downtownpourcollective.com for help.',
         DEPOSITOR_CONFIRMATION_INVALID: 'This private confirmation cannot be used. Check your invitation or email hello@downtownpourcollective.com for help.'
       };
