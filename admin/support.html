@@ -327,7 +327,10 @@ dl.facts dd { margin: 0; overflow-wrap: anywhere; }
     escalateDraft: '',
     pendingError: null,
     busy: false,
-    seq: 0,
+    // Separate counters so a background ticket refresh after triage cannot
+    // cancel an in-flight Feedback load (and vice versa).
+    ticketSeq: 0,
+    feedbackSeq: 0,
     lastUpdated: null,
     timer: null
   };
@@ -608,21 +611,22 @@ dl.facts dd { margin: 0; overflow-wrap: anywhere; }
 
   function load(opts) {
     var quiet = opts && opts.quiet;
-    var seq = ++state.seq;
     var tab = state.tab;
+    var seqKey = tab === 'tickets' ? 'ticketSeq' : 'feedbackSeq';
+    var seq = ++state[seqKey];
     if (!quiet) $('view-app').classList.add('loading');
     var work = tab === 'tickets' ? loadTickets() : loadFeedback();
     return work.then(function (payload) {
-      if (seq !== state.seq) return;
+      if (seq !== state[seqKey]) return;
       if (tab === 'tickets') commitTickets(payload.tickets);
       else commitFeedback(payload.feedback);
       state.lastUpdated = new Date();
       $('banner').hidden = true;
       render();
     }).catch(function (err) {
-      if (seq !== state.seq) return;
+      if (seq !== state[seqKey]) return;
       if (handleAuthFailure(err)) return;
-      var hasData = state.tab === 'tickets' ? state.tickets : state.feedback;
+      var hasData = tab === 'tickets' ? state.tickets : state.feedback;
       if (hasData) {
         $('banner').hidden = false;
         $('banner').textContent = 'Refresh failed: ' + err.message;
@@ -630,7 +634,7 @@ dl.facts dd { margin: 0; overflow-wrap: anywhere; }
         renderLoadError(err);
       }
     }).finally(function () {
-      if (seq === state.seq) $('view-app').classList.remove('loading');
+      if (seq === state[seqKey]) $('view-app').classList.remove('loading');
     });
   }
 
@@ -865,21 +869,38 @@ dl.facts dd { margin: 0; overflow-wrap: anywhere; }
           var updated = Object.assign({}, t, data.ticket);
           updated.members = t.members;
           state.detailTicket = updated;
-          // Refetch so the list (and this ticket) reflect the server, not an
-          // optimistic guess. Commit only after the sequence check so a
-          // concurrent filter change wins.
-          var seq = ++state.seq;
+          // Refetch tickets on the ticket sequence only — never touch
+          // feedbackSeq, or a Feedback tab load started mid-triage would be
+          // discarded and stuck on "Loading…".
+          var seq = ++state.ticketSeq;
           return loadTickets().then(function (payload) {
-            if (seq !== state.seq) return;
+            if (seq !== state.ticketSeq) return;
             commitTickets(payload.tickets);
           });
         })
         .then(function () { state.lastUpdated = new Date(); })
         .catch(function (err) {
           if (handleAuthFailure(err)) return;
-          state.pendingError = err.apiCode === 'support_ticket_not_found'
-            ? 'This ticket no longer exists. Go back to the queue and refresh.'
-            : err.message;
+          if (err.apiCode === 'first_response_already_set') {
+            state.pendingError =
+              'First response was already recorded (possibly by another admin). Refreshing the ticket.';
+            var seq = ++state.ticketSeq;
+            return loadTickets().then(function (payload) {
+              if (seq !== state.ticketSeq) return;
+              commitTickets(payload.tickets);
+              if (state.detailTicket && state.tickets) {
+                var fresh = state.tickets.filter(function (row) {
+                  return row.id === state.detailTicket.id;
+                })[0];
+                if (fresh) state.detailTicket = fresh;
+              }
+            }).catch(function () {});
+          }
+          if (err.apiCode === 'support_ticket_not_found') {
+            state.pendingError = 'This ticket no longer exists. Go back to the queue and refresh.';
+            return;
+          }
+          state.pendingError = err.message;
         })
         .finally(function () {
           state.busy = false;

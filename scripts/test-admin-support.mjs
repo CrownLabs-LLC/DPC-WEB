@@ -240,8 +240,18 @@ pageHas(
   'feedback loader must return data without mutating shared state',
 );
 pageHas(
-  /if \(seq !== state\.seq\) return;\s*\n\s*if \(tab === 'tickets'\) commitTickets/,
+  /if \(seq !== state\[seqKey\]\) return;\s*\n\s*if \(tab === 'tickets'\) commitTickets/,
   'commit must happen only after the sequence check so older requests cannot overwrite newer filters',
+);
+pageHas(/ticketSeq: 0/, 'tickets need their own request sequence');
+pageHas(/feedbackSeq: 0/, 'feedback needs its own request sequence');
+pageHas(
+  /var seq = \+\+state\.ticketSeq;[\s\S]{0,200}?loadTickets\(\)/,
+  'post-triage ticket refresh must bump ticketSeq only — never the feedback sequence',
+);
+pageHas(
+  /first_response_already_set/,
+  'UI must handle the atomic first-response conflict from the triage RPC',
 );
 
 /* ---------------- auth states stay distinct ---------------- */
