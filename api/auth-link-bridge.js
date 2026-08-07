@@ -1,7 +1,11 @@
 const MAX_REQUEST_BYTES = 2048;
 const PROVIDER_TIMEOUT_MS = 8000;
 const TOKEN_HASH_PATTERN = /^[A-Za-z0-9_-]{16,512}$/;
-const STAGING_VERIFIER_URL = 'https://hohbsqkmrlhkstojfdgx.supabase.co/functions/v1/auth-link-bridge';
+// The urgent member-access lane is temporarily running from a stable Vercel
+// branch alias. Preview deployments do not inherit production environment
+// variables, so this public (non-secret) URL keeps that alias on production.
+// Once /auth is merged to the canonical website, production uses SUPABASE_URL.
+const TEMPORARY_PREVIEW_VERIFIER_URL = 'https://ebiuspbgzggrdiaswpcc.supabase.co/functions/v1/auth-link-bridge';
 
 function setSecurityHeaders(res) {
   res.setHeader('Cache-Control', 'no-store, max-age=0');
@@ -23,7 +27,7 @@ function requestBody(req) {
 
 function verificationEndpoint() {
   const raw = process.env.DPC_AUTH_LINK_BRIDGE_URL
-    || (process.env.VERCEL_ENV === 'preview' ? STAGING_VERIFIER_URL : null)
+    || (process.env.VERCEL_ENV === 'preview' ? TEMPORARY_PREVIEW_VERIFIER_URL : null)
     || (process.env.SUPABASE_URL
       ? `${process.env.SUPABASE_URL.replace(/\/$/, '')}/functions/v1/auth-link-bridge`
       : null);

@@ -91,7 +91,7 @@ try {
     delete process.env.SUPABASE_URL;
     process.env.VERCEL_ENV = 'preview';
     globalThis.fetch = async (url) => {
-      assert.equal(url, 'https://hohbsqkmrlhkstojfdgx.supabase.co/functions/v1/auth-link-bridge');
+      assert.equal(url, 'https://ebiuspbgzggrdiaswpcc.supabase.co/functions/v1/auth-link-bridge');
       return new Response(JSON.stringify({ success: false, error: { code: 'link_invalid' } }), { status: 400 });
     };
     const res = await invoke({ body: { token_hash: VALID_HASH } });
