@@ -4,7 +4,8 @@ import handler from '../api/auth-link-bridge.js';
 const VALID_HASH = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
 const originalFetch = globalThis.fetch;
 const originalUrl = process.env.SUPABASE_URL;
-const originalAnonKey = process.env.SUPABASE_ANON_KEY;
+const originalBridgeUrl = process.env.DPC_AUTH_LINK_BRIDGE_URL;
+const originalVercelEnvironment = process.env.VERCEL_ENV;
 
 function responseRecorder() {
   return {
@@ -30,20 +31,22 @@ async function invoke({ method = 'POST', body, headers = {} } = {}) {
 
 try {
   process.env.SUPABASE_URL = 'https://project.supabase.co';
-  process.env.SUPABASE_ANON_KEY = 'anon-test-key';
+  delete process.env.DPC_AUTH_LINK_BRIDGE_URL;
+  delete process.env.VERCEL_ENV;
 
   {
     let called = false;
     globalThis.fetch = async (url, options) => {
       called = true;
-      assert.equal(url, 'https://project.supabase.co/auth/v1/verify');
+      assert.equal(url, 'https://project.supabase.co/functions/v1/auth-link-bridge');
       assert.equal(options.method, 'POST');
-      assert.equal(options.headers.apikey, 'anon-test-key');
-      assert.deepEqual(JSON.parse(options.body), { token_hash: VALID_HASH, type: 'email' });
+      assert.deepEqual(JSON.parse(options.body), { token_hash: VALID_HASH });
       return new Response(JSON.stringify({
-        access_token: 'access.jwt.value',
-        refresh_token: 'refresh-value',
-        user: { id: 'not-returned' },
+        success: true,
+        data: {
+          access_token: 'access.jwt.value',
+          refresh_token: 'refresh-value',
+        },
       }), { status: 200, headers: { 'content-type': 'application/json' } });
     };
 
@@ -86,6 +89,18 @@ try {
 
   {
     delete process.env.SUPABASE_URL;
+    process.env.VERCEL_ENV = 'preview';
+    globalThis.fetch = async (url) => {
+      assert.equal(url, 'https://hohbsqkmrlhkstojfdgx.supabase.co/functions/v1/auth-link-bridge');
+      return new Response(JSON.stringify({ success: false, error: { code: 'link_invalid' } }), { status: 400 });
+    };
+    const res = await invoke({ body: { token_hash: VALID_HASH } });
+    assert.equal(res.statusCode, 400);
+  }
+
+  {
+    delete process.env.SUPABASE_URL;
+    delete process.env.VERCEL_ENV;
     const res = await invoke({ body: { token_hash: VALID_HASH } });
     assert.equal(res.statusCode, 503);
     assert.deepEqual(res.body, { success: false, error: { code: 'temporarily_unavailable' } });
@@ -96,6 +111,8 @@ try {
   globalThis.fetch = originalFetch;
   if (originalUrl === undefined) delete process.env.SUPABASE_URL;
   else process.env.SUPABASE_URL = originalUrl;
-  if (originalAnonKey === undefined) delete process.env.SUPABASE_ANON_KEY;
-  else process.env.SUPABASE_ANON_KEY = originalAnonKey;
+  if (originalBridgeUrl === undefined) delete process.env.DPC_AUTH_LINK_BRIDGE_URL;
+  else process.env.DPC_AUTH_LINK_BRIDGE_URL = originalBridgeUrl;
+  if (originalVercelEnvironment === undefined) delete process.env.VERCEL_ENV;
+  else process.env.VERCEL_ENV = originalVercelEnvironment;
 }

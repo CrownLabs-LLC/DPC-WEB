@@ -1,6 +1,7 @@
 const MAX_REQUEST_BYTES = 2048;
 const PROVIDER_TIMEOUT_MS = 8000;
 const TOKEN_HASH_PATTERN = /^[A-Za-z0-9_-]{16,512}$/;
+const STAGING_VERIFIER_URL = 'https://hohbsqkmrlhkstojfdgx.supabase.co/functions/v1/auth-link-bridge';
 
 function setSecurityHeaders(res) {
   res.setHeader('Cache-Control', 'no-store, max-age=0');
@@ -20,14 +21,18 @@ function requestBody(req) {
   return req.body;
 }
 
-function configuredSupabaseOrigin() {
-  const raw = process.env.SUPABASE_URL;
-  if (!raw || !process.env.SUPABASE_ANON_KEY) return null;
+function verificationEndpoint() {
+  const raw = process.env.DPC_AUTH_LINK_BRIDGE_URL
+    || (process.env.VERCEL_ENV === 'preview' ? STAGING_VERIFIER_URL : null)
+    || (process.env.SUPABASE_URL
+      ? `${process.env.SUPABASE_URL.replace(/\/$/, '')}/functions/v1/auth-link-bridge`
+      : null);
+  if (!raw) return null;
 
   try {
     const url = new URL(raw);
-    if (url.protocol !== 'https:' || url.username || url.password) return null;
-    return url.origin;
+    if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash) return null;
+    return url.toString();
   } catch {
     return null;
   }
@@ -64,9 +69,9 @@ export default async function handler(req, res) {
     return failure(res);
   }
 
-  const supabaseOrigin = configuredSupabaseOrigin();
-  if (!supabaseOrigin) {
-    console.error('auth-link-bridge: Supabase public configuration is missing or invalid');
+  const endpoint = verificationEndpoint();
+  if (!endpoint) {
+    console.error('auth-link-bridge: verification endpoint is missing or invalid');
     return failure(res, 503, 'temporarily_unavailable');
   }
 
@@ -74,19 +79,17 @@ export default async function handler(req, res) {
   const timeout = setTimeout(() => controller.abort(), PROVIDER_TIMEOUT_MS);
 
   try {
-    const response = await fetch(`${supabaseOrigin}/auth/v1/verify`, {
+    const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
-        apikey: process.env.SUPABASE_ANON_KEY,
-        authorization: `Bearer ${process.env.SUPABASE_ANON_KEY}`,
         'content-type': 'application/json',
       },
-      body: JSON.stringify({ token_hash: tokenHash, type: 'email' }),
+      body: JSON.stringify({ token_hash: tokenHash }),
       signal: controller.signal,
     });
     const result = await response.json().catch(() => null);
-    const accessToken = result?.access_token || result?.session?.access_token;
-    const refreshToken = result?.refresh_token || result?.session?.refresh_token;
+    const accessToken = result?.data?.access_token || result?.access_token || result?.session?.access_token;
+    const refreshToken = result?.data?.refresh_token || result?.refresh_token || result?.session?.refresh_token;
 
     if (!response.ok || !accessToken || !refreshToken) return failure(res);
 
