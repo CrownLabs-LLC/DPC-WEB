@@ -21,7 +21,7 @@ assert.match(page, /Checkout contains only that recurring membership charge/);
 assert.match(page, /paid deposit includes one Welcome Kit/);
 assert.match(page, /up to five Membership Pours per monthly period/);
 assert.match(page, /September 1, 2026 at 12:00 AM Pacific Time/);
-assert.match(page, /member app is awaiting store approval/);
+assert.doesNotMatch(page, /member app is awaiting store approval/);
 assert.match(page, /secure invitation[^<]+identifies the existing deposit and member record/);
 assert.match(page, /Terms of Service[\s\S]*Privacy Policy[\s\S]*Member Terms &amp; Redemption Policy[\s\S]*automatic renewal terms/);
 

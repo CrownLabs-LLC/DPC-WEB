@@ -19,30 +19,43 @@ const [join, support, deploy, serve, analytics, trackApi, dashboard, dashboardAp
 const home = linkedPages[0];
 const privacy = linkedPages[3];
 const terms = linkedPages[4];
-const [success, cancelled] = await Promise.all([
+const [success, cancelled, depositorConfirmation] = await Promise.all([
   read('subscription-success.html'),
   read('subscription-cancelled.html'),
+  read('depositor-confirmation.html'),
 ]);
+
+// The launch weekend hosted Pour promotion is retired. Guard the whole concept —
+// markup, styles, and every phrasing it shipped with — not just its headline.
+const retiredLaunchWeekendPromo =
+  /launch[-\s]weekend|personally hosted|hosted Pour|complimentary Pour|Plan My Pour|awaiting store approval|as soon as (?:it is|the member app is) available/i;
+for (const [page, markup] of [
+  ['index.html', home],
+  ['join.html', join],
+  ['subscription-success.html', success],
+  ['depositor-confirmation.html', depositorConfirmation],
+]) {
+  assert.doesNotMatch(
+    markup,
+    retiredLaunchWeekendPromo,
+    `${page} still references the retired launch weekend hosted Pour promotion`,
+  );
+}
 
 assert.match(home, /Join The Collective/);
 assert.match(home, /one-time \$49 Founding Slot Deposit/);
-assert.match(home, /Launch weekend, your first Pour is personally hosted/);
-assert.doesNotMatch(home, /Plan My Pour/);
 assert.match(home, /Already paid a \$49 Founding Slot Deposit/);
 assert.match(home, /Wingen Bakery &amp; Restaurant[\s\S]*Coming Soon/);
 assert.match(home, /Start with one Circle today/);
 assert.doesNotMatch(home, /Pause feature|add (?:another|more) anytime|Welcome Kit fee|A \$50 value|THE COASTER PASSPORT|THE INTRODUCTION/);
 assert.doesNotMatch(home, /public launch checkout supports one Circle|between now and launch|Full launch August 1/);
 assert.match(join, /one-time \$49 FOUNDING SLOT DEPOSIT/i);
-assert.match(join, /Launch weekend, your first Pour is personally hosted/);
 assert.match(join, /Please don’t use this public checkout/);
 assert.match(join, /Membership checkout is temporarily unavailable/);
 assert.doesNotMatch(join, /add more anytime|Welcome Kit fee|ONE-TIME \$49 WELCOME KIT/);
 assert.doesNotMatch(join, /Membership checkout opens August 1/);
 
-assert.match(success, /app-download instructions as soon as the member app is available/);
-assert.match(success, /Launch weekend, your first Pour is personally hosted/);
-assert.match(success, /Plan My Pour/);
+assert.match(success, /account-setup and app-download instructions/);
 assert.match(cancelled, /remain held for up to 24 hours/);
 assert.match(terms, /September 1, 2026 at 12:00 AM Pacific Time/);
 assert.match(terms, /will not be charged again/);
