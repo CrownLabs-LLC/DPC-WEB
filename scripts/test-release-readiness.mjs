@@ -34,6 +34,7 @@ assert.match(join, /TURNSTILE_MAX_LOAD_ATTEMPTS \* 200/);
 assert.match(join, /<p role="status"[^>]*>Loading security check…<\/p>/);
 assert.match(join, /id="checkout-handoff" role="status" hidden/);
 assert.match(join, /id="checkout-fallback" hidden>Open Secure Checkout<\/a>/);
+assert.match(join, /\.btn\[hidden\],[\s\S]*display: none !important/);
 assert.match(join, /checkoutFallback\.href = url/);
 assert.match(join, /checkoutFallback\.focus\(\)/);
 assert.match(join, /window\.location\.assign\(url\)/);

@@ -421,8 +421,9 @@ a:focus-visible, button:focus-visible, input:focus-visible, [tabindex]:focus-vis
   opacity: 0.55;
   cursor: not-allowed;
 }
+.btn[hidden],
 .checkout-fallback[hidden],
-.checkout-handoff[hidden] { display: none; }
+.checkout-handoff[hidden] { display: none !important; }
 .checkout-handoff {
   margin: 12px 0 10px;
   font-size: 14px;
