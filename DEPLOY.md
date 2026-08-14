@@ -188,7 +188,9 @@ intent or Stripe Checkout Session.
 Alerts are throttled **per incident**: the set of problems is fingerprinted,
 and the same fingerprint stays quiet for 6 hours while a *different* problem
 alerts immediately (tracked in `webhook_logs`, so throttling needs the
-Supabase vars; without them every hourly run emails while a problem persists).
+Supabase vars; without them every five-minute run emails while a problem persists).
+Preview and development invocations still return detected problems but suppress
+alert email, so an unreleased bundle cannot page production operators.
 
 Setup (required — the endpoint refuses to run without it):
 
@@ -348,7 +350,7 @@ select column_name, data_type
 from information_schema.columns
 where table_schema = 'public'
   and table_name = 'site_events'
-  and column_name in ('error_code', 'http_status')
+  and column_name in ('error_code', 'http_status', 'flow_id')
 order by column_name;
 
 select pg_get_constraintdef(oid)
@@ -357,8 +359,10 @@ where conrelid = 'public.site_events'::regclass
   and conname = 'site_events_event_check';
 ```
 
-The first query must return both columns. The second must include
-`join_submit`, `join_checkout_redirect`, `join_error`,
+The first query must return all three columns. The second must include
+`join_submit`, `join_checkout_redirect`, `join_checkout_ready`,
+`join_checkout_departed`, `join_checkout_fallback_clicked`,
+`join_checkout_stalled`, `join_error`,
 `membership_checkout_complete`, and `membership_checkout_cancelled`. Do not
 deploy the matching web change until both checks pass.
 

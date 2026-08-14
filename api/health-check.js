@@ -75,21 +75,31 @@ async function gatherProblems(now) {
   // checkout intent can be created.
   jobs.push((async () => {
     try {
-      const joinRes = await withTimeout(fetch(JOIN_URL, { headers: { 'cache-control': 'no-cache' } }), CANARY_TIMEOUT_MS, 'join page canary');
-      const markup = await joinRes.text();
+      const fetchText = (url, options, label) => withTimeout(
+        fetch(url, options).then(async (response) => ({ response, body: await response.text() })),
+        CANARY_TIMEOUT_MS,
+        label
+      );
+      const [joinProbe, optionsProbe, invalidProbe] = await Promise.all([
+        fetchText(JOIN_URL, { headers: { 'cache-control': 'no-cache' } }, 'join page canary'),
+        fetchText(CHECKOUT_ENDPOINT, { method: 'OPTIONS' }, 'checkout OPTIONS canary'),
+        fetchText(CHECKOUT_ENDPOINT, {
+          method: 'POST', headers: { 'content-type': 'application/json' }, body: '{',
+        }, 'checkout invalid-request canary'),
+      ]);
+      const joinRes = joinProbe.response;
+      const markup = joinProbe.body;
       const markers = ['id="checkout-fallback"', '.btn[hidden]', 'join_checkout_stalled', 'window.location.assign'];
       if (!joinRes.ok || markers.some((marker) => !markup.includes(marker))) {
         problems.push({ key: 'checkout-canary:join', text: `Production checkout canary failed: join recovery markup is missing or unhealthy (HTTP ${joinRes.status})` });
       }
-      const optionsRes = await withTimeout(fetch(CHECKOUT_ENDPOINT, { method: 'OPTIONS' }), CANARY_TIMEOUT_MS, 'checkout OPTIONS canary');
+      const optionsRes = optionsProbe.response;
       const methods = optionsRes.headers.get('access-control-allow-methods') || '';
       if (!optionsRes.ok || !methods.includes('POST')) {
         problems.push({ key: 'checkout-canary:cors', text: `Production checkout canary failed: checkout CORS preflight is unhealthy (HTTP ${optionsRes.status})` });
       }
-      const invalidRes = await withTimeout(fetch(CHECKOUT_ENDPOINT, {
-        method: 'POST', headers: { 'content-type': 'application/json' }, body: '{',
-      }), CANARY_TIMEOUT_MS, 'checkout invalid-request canary');
-      const invalidBody = await invalidRes.text();
+      const invalidRes = invalidProbe.response;
+      const invalidBody = invalidProbe.body;
       if (invalidRes.status !== 400 || !invalidBody.includes('INVALID_REQUEST')) {
         problems.push({ key: 'checkout-canary:validation', text: `Production checkout canary failed: safe invalid request returned HTTP ${invalidRes.status}` });
       }
@@ -154,12 +164,10 @@ async function gatherProblems(now) {
     );
     const signalSince = new Date(now - CHECKOUT_SIGNAL_WINDOW_MIN * 60000).toISOString();
     jobs.push(
-      supabaseSelect(`site_events?select=event,flow_id&event=in.(join_checkout_stalled,join_checkout_fallback_clicked)&ts=gte.${signalSince}&order=ts.desc&limit=100`)
+      supabaseSelect(`site_events?select=event,flow_id&event=eq.join_checkout_stalled&ts=gte.${signalSince}&order=ts.desc&limit=100`)
         .then((rows) => {
           const stalled = new Set(rows.filter((row) => row.event === 'join_checkout_stalled').map((row) => row.flow_id || JSON.stringify(row))).size;
-          const fallback = new Set(rows.filter((row) => row.event === 'join_checkout_fallback_clicked').map((row) => row.flow_id || JSON.stringify(row))).size;
           if (stalled) problems.push({ key: 'checkout_handoff_stalled', text: `${stalled} stalled checkout handoff(s) detected in the last ${CHECKOUT_SIGNAL_WINDOW_MIN} minutes` });
-          if (fallback) problems.push({ key: 'checkout_fallback_used', text: `${fallback} checkout recovery link use(s) detected in the last ${CHECKOUT_SIGNAL_WINDOW_MIN} minutes` });
         })
         .catch((err) => console.error('health-check: checkout signal query failed', err?.message || err))
     );
@@ -248,14 +256,17 @@ export default async function handler(req, res) {
   let alerted = false;
   let throttled = false;
   let alertError = '';
+  const alertSuppressed = Boolean(process.env.VERCEL_ENV && process.env.VERCEL_ENV !== 'production');
 
   if (problems.length) {
     console.error('health-check: problems detected', problems.map((p) => p.text));
     // When the gather phase already established Supabase is down, skip the
     // throttle read/write entirely — they would only burn deadline budget.
-    // Trade-off: during a Supabase outage the alert repeats hourly.
+    // Trade-off: during a Supabase outage the alert repeats every five minutes.
     const supabaseDown = problems.some((p) => p.key === 'check:Supabase reachable');
-    if (!process.env.RESEND_API_KEY) {
+    if (alertSuppressed) {
+      console.info('health-check: alert email suppressed outside production');
+    } else if (!process.env.RESEND_API_KEY) {
       alertError = 'cannot email: RESEND_API_KEY missing';
     } else if (!supabaseDown && (await timed('throttle_read_ms', () => recentlyAlerted(now, fingerprint)))) {
       throttled = true;
@@ -293,6 +304,7 @@ export default async function handler(req, res) {
     fingerprint,
     alerted,
     throttled,
+    ...(alertSuppressed && problems.length ? { alert_suppressed: true } : {}),
     timings,
     ...(alertError ? { alert_error: alertError } : {}),
   });

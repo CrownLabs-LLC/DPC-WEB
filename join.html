@@ -998,10 +998,11 @@ window.DPC_JOIN = {
     function markDeparted() {
       if (departed) return;
       departed = true;
+      if (stallTimer) window.clearTimeout(stallTimer);
       track('join_checkout_departed', detail);
     }
     function markStalled() {
-      if (stalled) return;
+      if (departed || stalled) return;
       stalled = true;
       track('join_checkout_stalled', detail);
       setError('Checkout did not open automatically. Tap “Open Secure Checkout” to continue.');
@@ -1030,10 +1031,6 @@ window.DPC_JOIN = {
       // The optional hook is a browser-test seam; production config never sets it.
       if (typeof cfg.navigateToCheckout === 'function') cfg.navigateToCheckout(url);
       else window.location.assign(url);
-      // WebKit does not consistently emit pagehide/beforeunload for this handoff.
-      // Record that the browser accepted navigation, but keep the watchdog alive:
-      // a real departure destroys this page while a silent no-op can still stall.
-      markDeparted();
     } catch (error) {
       submitting = false;
       track('join_error', { error_code: 'navigation', flow_id: flowId });

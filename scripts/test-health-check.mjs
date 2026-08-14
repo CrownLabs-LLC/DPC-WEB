@@ -39,6 +39,7 @@ function setHealthyEnv() {
   process.env.SUPABASE_SERVICE_ROLE_KEY = 'service_dummy';
   process.env.CRON_SECRET = 'cron-secret';
   delete process.env.DASHBOARD_TOKEN;
+  delete process.env.VERCEL_ENV;
 }
 
 // Stripe https mock: healthy or auth-rejected list endpoints, empty/stale events.
@@ -78,16 +79,18 @@ function mockStripeHttps({ keyOk = true, staleEvent = false } = {}) {
 }
 
 // fetch mock for Resend + Supabase; records sent alert emails + throttle reads.
-function mockFetch({ priorAlertFingerprint = null, recentWebhookErrors = false, supabaseDown = false, hangEmail = false, joinCanaryBroken = false, stalledHandoff = false } = {}, sentEmails, stats) {
+function mockFetch({ priorAlertFingerprint = null, recentWebhookErrors = false, supabaseDown = false, hangEmail = false, joinCanaryBroken = false, stalledHandoff = false, fallbackHandoff = false, canaryDelayMs = 0 } = {}, sentEmails, stats) {
   return async (url, opts) => {
     const u = String(url);
     if (u === 'https://www.downtownpourcollective.com/join') {
+      if (canaryDelayMs) await new Promise((resolve) => setTimeout(resolve, canaryDelayMs));
       const body = joinCanaryBroken
         ? '<html><h1>Join</h1></html>'
         : '<a id="checkout-fallback">Open Secure Checkout</a><style>.btn[hidden]{display:none!important}</style>join_checkout_stalled window.location.assign';
       return new Response(body, { status: 200 });
     }
     if (u.includes('/functions/v1/circle-checkout')) {
+      if (canaryDelayMs) await new Promise((resolve) => setTimeout(resolve, canaryDelayMs));
       if (opts?.method === 'OPTIONS') return new Response(null, { status: 204, headers: { 'access-control-allow-methods': 'POST, OPTIONS' } });
       return new Response(JSON.stringify({ success: false, error: { code: 'INVALID_REQUEST' } }), { status: 400, headers: { 'content-type': 'application/json' } });
     }
@@ -114,9 +117,10 @@ function mockFetch({ priorAlertFingerprint = null, recentWebhookErrors = false, 
         ), { status: 200, headers: { 'content-type': 'application/json' } });
       }
       if (u.includes('/rest/v1/site_events')) {
-        return new Response(JSON.stringify(stalledHandoff ? [
-          { event: 'join_checkout_stalled', flow_id: '00000000-0000-4000-8000-000000000001' },
-        ] : []), { status: 200, headers: { 'content-type': 'application/json' } });
+        const rows = [];
+        if (stalledHandoff) rows.push({ event: 'join_checkout_stalled', flow_id: '00000000-0000-4000-8000-000000000001' });
+        if (fallbackHandoff) rows.push({ event: 'join_checkout_fallback_clicked', flow_id: '00000000-0000-4000-8000-000000000002' });
+        return new Response(JSON.stringify(rows), { status: 200, headers: { 'content-type': 'application/json' } });
       }
       return new Response(JSON.stringify([]), { status: 200, headers: { 'content-type': 'application/json' } });
     }
@@ -186,7 +190,28 @@ async function run(mockOpts = {}, envTweaks = null, reqHeaders = { authorization
   check('stalled checkout handoff sends an alert', out.body.alerted === true && sentEmails.length === 1, out.body);
 }
 
-// Case 7: broken Stripe key -> capability problems + alert email sent
+// Case 7: recovery-link use is dashboard context, not a paging incident
+{
+  const { out, sentEmails } = await run({ fallbackHandoff: true });
+  check('fallback use alone remains healthy', out.body.ok === true, out.body);
+  check('fallback use alone sends no alert', sentEmails.length === 0, sentEmails);
+}
+
+// Case 8: the three bounded canary probes run concurrently
+{
+  const { out, elapsed } = await run({ canaryDelayMs: 300 });
+  check('parallel canary remains healthy', out.body.ok === true, out.body);
+  check('parallel canary completes within one probe window', elapsed < 700, `took ${elapsed}ms`);
+}
+
+// Case 9: preview failures are visible but never page production operators
+{
+  const { out, sentEmails } = await run({ joinCanaryBroken: true }, () => { process.env.VERCEL_ENV = 'preview'; });
+  check('preview canary failure remains visible', out.body.ok === false, out.body);
+  check('preview canary failure suppresses alert email', out.body.alert_suppressed === true && sentEmails.length === 0, out.body);
+}
+
+// Case 10: broken Stripe key -> capability problems + alert email sent
 let brokenKeyFingerprint = null;
 {
   const { out, sentEmails } = await run({ keyOk: false });
@@ -198,32 +223,32 @@ let brokenKeyFingerprint = null;
   check('fingerprint returned', typeof brokenKeyFingerprint === 'string' && brokenKeyFingerprint.length > 0, out.body);
 }
 
-// Case 6: stale undelivered event -> flagged
+// Case 11: stale undelivered event -> flagged
 {
   const { out } = await run({ staleEvent: true });
   check('stale undelivered event flagged', out.body.problems.some((p) => p.includes('undelivered')), out.body.problems);
 }
 
-// Case 7: recent webhook errors -> flagged
+// Case 12: recent webhook errors -> flagged
 {
   const { out } = await run({ recentWebhookErrors: true });
   check('recent webhook errors flagged', out.body.problems.some((p) => p.includes('webhook error')), out.body.problems);
 }
 
-// Case 8: same incident within 6h -> throttled, no second email
+// Case 13: same incident within 6h -> throttled, no second email
 {
   const { out, sentEmails } = await run({ keyOk: false, priorAlertFingerprint: brokenKeyFingerprint });
   check('same fingerprint throttled', out.body.throttled === true && out.body.alerted === false, out.body);
   check('throttled -> no email sent', sentEmails.length === 0, sentEmails);
 }
 
-// Case 9: a DIFFERENT prior incident does not suppress a new one
+// Case 14: a DIFFERENT prior incident does not suppress a new one
 {
   const { out, sentEmails } = await run({ keyOk: false, priorAlertFingerprint: 'deadbeef00000000' });
   check('new incident alerts despite recent unrelated alert', out.body.alerted === true && sentEmails.length === 1, out.body);
 }
 
-// Case 10: Resend hangs on the alert send -> handler still returns before the
+// Case 15: Resend hangs on the alert send -> handler still returns before the
 // function deadline with alert_error populated (bounded by ALERT_SEND timeout)
 {
   const { out, elapsed } = await run({ keyOk: false, hangEmail: true });
@@ -232,7 +257,7 @@ let brokenKeyFingerprint = null;
   check('hanging alert send -> within time budget', elapsed < 10000, `took ${elapsed}ms`);
 }
 
-// Case 11: Supabase down -> throttle I/O skipped entirely, alert still sends
+// Case 16: Supabase down -> throttle I/O skipped entirely, alert still sends
 {
   const { out, sentEmails, stats } = await run({ supabaseDown: true });
   check('supabase down flagged', out.body.problems.some((p) => p.includes('Supabase reachable')), out.body.problems);

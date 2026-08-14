@@ -162,6 +162,7 @@ assert.match(dashboardApi, /event=in\.\(join_submit,join_checkout_ready,join_che
 assert.match(playwrightConfig, /mobile-chromium/);
 assert.match(playwrightConfig, /mobile-webkit/);
 assert.match(checkoutWorkflow, /npm run test:e2e/);
+assert.match(checkoutWorkflow, /'vercel\.json'/);
 
 function setValues(source, name) {
   const body = source.match(new RegExp(`const ${name} = new Set\\(\\[([\\s\\S]*?)\\]\\);`))?.[1];
@@ -199,5 +200,11 @@ for (const sql of [setupSql, checkoutMigrationSql]) {
 
 const vercel = JSON.parse(await read('vercel.json'));
 assert.ok(vercel.crons.some((cron) => cron.path === '/api/health-check' && cron.schedule === '*/5 * * * *'));
+assert.ok(vercel.functions['api/health-check.js'].maxDuration >= 30);
+assert.match(deploy, /column_name in \('error_code', 'http_status', 'flow_id'\)/);
+assert.match(deploy, /join_checkout_ready/);
+assert.match(deploy, /join_checkout_departed/);
+assert.match(deploy, /join_checkout_fallback_clicked/);
+assert.match(deploy, /join_checkout_stalled/);
 
 console.log('Release-readiness static checks passed.');

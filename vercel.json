@@ -13,7 +13,7 @@
       "maxDuration": 15
     },
     "api/health-check.js": {
-      "maxDuration": 15
+      "maxDuration": 30
     }
   },
   "crons": [
