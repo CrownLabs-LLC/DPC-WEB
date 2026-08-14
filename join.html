@@ -421,6 +421,15 @@ a:focus-visible, button:focus-visible, input:focus-visible, [tabindex]:focus-vis
   opacity: 0.55;
   cursor: not-allowed;
 }
+.checkout-fallback[hidden],
+.checkout-handoff[hidden] { display: none; }
+.checkout-handoff {
+  margin: 12px 0 10px;
+  font-size: 14px;
+  line-height: 1.45;
+  color: rgba(245, 240, 232, 0.78);
+  text-align: left;
+}
 
 .form__error {
   min-height: 0;
@@ -764,6 +773,8 @@ body:has(.cookie:not([hidden])) .page {
         <div class="actions">
           <p class="summary" id="order-summary" aria-live="polite"></p>
           <button class="btn" type="submit" id="submit-btn">Continue to Checkout</button>
+          <p class="checkout-handoff" id="checkout-handoff" role="status" hidden>Secure checkout is ready. If it does not open automatically, tap below.</p>
+          <a class="btn checkout-fallback" id="checkout-fallback" hidden>Open Secure Checkout</a>
           <p class="form__error" id="form-error" role="alert"></p>
           <p class="fine" id="offer-fineprint">MONTHLY OR ANNUAL · ONE-TIME $49 WELCOME KIT · FOUNDING PRICING THROUGH AUGUST · 21+</p>
         </div>
@@ -875,6 +886,8 @@ window.DPC_JOIN = {
   var form = document.getElementById('join-form');
   var errorEl = document.getElementById('form-error');
   var submitBtn = document.getElementById('submit-btn');
+  var checkoutFallback = document.getElementById('checkout-fallback');
+  var checkoutHandoff = document.getElementById('checkout-handoff');
   var summaryEl = document.getElementById('order-summary');
   var fineEl = document.getElementById('offer-fineprint');
   var turnstileSlot = document.getElementById('turnstile-slot');
@@ -947,6 +960,21 @@ window.DPC_JOIN = {
 
   function setError(msg) {
     errorEl.textContent = msg || '';
+  }
+
+  function handoffToCheckout(url) {
+    checkoutFallback.href = url;
+    checkoutFallback.hidden = false;
+    checkoutHandoff.hidden = false;
+    submitBtn.hidden = true;
+    checkoutFallback.focus();
+    try {
+      window.location.assign(url);
+    } catch (error) {
+      submitting = false;
+      track('join_error', { error_code: 'navigation' });
+      setError('Checkout is ready. Tap “Open Secure Checkout” to continue.');
+    }
   }
 
   function track(event, params) {
@@ -1155,7 +1183,7 @@ window.DPC_JOIN = {
           offer_type: offer,
           reused: !!(body.data && body.data.reused)
         });
-        window.location.href = url;
+        handoffToCheckout(url);
         return;
       }
 
