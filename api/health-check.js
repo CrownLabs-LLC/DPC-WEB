@@ -39,7 +39,7 @@ const JOIN_URL = 'https://www.downtownpourcollective.com/join';
 const CHECKOUT_ENDPOINT = 'https://ebiuspbgzggrdiaswpcc.supabase.co/functions/v1/circle-checkout';
 // End-to-end budget: gather is ~4s (bounded probes, concurrent). The alert
 // path below gets 2s + 4s + 2s, keeping the worst case around 12s — inside
-// the 15s function limit with margin to return the diagnostic response.
+// the 30s function limit with ample margin to return the diagnostic response.
 const THROTTLE_IO_TIMEOUT_MS = 2000;
 const ALERT_SEND_TIMEOUT_MS = 4000;
 const DASHBOARD_URL = 'https://www.downtownpourcollective.com/dashboard';
