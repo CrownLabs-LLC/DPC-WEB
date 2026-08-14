@@ -1,6 +1,6 @@
 // First-party, anonymous funnel beacon. Stores only the event name, page
-// label, path, referrer hostname, and allowlisted join failure code/status —
-// no cookies, IPs, or user identifiers, consistent with the privacy policy's
+// label, path, referrer hostname, allowlisted join failure code/status, and a
+// one-attempt random flow ID — no cookies, IPs, or user identifiers, consistent with the privacy policy's
 // "aggregated, de-identified analytics".
 //
 // Always responds 202: telemetry must never surface an error to the site.
@@ -12,15 +12,29 @@ const ALLOWED_EVENTS = new Set([
   'form_submit',
   'join_submit',
   'join_checkout_redirect',
+  'join_checkout_ready',
+  'join_checkout_departed',
+  'join_checkout_fallback_clicked',
+  'join_checkout_stalled',
   'join_error',
   'membership_checkout_complete',
   'membership_checkout_cancelled',
   'partner_subscription_checkout_submitted',
   'partner_subscription_checkout_cancelled',
 ]);
+const JOIN_FLOW_EVENTS = new Set([
+  'join_submit',
+  'join_checkout_redirect',
+  'join_checkout_ready',
+  'join_checkout_departed',
+  'join_checkout_fallback_clicked',
+  'join_checkout_stalled',
+  'join_error',
+]);
 const ALLOWED_ERROR_CODES = new Set([
   'turnstile_unavailable',
   'turnstile_incomplete',
+  'navigation',
   'network',
   'unknown',
   'CHECKOUT_NOT_ENABLED',
@@ -62,6 +76,14 @@ function httpStatus(value) {
   return Number.isInteger(n) && n >= 100 && n <= 599 ? n : null;
 }
 
+function flowId(value) {
+  if (typeof value !== 'string') return null;
+  const s = value.trim().toLowerCase();
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(s)
+    ? s
+    : null;
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
@@ -97,6 +119,9 @@ export default async function handler(req, res) {
       path: clean(body?.path),
       referrer: referrerHost(body?.referrer),
     };
+    if (JOIN_FLOW_EVENTS.has(event)) {
+      payload.flow_id = flowId(body?.flow_id);
+    }
     if (event === 'join_error') {
       payload.error_code = errorCode(body?.error_code);
       payload.http_status = httpStatus(body?.http_status);

@@ -4,7 +4,7 @@
 
 -- Anonymous site funnel events, written by /api/track with the anon key.
 -- Contains no identifying data: event name, page label, path, referrer host,
--- and allowlisted join failure code/status.
+-- allowlisted join failure code/status, and a random per-attempt flow ID.
 create table if not exists public.site_events (
   id bigint generated always as identity primary key,
   ts timestamptz not null default now(),
@@ -13,13 +13,15 @@ create table if not exists public.site_events (
   path text,
   referrer text,
   error_code text,
-  http_status integer
+  http_status integer,
+  flow_id text
 );
 
 -- CREATE TABLE IF NOT EXISTS does not update an existing production table.
 -- Keep these ALTER statements idempotent so this file remains safe to re-run.
 alter table public.site_events add column if not exists error_code text;
 alter table public.site_events add column if not exists http_status integer;
+alter table public.site_events add column if not exists flow_id text;
 
 alter table public.site_events drop constraint if exists site_events_event_check;
 alter table public.site_events add constraint site_events_event_check check (
@@ -30,9 +32,15 @@ alter table public.site_events add constraint site_events_event_check check (
     'form_submit',
     'join_submit',
     'join_checkout_redirect',
+    'join_checkout_ready',
+    'join_checkout_departed',
+    'join_checkout_fallback_clicked',
+    'join_checkout_stalled',
     'join_error',
     'membership_checkout_complete',
-    'membership_checkout_cancelled'
+    'membership_checkout_cancelled',
+    'partner_subscription_checkout_submitted',
+    'partner_subscription_checkout_cancelled'
   )
 );
 
@@ -46,8 +54,15 @@ alter table public.site_events add constraint site_events_http_status_check chec
   http_status is null or http_status between 100 and 599
 );
 
+alter table public.site_events drop constraint if exists site_events_flow_id_check;
+alter table public.site_events add constraint site_events_flow_id_check check (
+  flow_id is null or flow_id ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+);
+
 create index if not exists site_events_event_ts_idx on public.site_events (event, ts desc);
 create index if not exists site_events_ts_idx on public.site_events (ts desc);
+create index if not exists site_events_flow_ts_idx on public.site_events (flow_id, ts desc)
+  where flow_id is not null;
 
 alter table public.site_events enable row level security;
 

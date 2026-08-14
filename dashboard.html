@@ -271,6 +271,9 @@ details.tableview summary { cursor: pointer; color: var(--text-secondary); font-
     var undelivered = d.alerts && d.alerts.undelivered_events;
     if (undelivered && undelivered.length) problems.push(undelivered.length + ' Stripe event(s) undelivered');
     if (d.funnel && d.funnel.truncated) problems.push('Funnel data reached its query limit; counts are incomplete');
+    if (d.funnel && d.funnel.totals && d.funnel.totals.checkout_stalled) {
+      problems.push(d.funnel.totals.checkout_stalled + ' checkout handoff(s) stalled');
+    }
     if (problems.length) {
       banner.hidden = false;
       banner.textContent = '⚠ Needs attention: ' + problems.join(' · ');
@@ -314,6 +317,11 @@ details.tableview summary { cursor: pointer; color: var(--text-secondary); font-
         .join(' · ');
       joinErrorTile.appendChild(el('div', 'delta', breakdown || 'No join failures'));
       box.appendChild(joinErrorTile);
+      box.appendChild(tile('Checkout attempts', fmt(f.totals.join_submits || 0), f.totals.join_submits || 0, f.prev.join_submits || 0, true));
+      box.appendChild(tile('Reached checkout handoff', fmt(f.totals.checkout_ready || 0), f.totals.checkout_ready || 0, f.prev.checkout_ready || 0, true));
+      box.appendChild(tile('Departed for Stripe', fmt(f.totals.checkout_departed || 0), f.totals.checkout_departed || 0, f.prev.checkout_departed || 0, true));
+      box.appendChild(tile('Recovery link used', fmt(f.totals.checkout_fallback_clicks || 0), f.totals.checkout_fallback_clicks || 0, f.prev.checkout_fallback_clicks || 0, false));
+      box.appendChild(tile('Stalled handoffs', fmt(f.totals.checkout_stalled || 0), f.totals.checkout_stalled || 0, f.prev.checkout_stalled || 0, false));
     } else {
       var note = el('div', 'card tile');
       note.appendChild(el('div', 'label', 'Visits & clicks'));

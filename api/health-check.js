@@ -1,4 +1,4 @@
-// Scheduled health check (hourly Vercel cron, see vercel.json "crons").
+// Scheduled health check (every five minutes; see vercel.json "crons").
 // Runs the same live checks as the dashboard and EMAILS an alert when
 // something is broken:
 //   - a required env var is missing
@@ -33,6 +33,10 @@ import {
 const UNDELIVERED_GRACE_MIN = 30;
 const RECENT_ERROR_WINDOW_MIN = 75;
 const THROTTLE_HOURS = 6;
+const CHECKOUT_SIGNAL_WINDOW_MIN = 10;
+const CANARY_TIMEOUT_MS = 3000;
+const JOIN_URL = 'https://www.downtownpourcollective.com/join';
+const CHECKOUT_ENDPOINT = 'https://ebiuspbgzggrdiaswpcc.supabase.co/functions/v1/circle-checkout';
 // End-to-end budget: gather is ~4s (bounded probes, concurrent). The alert
 // path below gets 2s + 4s + 2s, keeping the worst case around 12s — inside
 // the 15s function limit with margin to return the diagnostic response.
@@ -64,6 +68,35 @@ async function gatherProblems(now) {
   const resendKey = process.env.RESEND_API_KEY;
 
   const jobs = [];
+
+  // Non-transactional production canary: verify the live join bundle still
+  // contains its native recovery path and the checkout function rejects bad
+  // input. No valid challenge or member data is sent, so no Stripe Session or
+  // checkout intent can be created.
+  jobs.push((async () => {
+    try {
+      const joinRes = await withTimeout(fetch(JOIN_URL, { headers: { 'cache-control': 'no-cache' } }), CANARY_TIMEOUT_MS, 'join page canary');
+      const markup = await joinRes.text();
+      const markers = ['id="checkout-fallback"', '.btn[hidden]', 'join_checkout_stalled', 'window.location.assign'];
+      if (!joinRes.ok || markers.some((marker) => !markup.includes(marker))) {
+        problems.push({ key: 'checkout-canary:join', text: `Production checkout canary failed: join recovery markup is missing or unhealthy (HTTP ${joinRes.status})` });
+      }
+      const optionsRes = await withTimeout(fetch(CHECKOUT_ENDPOINT, { method: 'OPTIONS' }), CANARY_TIMEOUT_MS, 'checkout OPTIONS canary');
+      const methods = optionsRes.headers.get('access-control-allow-methods') || '';
+      if (!optionsRes.ok || !methods.includes('POST')) {
+        problems.push({ key: 'checkout-canary:cors', text: `Production checkout canary failed: checkout CORS preflight is unhealthy (HTTP ${optionsRes.status})` });
+      }
+      const invalidRes = await withTimeout(fetch(CHECKOUT_ENDPOINT, {
+        method: 'POST', headers: { 'content-type': 'application/json' }, body: '{',
+      }), CANARY_TIMEOUT_MS, 'checkout invalid-request canary');
+      const invalidBody = await invalidRes.text();
+      if (invalidRes.status !== 400 || !invalidBody.includes('INVALID_REQUEST')) {
+        problems.push({ key: 'checkout-canary:validation', text: `Production checkout canary failed: safe invalid request returned HTTP ${invalidRes.status}` });
+      }
+    } catch (err) {
+      problems.push({ key: 'checkout-canary:unreachable', text: `Production checkout canary could not run: ${String(err?.message || err)}` });
+    }
+  })());
 
   if (stripeKey && resendKey) {
     const stripe = new Stripe(stripeKey, { timeout: 5000 });
@@ -119,6 +152,17 @@ async function gatherProblems(now) {
         // Supabase reachability is already covered by healthChecks; don't double-report.
         .catch((err) => console.error('health-check: webhook_logs query failed', err?.message || err))
     );
+    const signalSince = new Date(now - CHECKOUT_SIGNAL_WINDOW_MIN * 60000).toISOString();
+    jobs.push(
+      supabaseSelect(`site_events?select=event,flow_id&event=in.(join_checkout_stalled,join_checkout_fallback_clicked)&ts=gte.${signalSince}&order=ts.desc&limit=100`)
+        .then((rows) => {
+          const stalled = new Set(rows.filter((row) => row.event === 'join_checkout_stalled').map((row) => row.flow_id || JSON.stringify(row))).size;
+          const fallback = new Set(rows.filter((row) => row.event === 'join_checkout_fallback_clicked').map((row) => row.flow_id || JSON.stringify(row))).size;
+          if (stalled) problems.push({ key: 'checkout_handoff_stalled', text: `${stalled} stalled checkout handoff(s) detected in the last ${CHECKOUT_SIGNAL_WINDOW_MIN} minutes` });
+          if (fallback) problems.push({ key: 'checkout_fallback_used', text: `${fallback} checkout recovery link use(s) detected in the last ${CHECKOUT_SIGNAL_WINDOW_MIN} minutes` });
+        })
+        .catch((err) => console.error('health-check: checkout signal query failed', err?.message || err))
+    );
   }
 
   await Promise.allSettled(jobs);
@@ -157,7 +201,7 @@ async function sendAlert(problems, now) {
     to: ALERT_TO,
     subject: `⚠ DPC ops alert: ${problems.length} problem${problems.length === 1 ? '' : 's'} detected`,
     html: `
-      <h2>DPC hourly health check found ${problems.length} problem${problems.length === 1 ? '' : 's'}</h2>
+      <h2>DPC five-minute health check found ${problems.length} problem${problems.length === 1 ? '' : 's'}</h2>
       <ul>${items}</ul>
       <p><a href="${DASHBOARD_URL}">Open the ops dashboard</a> for live status.
       Checked at ${escapeHtml(new Date(now).toISOString())}.</p>

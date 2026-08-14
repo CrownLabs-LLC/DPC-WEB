@@ -78,9 +78,19 @@ function mockStripeHttps({ keyOk = true, staleEvent = false } = {}) {
 }
 
 // fetch mock for Resend + Supabase; records sent alert emails + throttle reads.
-function mockFetch({ priorAlertFingerprint = null, recentWebhookErrors = false, supabaseDown = false, hangEmail = false } = {}, sentEmails, stats) {
+function mockFetch({ priorAlertFingerprint = null, recentWebhookErrors = false, supabaseDown = false, hangEmail = false, joinCanaryBroken = false, stalledHandoff = false } = {}, sentEmails, stats) {
   return async (url, opts) => {
     const u = String(url);
+    if (u === 'https://www.downtownpourcollective.com/join') {
+      const body = joinCanaryBroken
+        ? '<html><h1>Join</h1></html>'
+        : '<a id="checkout-fallback">Open Secure Checkout</a><style>.btn[hidden]{display:none!important}</style>join_checkout_stalled window.location.assign';
+      return new Response(body, { status: 200 });
+    }
+    if (u.includes('/functions/v1/circle-checkout')) {
+      if (opts?.method === 'OPTIONS') return new Response(null, { status: 204, headers: { 'access-control-allow-methods': 'POST, OPTIONS' } });
+      return new Response(JSON.stringify({ success: false, error: { code: 'INVALID_REQUEST' } }), { status: 400, headers: { 'content-type': 'application/json' } });
+    }
     if (u.includes('api.resend.com/domains')) {
       return new Response(JSON.stringify({ data: { data: [] } }), { status: 200, headers: { 'content-type': 'application/json' } });
     }
@@ -102,6 +112,11 @@ function mockFetch({ priorAlertFingerprint = null, recentWebhookErrors = false, 
         return new Response(JSON.stringify(
           recentWebhookErrors ? [{ ts: new Date().toISOString(), message: 'handler failed: boom' }] : []
         ), { status: 200, headers: { 'content-type': 'application/json' } });
+      }
+      if (u.includes('/rest/v1/site_events')) {
+        return new Response(JSON.stringify(stalledHandoff ? [
+          { event: 'join_checkout_stalled', flow_id: '00000000-0000-4000-8000-000000000001' },
+        ] : []), { status: 200, headers: { 'content-type': 'application/json' } });
       }
       return new Response(JSON.stringify([]), { status: 200, headers: { 'content-type': 'application/json' } });
     }
@@ -157,7 +172,21 @@ async function run(mockOpts = {}, envTweaks = null, reqHeaders = { authorization
   check('healthy -> no alert email', sentEmails.length === 0, sentEmails);
 }
 
-// Case 5: broken Stripe key -> capability problems + alert email sent
+// Case 5: production join markup loses its native handoff recovery -> alert
+{
+  const { out, sentEmails } = await run({ joinCanaryBroken: true });
+  check('broken checkout canary is flagged', out.body.problems.some((p) => p.includes('checkout canary')), out.body.problems);
+  check('broken checkout canary sends an alert', out.body.alerted === true && sentEmails.length === 1, out.body);
+}
+
+// Case 6: a real stalled browser handoff is surfaced within the signal window
+{
+  const { out, sentEmails } = await run({ stalledHandoff: true });
+  check('stalled checkout handoff is flagged', out.body.problems.some((p) => p.includes('stalled checkout handoff')), out.body.problems);
+  check('stalled checkout handoff sends an alert', out.body.alerted === true && sentEmails.length === 1, out.body);
+}
+
+// Case 7: broken Stripe key -> capability problems + alert email sent
 let brokenKeyFingerprint = null;
 {
   const { out, sentEmails } = await run({ keyOk: false });

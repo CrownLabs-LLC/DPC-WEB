@@ -167,10 +167,11 @@ hostname plus a sanitized join failure code and HTTP status only — no cookies,
 IPs, or identifiers — matching the privacy policy's "aggregated,
 de-identified analytics".
 
-### 2d. Hourly health alert — /api/health-check
+### 2d. Five-minute checkout and provider health alert — /api/health-check
 
-A Vercel cron (see `vercel.json` → `crons`) hits `/api/health-check` at the
-top of every hour. It runs the same live checks as the dashboard and **emails
+A Vercel Pro cron (see `vercel.json` → `crons`) hits `/api/health-check` every
+five minutes. It runs a non-transactional checkout canary, checks recent
+browser handoff signals, runs the same live checks as the dashboard, and **emails
 an alert** to `nick@` + `hello@` (override with `ALERT_TO` / `ALERT_FROM`)
 when anything is wrong: a missing env var, a Stripe key that fails a
 capability the app needs (reading Checkout Sessions, PaymentIntents, or
@@ -178,6 +179,11 @@ Events), a test-mode key, a rejected Resend key, Supabase unreachable, Stripe
 events undelivered for over 30 minutes, or webhook errors logged in the last
 75 minutes. Every probe has a bounded timeout so the checker survives the
 outages it exists to detect.
+
+The checkout canary only fetches the production join page, sends an `OPTIONS`
+request, and sends malformed JSON that must be rejected with `INVALID_REQUEST`.
+It never sends a valid challenge or member details and cannot create a checkout
+intent or Stripe Checkout Session.
 
 Alerts are throttled **per incident**: the set of problems is fingerprinted,
 and the same fingerprint stays quiet for 6 hours while a *different* problem
@@ -191,8 +197,8 @@ Setup (required — the endpoint refuses to run without it):
    as a Bearer token on cron invocations; the endpoint **fails closed** with
    503 when the secret is missing and 401 for any caller without it (the
    dashboard token also works, for manual runs).
-2. Redeploy. Vercel → Project → Settings → Cron Jobs should list the hourly
-   job after the deploy. (Hourly schedules require the Pro plan.)
+2. Redeploy. Vercel → Project → Settings → Cron Jobs should list the five-minute
+   job after the deploy. Five-minute schedules require the Pro plan.
 
 To test it: `curl -H "Authorization: Bearer $CRON_SECRET" https://www.downtownpourcollective.com/api/health-check`
 returns `{"ok":true,...}` when everything is green.
@@ -204,6 +210,30 @@ the webhook also needs Checkout Session **write** (it stamps `welcome_sent`
 metadata), which has no safe probe. If you ever switch to a restricted key,
 grant Checkout Sessions read *and* write, PaymentIntents read, and Events
 read.
+
+### 2e. Checkout release gate — automated and physical devices
+
+Any change to join, checkout, analytics, or billing handoff code must pass all
+of these before production:
+
+1. Run `npm test`.
+2. Run `npm run test:e2e`. The Playwright gate must pass in both mobile Chromium
+   and mobile WebKit. It mocks the checkout API and Stripe destination, so it
+   performs no transaction.
+3. Confirm the pull request's **Checkout navigation gate** workflow is green.
+4. On the Vercel Preview URL, test a physical iPhone in Safari and a physical
+   Android phone in Chrome. Confirm the Turnstile check loads, the CTA hides,
+   “Open Secure Checkout” is visible before handoff, and the page remains usable
+   when returning with the browser Back button. Do not submit real member data
+   or complete a Stripe payment during this visual check.
+5. After production deploy, invoke `/api/health-check` with the cron bearer token
+   and require `"ok":true`. Confirm the dashboard shows checkout attempts,
+   handoffs, recovery-link uses, and stalls.
+
+Deployment order: apply `db/20260814_checkout_handoff_observability.sql`, deploy
+the site, run the production health check, then watch the dashboard and Vercel
+logs for at least ten minutes. Roll back the site deploy if the canary fails;
+the additive database migration can remain.
 
 ---
 
