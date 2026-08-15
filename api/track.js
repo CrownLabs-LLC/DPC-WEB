@@ -37,6 +37,7 @@ const ALLOWED_ERROR_CODES = new Set([
   'navigation',
   'network',
   'unknown',
+  'CHECKOUT_IN_PROGRESS',
   'CHECKOUT_NOT_ENABLED',
   'FOUNDING_UNAVAILABLE',
   'SIGN_IN_REQUIRED',

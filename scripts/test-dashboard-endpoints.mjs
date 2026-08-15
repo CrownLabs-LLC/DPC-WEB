@@ -102,7 +102,7 @@ process.env.SUPABASE_ANON_KEY = 'anon_test_key';
   ]) {
     const { res, out } = mockRes();
     const detail = event === 'join_error'
-      ? { error_code: 'turnstile_unavailable', http_status: 503 }
+      ? { error_code: 'CHECKOUT_IN_PROGRESS', http_status: 409 }
       : event.startsWith('join_')
         ? { flow_id: '019ffeb2-9ac1-71e5-96c5-0c69b70f247e' }
         : {};
@@ -114,7 +114,7 @@ process.env.SUPABASE_ANON_KEY = 'anon_test_key';
   const joinError = calls.find((call) => call.event === 'join_error');
   check(
     'track persists sanitized join error detail',
-    joinError?.error_code === 'turnstile_unavailable' && joinError?.http_status === 503,
+    joinError?.error_code === 'CHECKOUT_IN_PROGRESS' && joinError?.http_status === 409,
     joinError
   );
   const joinSubmit = calls.find((call) => call.event === 'join_submit');
@@ -234,6 +234,7 @@ function mockDashboardFetch() {
         { ts: new Date(now - 3400e3).toISOString(), event: 'join_error', error_code: 'turnstile_unavailable' },
         { ts: new Date(now - 3300e3).toISOString(), event: 'join_error', error_code: 'turnstile_unavailable' },
         { ts: new Date(now - 3200e3).toISOString(), event: 'join_error', error_code: 'CHECKOUT_NOT_ENABLED' },
+        { ts: new Date(now - 3150e3).toISOString(), event: 'join_error', error_code: 'CHECKOUT_IN_PROGRESS' },
         { ts: new Date(now - 3100e3).toISOString(), event: 'join_error', error_code: 'constructor' },
         { ts: new Date(now - 3000e3).toISOString(), event: 'join_error', error_code: '__proto__' },
         { ts: new Date(now - 40 * 86400e3).toISOString(), event: 'page_view' },
@@ -297,11 +298,12 @@ process.env.SUPABASE_SERVICE_ROLE_KEY = 'service_test_key';
   check('funnel counts current period only', f?.totals?.visits === 2 && f?.totals?.clicks === 1, f?.totals);
   check('funnel previous period counted', f?.prev?.visits === 1, f?.prev);
   check('join errors counted by code', (
-    f?.totals?.join_errors === 5
+    f?.totals?.join_errors === 6
     && f?.totals?.join_error_codes?.turnstile_unavailable === 2
     && f?.totals?.join_error_codes?.CHECKOUT_NOT_ENABLED === 1
+    && f?.totals?.join_error_codes?.CHECKOUT_IN_PROGRESS === 1
     && f?.totals?.join_error_codes?.unknown === 2
-    && Object.values(f?.totals?.join_error_codes || {}).reduce((sum, count) => sum + count, 0) === 5
+    && Object.values(f?.totals?.join_error_codes || {}).reduce((sum, count) => sum + count, 0) === 6
   ), f?.totals);
   check('previous join errors counted', f?.prev?.join_errors === 1, f?.prev);
   check('checkout handoff attempts are correlated and counted', (

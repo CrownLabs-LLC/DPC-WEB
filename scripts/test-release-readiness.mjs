@@ -61,11 +61,18 @@ for (const [page, markup] of [
   ['join.html', join],
   ['depositor-confirmation.html', depositorConfirmation],
 ]) {
-  assert.doesNotMatch(
-    markup,
-    /name="company"|form\.company/,
-    `${page} must not block valid checkout when browser autofill populates a hidden company field`,
-  );
+  for (const [mechanism, pattern] of [
+    ['hidden company field', /<(?:input|label)\b[^>]*(?:id|name|for)=["']company["']/i],
+    ['.hp mechanism', /(?:^|[\s,{])\.hp\b|class=["'][^"']*\bhp\b/i],
+    ['form company guard', /form\s*(?:\.\s*company|\[\s*["']company["']\s*\])/i],
+    ['incident error message', /Something went wrong\. Please try again\./],
+  ]) {
+    assert.doesNotMatch(
+      markup,
+      pattern,
+      `${page} must not restore the password-manager-triggered ${mechanism}`,
+    );
+  }
 }
 
 assert.match(success, /account-setup and app-download instructions/);
