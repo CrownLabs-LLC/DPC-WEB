@@ -375,14 +375,6 @@ a:focus-visible, button:focus-visible, input:focus-visible, [tabindex]:focus-vis
 }
 .check a { text-decoration: underline; text-underline-offset: 2px; }
 
-.hp {
-  position: absolute;
-  left: -10000px;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-}
-
 .turnstile-wrap {
   margin: 18px 0 8px;
   min-height: 65px;
@@ -767,10 +759,6 @@ body:has(.cookie:not([hidden])) .page {
             <label for="email">Email</label>
             <input id="email" name="email" type="email" autocomplete="email" required maxlength="200" inputmode="email">
           </div>
-        </div>
-        <div class="hp" aria-hidden="true">
-          <label for="company">Company</label>
-          <input id="company" name="company" type="text" tabindex="-1" autocomplete="off">
         </div>
       </div>
 
@@ -1157,11 +1145,6 @@ window.DPC_JOIN = {
     e.preventDefault();
     if (submitting) return;
     setError('');
-
-    if (form.company && form.company.value) {
-      setError('Something went wrong. Please try again.');
-      return;
-    }
 
     var circle = selected('circle');
     var billingInterval = selected('billingInterval');

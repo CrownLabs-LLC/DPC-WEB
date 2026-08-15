@@ -57,6 +57,16 @@ assert.match(join, /Please don’t use this public checkout/);
 assert.match(join, /Membership checkout is temporarily unavailable/);
 assert.doesNotMatch(join, /add more anytime|Welcome Kit fee|ONE-TIME \$49 WELCOME KIT/);
 assert.doesNotMatch(join, /Membership checkout opens August 1/);
+for (const [page, markup] of [
+  ['join.html', join],
+  ['depositor-confirmation.html', depositorConfirmation],
+]) {
+  assert.doesNotMatch(
+    markup,
+    /name="company"|form\.company/,
+    `${page} must not block valid checkout when browser autofill populates a hidden company field`,
+  );
+}
 
 assert.match(success, /account-setup and app-download instructions/);
 assert.match(cancelled, /remain held for up to 24 hours/);
