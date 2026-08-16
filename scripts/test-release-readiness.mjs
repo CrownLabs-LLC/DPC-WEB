@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
-const [join, support, deploy, serve, analytics, trackApi, dashboard, dashboardApi, setupSql, migrationSql, ...linkedPages] = await Promise.all([
+const [join, support, deploy, serve, analytics, trackApi, dashboard, dashboardApi, setupSql, migrationSql, checkoutMigrationSql, playwrightConfig, checkoutWorkflow, ...linkedPages] = await Promise.all([
   read('join.html'),
   read('support.html'),
   read('DEPLOY.md'),
@@ -14,6 +14,9 @@ const [join, support, deploy, serve, analytics, trackApi, dashboard, dashboardAp
   read('api/dashboard-data.js'),
   read('db/setup.sql'),
   read('db/20260730_join_error_observability.sql'),
+  read('db/20260814_checkout_handoff_observability.sql'),
+  read('playwright.config.mjs'),
+  read('.github/workflows/checkout-navigation.yml'),
   ...['index.html', 'join.html', 'partners.html', 'privacy.html', 'terms.html'].map(read),
 ]);
 const home = linkedPages[0];
@@ -58,11 +61,18 @@ for (const [page, markup] of [
   ['join.html', join],
   ['depositor-confirmation.html', depositorConfirmation],
 ]) {
-  assert.doesNotMatch(
-    markup,
-    /name="company"|form\.company/,
-    `${page} must not block valid checkout when browser autofill populates a hidden company field`,
-  );
+  for (const [mechanism, pattern] of [
+    ['hidden company field', /<(?:input|label)\b[^>]*(?:id|name|for)=["']company["']/i],
+    ['.hp mechanism', /(?:^|[\s,{])\.hp\b|class=["'][^"']*\bhp\b/i],
+    ['form company guard', /form\s*(?:\.\s*company|\[\s*["']company["']\s*\])/i],
+    ['incident error message', /Something went wrong\. Please try again\./],
+  ]) {
+    assert.doesNotMatch(
+      markup,
+      pattern,
+      `${page} must not restore the password-manager-triggered ${mechanism}`,
+    );
+  }
 }
 
 assert.match(success, /account-setup and app-download instructions/);
@@ -96,6 +106,11 @@ assert.match(join, /\.btn\[hidden\],[\s\S]*display: none !important/);
 assert.match(join, /checkoutFallback\.href = url/);
 assert.match(join, /checkoutFallback\.focus\(\)/);
 assert.match(join, /window\.location\.assign\(url\)/);
+assert.match(join, /join_checkout_ready/);
+assert.match(join, /join_checkout_departed/);
+assert.match(join, /join_checkout_fallback_clicked/);
+assert.match(join, /join_checkout_stalled/);
+assert.match(join, /CHECKOUT_STALL_MS = 8000/);
 assert.ok(
   join.indexOf('checkoutFallback.href = url')
     < join.indexOf('window.location.assign(url)'),
@@ -142,6 +157,9 @@ assert.match(deploy, /TURNSTILE_SECRET_KEY/);
 assert.match(deploy, /\/support/);
 assert.match(deploy, /Join-error observability deployment order/);
 assert.match(deploy, /Do not\s+deploy the matching web change until both checks pass/);
+assert.match(deploy, /physical iPhone in Safari/);
+assert.match(deploy, /physical\s+Android phone in Chrome/);
+assert.match(deploy, /20260814_checkout_handoff_observability\.sql/);
 
 assert.match(analytics, /sendEvent\('join_error', params\)/);
 assert.match(analytics, /error_code:/);
@@ -155,6 +173,13 @@ assert.match(dashboardApi, /event=eq\.join_error/);
 assert.match(dashboard, /Join errors/);
 assert.match(dashboard, /Funnel data reached its query limit; counts are incomplete/);
 assert.match(dashboard, /CHECKOUT_NOT_ENABLED|join_error_codes/);
+assert.match(dashboard, /Stalled handoffs/);
+assert.match(dashboardApi, /checkout_fallback_clicks/);
+assert.match(dashboardApi, /event=in\.\(join_submit,join_checkout_ready,join_checkout_departed,join_checkout_fallback_clicked,join_checkout_stalled\)/);
+assert.match(playwrightConfig, /mobile-chromium/);
+assert.match(playwrightConfig, /mobile-webkit/);
+assert.match(checkoutWorkflow, /npm run test:e2e/);
+assert.match(checkoutWorkflow, /'vercel\.json'/);
 
 function setValues(source, name) {
   const body = source.match(new RegExp(`const ${name} = new Set\\(\\[([\\s\\S]*?)\\]\\);`))?.[1];
@@ -179,5 +204,24 @@ for (const sql of [setupSql, migrationSql]) {
   assert.match(sql, /error_code is null or error_code ~ '\^\[A-Za-z0-9_.:-\]\{1,100\}\$'/);
   assert.match(sql, /site_events_http_status_check/);
 }
+
+for (const sql of [setupSql, checkoutMigrationSql]) {
+  assert.match(sql, /add column if not exists flow_id text/);
+  assert.match(sql, /'join_checkout_ready'/);
+  assert.match(sql, /'join_checkout_departed'/);
+  assert.match(sql, /'join_checkout_fallback_clicked'/);
+  assert.match(sql, /'join_checkout_stalled'/);
+  assert.match(sql, /site_events_flow_id_check/);
+  assert.match(sql, /site_events_flow_ts_idx/);
+}
+
+const vercel = JSON.parse(await read('vercel.json'));
+assert.ok(vercel.crons.some((cron) => cron.path === '/api/health-check' && cron.schedule === '*/5 * * * *'));
+assert.ok(vercel.functions['api/health-check.js'].maxDuration >= 30);
+assert.match(deploy, /column_name in \('error_code', 'http_status', 'flow_id'\)/);
+assert.match(deploy, /join_checkout_ready/);
+assert.match(deploy, /join_checkout_departed/);
+assert.match(deploy, /join_checkout_fallback_clicked/);
+assert.match(deploy, /join_checkout_stalled/);
 
 console.log('Release-readiness static checks passed.');

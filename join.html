@@ -896,6 +896,7 @@ window.DPC_JOIN = {
   var turnstileLoadAttempts = 0;
   var turnstileFailureTracked = false;
   var submitting = false;
+  var CHECKOUT_STALL_MS = 8000;
   var TURNSTILE_MAX_LOAD_ATTEMPTS = 50;
   var TURNSTILE_SCRIPT_ID = 'turnstile-api-script';
   var TURNSTILE_SCRIPT_SRC = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
@@ -961,18 +962,67 @@ window.DPC_JOIN = {
     errorEl.textContent = msg || '';
   }
 
-  function handoffToCheckout(url) {
+  function newCheckoutFlowId() {
+    if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+      return window.crypto.randomUUID();
+    }
+    if (!window.crypto || typeof window.crypto.getRandomValues !== 'function') return null;
+    var bytes = new Uint8Array(16);
+    window.crypto.getRandomValues(bytes);
+    bytes[6] = (bytes[6] & 15) | 64;
+    bytes[8] = (bytes[8] & 63) | 128;
+    var hex = Array.prototype.map.call(bytes, function (byte) {
+      return byte.toString(16).padStart(2, '0');
+    }).join('');
+    return hex.slice(0, 8) + '-' + hex.slice(8, 12) + '-' + hex.slice(12, 16) + '-' +
+      hex.slice(16, 20) + '-' + hex.slice(20);
+  }
+
+  function handoffToCheckout(url, flowId) {
+    var departed = false;
+    var stalled = false;
+    var stallTimer;
+    var detail = { flow_id: flowId };
+    function markDeparted() {
+      if (departed) return;
+      departed = true;
+      if (stallTimer) window.clearTimeout(stallTimer);
+      track('join_checkout_departed', detail);
+    }
+    function markStalled() {
+      if (departed || stalled) return;
+      stalled = true;
+      track('join_checkout_stalled', detail);
+      setError('Checkout did not open automatically. Tap “Open Secure Checkout” to continue.');
+    }
+
+    track('join_checkout_ready', detail);
+    window.addEventListener('beforeunload', markDeparted, { once: true });
+    window.addEventListener('pagehide', markDeparted, { once: true });
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'hidden') markDeparted();
+    }, { once: true });
     checkoutFallback.href = url;
+    checkoutFallback.onclick = function () {
+      track('join_checkout_fallback_clicked', detail);
+    };
     checkoutFallback.hidden = false;
     checkoutHandoff.hidden = false;
     submitBtn.hidden = true;
     checkoutFallback.focus();
+    var stallDelay = Number(cfg.checkoutStallMs);
+    if (!Number.isFinite(stallDelay) || stallDelay < 1) stallDelay = CHECKOUT_STALL_MS;
+    stallTimer = window.setTimeout(function () {
+      if (document.visibilityState !== 'hidden') markStalled();
+    }, stallDelay);
     try {
-      window.location.assign(url);
+      // The optional hook is a browser-test seam; production config never sets it.
+      if (typeof cfg.navigateToCheckout === 'function') cfg.navigateToCheckout(url);
+      else window.location.assign(url);
     } catch (error) {
       submitting = false;
-      track('join_error', { error_code: 'navigation' });
-      setError('Checkout is ready. Tap “Open Secure Checkout” to continue.');
+      track('join_error', { error_code: 'navigation', flow_id: flowId });
+      markStalled();
     }
   }
 
@@ -1105,6 +1155,7 @@ window.DPC_JOIN = {
     var offer = offerType();
     var key = cfg.turnstileSiteKey || '';
     var needsTurnstile = key && key.indexOf('REPLACE_ME') === -1;
+    var flowId = newCheckoutFlowId();
 
     if (!circle) { setError('Choose a Circle to continue.'); return; }
     if (!billingInterval) { setError('Choose monthly or annual billing.'); return; }
@@ -1138,7 +1189,8 @@ window.DPC_JOIN = {
     track('join_submit', {
       circle: circle,
       billing_interval: billingInterval,
-      offer_type: offer
+      offer_type: offer,
+      flow_id: flowId
     });
 
     var payload = {
@@ -1171,17 +1223,11 @@ window.DPC_JOIN = {
       var url = body.data && body.data.checkout_url;
 
       if (result.status === 200 && body.success && url) {
-        track('join_checkout_redirect', {
-          circle: circle,
-          billing_interval: billingInterval,
-          offer_type: offer,
-          reused: !!(body.data && body.data.reused)
-        });
-        handoffToCheckout(url);
+        handoffToCheckout(url, flowId);
         return;
       }
 
-      track('join_error', { error_code: code || 'unknown', http_status: result.status });
+      track('join_error', { error_code: code || 'unknown', http_status: result.status, flow_id: flowId });
 
       var messages = {
         CHECKOUT_NOT_ENABLED: 'Membership checkout is temporarily unavailable. Please try again shortly or email hello@downtownpourcollective.com for help.',
@@ -1199,7 +1245,7 @@ window.DPC_JOIN = {
       submitBtn.textContent = 'Continue to Checkout';
       resetTurnstile();
     }).catch(function () {
-      track('join_error', { error_code: 'network' });
+      track('join_error', { error_code: 'network', flow_id: flowId });
       setError('Network error. Check your connection and try again.');
       submitting = false;
       submitBtn.disabled = false;
