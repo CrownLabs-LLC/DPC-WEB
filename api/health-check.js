@@ -116,6 +116,10 @@ async function gatherProblems(now) {
       healthChecks(stripe, resend).then((checks) => {
         for (const check of checks) {
           if (!check.ok) {
+            if (check.page === false) {
+              console.warn('health-check: non-paging provider warning', check.name, check.detail);
+              continue;
+            }
             problems.push({
               key: `check:${check.name}`,
               text: check.detail ? `${check.name} — ${check.detail}` : check.name,

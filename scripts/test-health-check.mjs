@@ -79,7 +79,7 @@ function mockStripeHttps({ keyOk = true, staleEvent = false } = {}) {
 }
 
 // fetch mock for Resend + Supabase; records sent alert emails + throttle reads.
-function mockFetch({ priorAlertFingerprint = null, recentWebhookErrors = false, supabaseDown = false, hangEmail = false, joinCanaryBroken = false, stalledHandoff = false, fallbackHandoff = false, canaryDelayMs = 0 } = {}, sentEmails, stats) {
+function mockFetch({ priorAlertFingerprint = null, recentWebhookErrors = false, supabaseDown = false, hangEmail = false, hangResendDomains = false, resendDomainErrorName = '', joinCanaryBroken = false, stalledHandoff = false, fallbackHandoff = false, canaryDelayMs = 0 } = {}, sentEmails, stats) {
   return async (url, opts) => {
     const u = String(url);
     if (u === 'https://www.downtownpourcollective.com/join') {
@@ -95,6 +95,10 @@ function mockFetch({ priorAlertFingerprint = null, recentWebhookErrors = false, 
       return new Response(JSON.stringify({ success: false, error: { code: 'INVALID_REQUEST' } }), { status: 400, headers: { 'content-type': 'application/json' } });
     }
     if (u.includes('api.resend.com/domains')) {
+      if (hangResendDomains) return new Promise(() => {});
+      if (resendDomainErrorName) {
+        return new Response(JSON.stringify({ name: resendDomainErrorName, message: 'Resend probe failed' }), { status: 500, headers: { 'content-type': 'application/json' } });
+      }
       return new Response(JSON.stringify({ data: { data: [] } }), { status: 200, headers: { 'content-type': 'application/json' } });
     }
     if (u.includes('api.resend.com/emails')) {
@@ -223,32 +227,54 @@ let brokenKeyFingerprint = null;
   check('fingerprint returned', typeof brokenKeyFingerprint === 'string' && brokenKeyFingerprint.length > 0, out.body);
 }
 
-// Case 11: stale undelivered event -> flagged
+// Case 11: a transient Resend management-endpoint timeout remains visible in
+// logs but does not page operators when the actual email path is still usable.
+{
+  const { out, sentEmails } = await run({ hangResendDomains: true });
+  check('Resend probe timeout alone does not mark the pager unhealthy', out.body.ok === true, out.body);
+  check('Resend probe timeout alone sends no alert', out.body.alerted === false && sentEmails.length === 0, out.body);
+}
+
+// Case 12: a transient Resend API failure is also non-paging.
+{
+  const { out, sentEmails } = await run({ resendDomainErrorName: 'application_error' });
+  check('transient Resend API failure does not mark the pager unhealthy', out.body.ok === true, out.body);
+  check('transient Resend API failure sends no alert', out.body.alerted === false && sentEmails.length === 0, out.body);
+}
+
+// Case 13: an explicit Resend credential rejection remains a paging problem.
+{
+  const { out, sentEmails } = await run({ resendDomainErrorName: 'invalid_api_Key' });
+  check('invalid Resend key is flagged', out.body.problems.some((p) => p.includes('Resend key accepted')), out.body.problems);
+  check('invalid Resend key attempts an alert', out.body.alerted === true && sentEmails.length === 1, out.body);
+}
+
+// Case 14: stale undelivered event -> flagged
 {
   const { out } = await run({ staleEvent: true });
   check('stale undelivered event flagged', out.body.problems.some((p) => p.includes('undelivered')), out.body.problems);
 }
 
-// Case 12: recent webhook errors -> flagged
+// Case 15: recent webhook errors -> flagged
 {
   const { out } = await run({ recentWebhookErrors: true });
   check('recent webhook errors flagged', out.body.problems.some((p) => p.includes('webhook error')), out.body.problems);
 }
 
-// Case 13: same incident within 6h -> throttled, no second email
+// Case 16: same incident within 6h -> throttled, no second email
 {
   const { out, sentEmails } = await run({ keyOk: false, priorAlertFingerprint: brokenKeyFingerprint });
   check('same fingerprint throttled', out.body.throttled === true && out.body.alerted === false, out.body);
   check('throttled -> no email sent', sentEmails.length === 0, sentEmails);
 }
 
-// Case 14: a DIFFERENT prior incident does not suppress a new one
+// Case 17: a DIFFERENT prior incident does not suppress a new one
 {
   const { out, sentEmails } = await run({ keyOk: false, priorAlertFingerprint: 'deadbeef00000000' });
   check('new incident alerts despite recent unrelated alert', out.body.alerted === true && sentEmails.length === 1, out.body);
 }
 
-// Case 15: Resend hangs on the alert send -> handler still returns before the
+// Case 18: Resend hangs on the alert send -> handler still returns before the
 // function deadline with alert_error populated (bounded by ALERT_SEND timeout)
 {
   const { out, elapsed } = await run({ keyOk: false, hangEmail: true });
@@ -257,7 +283,7 @@ let brokenKeyFingerprint = null;
   check('hanging alert send -> within time budget', elapsed < 10000, `took ${elapsed}ms`);
 }
 
-// Case 16: Supabase down -> throttle I/O skipped entirely, alert still sends
+// Case 19: Supabase down -> throttle I/O skipped entirely, alert still sends
 {
   const { out, sentEmails, stats } = await run({ supabaseDown: true });
   check('supabase down flagged', out.body.problems.some((p) => p.includes('Supabase reachable')), out.body.problems);
