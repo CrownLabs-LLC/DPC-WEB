@@ -213,7 +213,7 @@ function mockStripeHttps() {
   };
 }
 
-function mockDashboardFetch() {
+function mockDashboardFetch({ hangResendDomains = false } = {}) {
   return async (url) => {
     const u = String(url);
     if (u.includes('/rest/v1/site_events')) {
@@ -252,6 +252,7 @@ function mockDashboardFetch() {
       ]), { status: 200, headers: { 'content-type': 'application/json' } });
     }
     if (u.includes('api.resend.com')) {
+      if (hangResendDomains) return new Promise(() => {});
       return new Response(JSON.stringify({ data: { data: [] } }), { status: 200, headers: { 'content-type': 'application/json' } });
     }
     throw new Error('unexpected fetch: ' + u);
@@ -326,6 +327,29 @@ process.env.SUPABASE_SERVICE_ROLE_KEY = 'service_test_key';
   check('health: payment intent read probe ok', byName['Stripe key can read payment intents']?.ok === true, byName);
   check('health: live mode detected from key prefix', byName['Stripe key is live mode']?.ok === true, byName);
   check('health: resend key accepted', byName['Resend key accepted by Resend']?.ok === true, byName);
+}
+
+// A transient Resend probe timeout stays red on the dashboard even though the
+// paging health check treats it as a non-email warning.
+{
+  const origFetch = globalThis.fetch;
+  const origHttpsRequest = https.request;
+  globalThis.fetch = mockDashboardFetch({ hangResendDomains: true });
+  https.request = mockStripeHttps();
+  const handler = await fresh('../api/dashboard-data.js');
+  const { res, out } = mockRes();
+  const keepAlive = setTimeout(() => {}, 20000);
+  await handler({ method: 'GET', headers: { authorization: 'Bearer sekret-token' }, query: { days: '7' } }, res);
+  clearTimeout(keepAlive);
+  globalThis.fetch = origFetch;
+  https.request = origHttpsRequest;
+
+  const byName = Object.fromEntries((out.body?.health || []).map((check) => [check.name, check]));
+  check('health: Resend timeout remains visible as failed row', (
+    byName['Resend key accepted by Resend']?.ok === false
+    && byName['Resend key accepted by Resend']?.page === false
+    && byName['Resend key accepted by Resend']?.detail.includes('timed out')
+  ), byName);
 }
 
 process.exit(failures ? 1 : 0);

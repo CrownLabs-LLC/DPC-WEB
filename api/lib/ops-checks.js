@@ -125,7 +125,7 @@ export async function healthChecks(stripe, resend) {
       // A single timeout, rate limit, or provider-side failure is noisy on a
       // five-minute cadence. Keep it visible on the dashboard and in logs,
       // but page only for an explicit credential rejection.
-      resendPage = errorName === 'missing_api_key' || errorName === 'invalid_api_key';
+      resendPage = ['missing_api_key', 'invalid_api_key', 'restricted_api_key'].includes(errorName);
     }
   } else {
     resendDetail = String(resendResult.reason?.message || resendResult.reason);

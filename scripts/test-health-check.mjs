@@ -97,7 +97,8 @@ function mockFetch({ priorAlertFingerprint = null, recentWebhookErrors = false, 
     if (u.includes('api.resend.com/domains')) {
       if (hangResendDomains) return new Promise(() => {});
       if (resendDomainErrorName) {
-        return new Response(JSON.stringify({ name: resendDomainErrorName, message: 'Resend probe failed' }), { status: 500, headers: { 'content-type': 'application/json' } });
+        const status = ['invalid_api_Key', 'restricted_api_key'].includes(resendDomainErrorName) ? 403 : 500;
+        return new Response(JSON.stringify({ name: resendDomainErrorName, message: 'Resend probe failed' }), { status, headers: { 'content-type': 'application/json' } });
       }
       return new Response(JSON.stringify({ data: { data: [] } }), { status: 200, headers: { 'content-type': 'application/json' } });
     }
@@ -231,14 +232,16 @@ let brokenKeyFingerprint = null;
 // logs but does not page operators when the actual email path is still usable.
 {
   const { out, sentEmails } = await run({ hangResendDomains: true });
-  check('Resend probe timeout alone does not mark the pager unhealthy', out.body.ok === true, out.body);
+  check('Resend probe timeout marks health JSON unhealthy', out.body.ok === false, out.body);
+  check('Resend probe timeout is returned as a warning', out.body.warnings.some((warning) => warning.includes('timed out')), out.body);
   check('Resend probe timeout alone sends no alert', out.body.alerted === false && sentEmails.length === 0, out.body);
 }
 
 // Case 12: a transient Resend API failure is also non-paging.
 {
   const { out, sentEmails } = await run({ resendDomainErrorName: 'application_error' });
-  check('transient Resend API failure does not mark the pager unhealthy', out.body.ok === true, out.body);
+  check('transient Resend API failure marks health JSON unhealthy', out.body.ok === false, out.body);
+  check('transient Resend API failure is returned as a warning', out.body.warnings.some((warning) => warning.includes('Resend probe failed')), out.body);
   check('transient Resend API failure sends no alert', out.body.alerted === false && sentEmails.length === 0, out.body);
 }
 
@@ -249,32 +252,39 @@ let brokenKeyFingerprint = null;
   check('invalid Resend key attempts an alert', out.body.alerted === true && sentEmails.length === 1, out.body);
 }
 
-// Case 14: stale undelivered event -> flagged
+// Case 14: a restricted Resend key is a persistent permission mismatch.
+{
+  const { out, sentEmails } = await run({ resendDomainErrorName: 'restricted_api_key' });
+  check('restricted Resend key is flagged', out.body.problems.some((p) => p.includes('Resend key accepted')), out.body.problems);
+  check('restricted Resend key attempts an alert', out.body.alerted === true && sentEmails.length === 1, out.body);
+}
+
+// Case 15: stale undelivered event -> flagged
 {
   const { out } = await run({ staleEvent: true });
   check('stale undelivered event flagged', out.body.problems.some((p) => p.includes('undelivered')), out.body.problems);
 }
 
-// Case 15: recent webhook errors -> flagged
+// Case 16: recent webhook errors -> flagged
 {
   const { out } = await run({ recentWebhookErrors: true });
   check('recent webhook errors flagged', out.body.problems.some((p) => p.includes('webhook error')), out.body.problems);
 }
 
-// Case 16: same incident within 6h -> throttled, no second email
+// Case 17: same incident within 6h -> throttled, no second email
 {
   const { out, sentEmails } = await run({ keyOk: false, priorAlertFingerprint: brokenKeyFingerprint });
   check('same fingerprint throttled', out.body.throttled === true && out.body.alerted === false, out.body);
   check('throttled -> no email sent', sentEmails.length === 0, sentEmails);
 }
 
-// Case 17: a DIFFERENT prior incident does not suppress a new one
+// Case 18: a DIFFERENT prior incident does not suppress a new one
 {
   const { out, sentEmails } = await run({ keyOk: false, priorAlertFingerprint: 'deadbeef00000000' });
   check('new incident alerts despite recent unrelated alert', out.body.alerted === true && sentEmails.length === 1, out.body);
 }
 
-// Case 18: Resend hangs on the alert send -> handler still returns before the
+// Case 19: Resend hangs on the alert send -> handler still returns before the
 // function deadline with alert_error populated (bounded by ALERT_SEND timeout)
 {
   const { out, elapsed } = await run({ keyOk: false, hangEmail: true });
@@ -283,7 +293,7 @@ let brokenKeyFingerprint = null;
   check('hanging alert send -> within time budget', elapsed < 10000, `took ${elapsed}ms`);
 }
 
-// Case 19: Supabase down -> throttle I/O skipped entirely, alert still sends
+// Case 20: Supabase down -> throttle I/O skipped entirely, alert still sends
 {
   const { out, sentEmails, stats } = await run({ supabaseDown: true });
   check('supabase down flagged', out.body.problems.some((p) => p.includes('Supabase reachable')), out.body.problems);
