@@ -243,6 +243,18 @@ pageHas(
   /if \(seq !== state\[seqKey\]\) return;\s*\n\s*if \(tab === 'tickets'\) commitTickets/,
   'commit must happen only after the sequence check so older requests cannot overwrite newer filters',
 );
+pageHas(
+  /if \(state\.tab !== tab\) return;/,
+  'an inactive tab\'s failure must not clobber the visible tab',
+);
+pageHas(
+  /function renderLoadError\(err, tab\)/,
+  'load errors must target the originating tab, not whatever is currently selected',
+);
+pageHas(
+  /var box = tab === 'tickets' \? \$\('tickets-body'\) : \$\('feedback-body'\)/,
+  'error rendering must use the captured tab, not state.tab',
+);
 pageHas(/ticketSeq: 0/, 'tickets need their own request sequence');
 pageHas(/feedbackSeq: 0/, 'feedback needs its own request sequence');
 pageHas(
@@ -252,6 +264,14 @@ pageHas(
 pageHas(
   /first_response_already_set/,
   'UI must handle the atomic first-response conflict from the triage RPC',
+);
+pageHas(
+  /apiCode === 'first_response_already_set'[\s\S]{0,800}?handleAuthFailure\(refreshErr\)/,
+  'conflict recovery must not swallow 401/403 from the refetch',
+);
+pageHas(
+  /First response was already recorded, but the ticket could not be refreshed/,
+  'a failed conflict refetch must replace the pending "refreshing" message',
 );
 
 /* ---------------- auth states stay distinct ---------------- */

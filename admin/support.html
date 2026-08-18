@@ -626,20 +626,24 @@ dl.facts dd { margin: 0; overflow-wrap: anywhere; }
     }).catch(function (err) {
       if (seq !== state[seqKey]) return;
       if (handleAuthFailure(err)) return;
+      // Sequence is per-tab: a failed Tickets request can still be "current"
+      // after the user has switched to Feedback. Don't paint its error into
+      // the visible tab.
+      if (state.tab !== tab) return;
       var hasData = tab === 'tickets' ? state.tickets : state.feedback;
       if (hasData) {
         $('banner').hidden = false;
         $('banner').textContent = 'Refresh failed: ' + err.message;
       } else {
-        renderLoadError(err);
+        renderLoadError(err, tab);
       }
     }).finally(function () {
       if (seq === state[seqKey]) $('view-app').classList.remove('loading');
     });
   }
 
-  function renderLoadError(err) {
-    var box = state.tab === 'tickets' ? $('tickets-body') : $('feedback-body');
+  function renderLoadError(err, tab) {
+    var box = tab === 'tickets' ? $('tickets-body') : $('feedback-body');
     clear(box);
     var wrap = el('div', 'stack');
     wrap.appendChild(el('p', 'err', err.message));
@@ -647,7 +651,7 @@ dl.facts dd { margin: 0; overflow-wrap: anywhere; }
     retry.addEventListener('click', function () { load(); });
     wrap.appendChild(retry);
     box.appendChild(wrap);
-    (state.tab === 'tickets' ? $('tickets-pager') : $('feedback-pager')).hidden = true;
+    (tab === 'tickets' ? $('tickets-pager') : $('feedback-pager')).hidden = true;
   }
 
   /* ---------- render: shell ---------- */
@@ -894,7 +898,14 @@ dl.facts dd { margin: 0; overflow-wrap: anywhere; }
                 })[0];
                 if (fresh) state.detailTicket = fresh;
               }
-            }).catch(function () {});
+            }).catch(function (refreshErr) {
+              if (handleAuthFailure(refreshErr)) {
+                state.pendingError = null;
+                return;
+              }
+              state.pendingError =
+                'First response was already recorded, but the ticket could not be refreshed.';
+            });
           }
           if (err.apiCode === 'support_ticket_not_found') {
             state.pendingError = 'This ticket no longer exists. Go back to the queue and refresh.';
