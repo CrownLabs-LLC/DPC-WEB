@@ -30,7 +30,7 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Barlow+Condensed:wght@600;700&family=Barlow:ital,wght@0,400;0,500;1,400" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Barlow+Condensed:wght@600;700&family=Barlow:ital,wght@0,400;0,500;1,400&family=Cinzel:wght@400;600" rel="stylesheet">
 
 <!-- Schema.org structured data -->
 <script type="application/ld+json">
@@ -811,6 +811,37 @@ img, svg { display: block; max-width: 100%; }
   max-height: 88px;
   object-fit: contain;
 }
+/* Typeset stand-in for partners with no usable logo artwork, set in the venue's own
+   heading face. Cinzel renders lowercase as small caps, matching their signage. */
+.partner-tile__wordmark {
+  font-family: 'Cinzel', var(--display);
+  font-weight: 600;
+  font-size: 25px;
+  line-height: 1.15;
+  color: var(--navy);
+  letter-spacing: 0.03em;
+  margin: 0;
+  text-wrap: balance;
+}
+.partner-tile__wordmark::after {
+  content: "";
+  display: block;
+  width: 56px;
+  height: 1px;
+  background: var(--gold);
+  opacity: 0.7;
+  margin: 14px auto 0;
+}
+.partner-tile__wordmark-sub {
+  font-family: 'Cinzel', var(--display);
+  font-weight: 400;
+  font-size: 11px;
+  line-height: 1.2;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(13, 27, 42, 0.72);
+  margin: -6px 0 0;
+}
 .partner-tile__name {
   font-family: var(--display);
   font-weight: 700;
@@ -1529,6 +1560,10 @@ img, svg { display: block; max-width: 100%; }
         <img class="partner-tile__logo" src="assets/partners/wingen-bakery.png" alt="Wingen Bakery &amp; Restaurant logo" width="600" height="292" loading="lazy">
         <p class="partner-tile__name">Wingen Bakery &amp; Restaurant</p>
         <p class="partner-tile__status">Coming Soon</p>
+      </div>
+      <div class="partner-tile">
+        <p class="partner-tile__wordmark">Bruno&#8217;s Italian Cuisine</p>
+        <p class="partner-tile__wordmark-sub">Restaurant &amp; Catering</p>
       </div>
     </div>
     <p class="partners__foot">Participating partners will continue to be added as agreements and app setup are completed. Venue availability in the member app may begin after website enrollment opens.</p>
