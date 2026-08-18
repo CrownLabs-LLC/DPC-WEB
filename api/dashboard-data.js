@@ -22,7 +22,9 @@ const JOIN_ERROR_CODES = new Set([
   'turnstile_unavailable',
   'turnstile_incomplete',
   'network',
+  'navigation',
   'unknown',
+  'CHECKOUT_IN_PROGRESS',
   'CHECKOUT_NOT_ENABLED',
   'FOUNDING_UNAVAILABLE',
   'SIGN_IN_REQUIRED',
@@ -66,12 +68,15 @@ async function funnelSection(days, now) {
   const currentStart = now - days * DAY_MS;
   const prevStart = now - 2 * days * DAY_MS;
   const since = new Date(prevStart).toISOString();
-  const [funnelRows, errorRows] = await Promise.all([
+  const [funnelRows, errorRows, checkoutRows] = await Promise.all([
     supabaseSelect(
       `site_events?select=ts,event&event=in.(page_view,deposit_click,deposit_confirmed)&ts=gte.${since}&order=ts.desc&limit=20000`
     ),
     supabaseSelect(
       `site_events?select=ts,event,error_code&event=eq.join_error&ts=gte.${since}&order=ts.desc&limit=20000`
+    ),
+    supabaseSelect(
+      `site_events?select=ts,event,flow_id&event=in.(join_submit,join_checkout_ready,join_checkout_departed,join_checkout_fallback_clicked,join_checkout_stalled)&ts=gte.${since}&order=ts.desc&limit=20000`
     ),
   ]);
   const rows = [...funnelRows, ...errorRows];
@@ -82,8 +87,17 @@ async function funnelSection(days, now) {
     confirmations: 0,
     join_errors: 0,
     join_error_codes: Object.create(null),
+    join_submits: 0,
+    checkout_ready: 0,
+    checkout_departed: 0,
+    checkout_fallback_clicks: 0,
+    checkout_stalled: 0,
   };
-  const prev = { visits: 0, clicks: 0, confirmations: 0, join_errors: 0 };
+  const prev = {
+    visits: 0, clicks: 0, confirmations: 0, join_errors: 0,
+    join_submits: 0, checkout_ready: 0, checkout_departed: 0,
+    checkout_fallback_clicks: 0, checkout_stalled: 0,
+  };
   const field = { page_view: 'visits', deposit_click: 'clicks', deposit_confirmed: 'confirmations' };
   for (const row of rows) {
     const ts = Date.parse(row.ts);
@@ -107,12 +121,28 @@ async function funnelSection(days, now) {
       prev[key] += 1;
     }
   }
+  const checkoutField = {
+    join_submit: 'join_submits',
+    join_checkout_ready: 'checkout_ready',
+    join_checkout_departed: 'checkout_departed',
+    join_checkout_fallback_clicked: 'checkout_fallback_clicks',
+    join_checkout_stalled: 'checkout_stalled',
+  };
+  const seen = new Set();
+  for (const row of checkoutRows) {
+    const key = checkoutField[row.event];
+    if (!key) continue;
+    const identity = `${row.event}:${row.flow_id || row.ts}`;
+    if (seen.has(identity)) continue;
+    seen.add(identity);
+    (Date.parse(row.ts) >= currentStart ? totals : prev)[key] += 1;
+  }
   return {
     configured: true,
     daily: [...daily.values()],
     totals,
     prev,
-    truncated: funnelRows.length >= 20000 || errorRows.length >= 20000,
+    truncated: funnelRows.length >= 20000 || errorRows.length >= 20000 || checkoutRows.length >= 20000,
   };
 }
 

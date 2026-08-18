@@ -2,19 +2,29 @@
 <html lang="en-US">
 <head>
 <meta charset="UTF-8">
-<title>Join The Collective | Downtown Pour Collective</title>
+<title>Confirm Your Founding Membership | Downtown Pour Collective</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="Choose your Circle and join Downtown Pour Collective in downtown Livermore. One Circle to start — monthly or annual founding pricing through August.">
-<link rel="canonical" href="https://www.downtownpourcollective.com/join">
+<meta name="description" content="Private Founding Membership confirmation for an existing Downtown Pour Collective depositor.">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<meta name="referrer" content="no-referrer">
+<link rel="canonical" href="https://www.downtownpourcollective.com/depositor-confirmation">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
-<meta property="og:type" content="website">
-<meta property="og:url" content="https://www.downtownpourcollective.com/join">
-<meta property="og:title" content="Join The Collective | Downtown Pour Collective">
-<meta property="og:description" content="Choose your Circle and join Downtown Pour Collective. Founding pricing through August — monthly or annual, plus a one-time $49 Founding Slot Deposit.">
-<meta property="og:image" content="https://www.downtownpourcollective.com/assets/og-image.jpg">
-<meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Join The Collective | Downtown Pour Collective">
-<meta name="twitter:description" content="Choose your Circle and join Downtown Pour Collective. Founding pricing through August.">
+<script id="depositor-token-bootstrap">
+/* Keep the one-time token in this closure only. A URL fragment is never sent
+   in HTTP or Referer headers, and replaceState scrubs it before third-party
+   fonts or Turnstile load. */
+(function () {
+  var match = /^#token=([A-Fa-f0-9]{64})$/.exec(window.location.hash || '');
+  var token = match ? match[1].toLowerCase() : '';
+  window.history.replaceState(null, '', window.location.pathname);
+  document.addEventListener('DOMContentLoaded', function () {
+    if (typeof window.__startDpcDepositorConfirmation === 'function') {
+      window.__startDpcDepositorConfirmation(token);
+    }
+    token = '';
+  }, { once: true });
+})();
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Barlow+Condensed:wght@600;700&family=Barlow:ital,wght@0,400;0,500;1,400" rel="stylesheet">
@@ -137,6 +147,29 @@ a:focus-visible, button:focus-visible, input:focus-visible, [tabindex]:focus-vis
   margin: 0 0 28px;
 }
 .depositor-note strong { color: var(--cream); }
+
+.invite-state {
+  border: 1px solid rgba(196, 163, 90, 0.45);
+  background: rgba(30, 58, 90, 0.35);
+  padding: 28px 24px;
+  text-align: center;
+  margin: 0 auto 24px;
+}
+.invite-state__title {
+  font-family: var(--display);
+  font-size: 24px;
+  color: var(--cream);
+  margin: 0 0 10px;
+}
+.invite-state__body,
+.details-note {
+  font-size: 14px;
+  line-height: 1.55;
+  color: rgba(245, 240, 232, 0.74);
+}
+.invite-state__body { margin: 0; }
+.details-note { margin: 12px 0 0; }
+[hidden] { display: none !important; }
 
 .panel {
   background: rgba(30, 58, 90, 0.35);
@@ -421,16 +454,6 @@ a:focus-visible, button:focus-visible, input:focus-visible, [tabindex]:focus-vis
   opacity: 0.55;
   cursor: not-allowed;
 }
-.btn[hidden],
-.checkout-fallback[hidden],
-.checkout-handoff[hidden] { display: none !important; }
-.checkout-handoff {
-  margin: 12px 0 10px;
-  font-size: 14px;
-  line-height: 1.45;
-  color: rgba(245, 240, 232, 0.78);
-  text-align: left;
-}
 
 .form__error {
   min-height: 0;
@@ -676,14 +699,25 @@ body:has(.cookie:not([hidden])) .page {
 <main class="page">
   <div class="page__border" aria-hidden="true"></div>
   <div class="join">
-    <p class="join__eyebrow">Founding Membership</p>
-    <h1 class="join__title">Join The Collective</h1>
-    <p class="join__lede">Subscriptions opened August 1. Choose the Circle that matches what you like to drink—beer, wine, or cocktails. Start with one Circle today, pick monthly or annual, then continue to secure checkout.</p>
+    <p class="join__eyebrow">Private Depositor Confirmation</p>
+    <h1 class="join__title">Complete Your Founding Membership</h1>
+    <p class="join__lede">Your $49 Founding Slot Deposit is already recorded. You will not be charged it again. Choose one Circle and monthly or annual billing; Checkout contains only that recurring membership charge, which begins when payment is confirmed. Your paid deposit includes one Welcome Kit. Each active Circle includes up to five Membership Pours per monthly period.</p>
     <hr class="join__rule">
 
-    <p class="depositor-note"><strong>Already paid a $49 Founding Slot Deposit?</strong> Please don’t use this public checkout. We’ll email your private membership-confirmation link shortly. Your deposit is already recorded, and you won’t be charged it again.</p>
+    <p class="depositor-note"><strong>Complete conversion before September 1, 2026 at 12:00 AM Pacific Time.</strong> Use only the private link sent to you, and do not forward it.</p>
 
-    <form id="join-form" novalidate>
+    <section class="invite-state" id="invite-error" role="alert" hidden>
+      <h2 class="invite-state__title">We couldn’t open this private confirmation.</h2>
+      <p class="invite-state__body">Use the complete private link from your invitation. If you still need help, email <a href="mailto:hello@downtownpourcollective.com">hello@downtownpourcollective.com</a>. For your privacy, this page cannot confirm whether a guessed link belongs to a member.</p>
+    </section>
+    <noscript>
+      <section class="invite-state" role="alert">
+        <h2 class="invite-state__title">JavaScript is required for secure confirmation.</h2>
+        <p class="invite-state__body">Enable JavaScript and reopen the complete private link, or email <a href="mailto:hello@downtownpourcollective.com">hello@downtownpourcollective.com</a>.</p>
+      </section>
+    </noscript>
+
+    <form id="join-form" novalidate hidden>
       <div class="panel">
         <p class="panel__label">1 · Choose your Circle</p>
         <div class="circles" role="radiogroup" aria-label="Membership Circle">
@@ -760,6 +794,7 @@ body:has(.cookie:not([hidden])) .page {
             <input id="email" name="email" type="email" autocomplete="email" required maxlength="200" inputmode="email">
           </div>
         </div>
+        <p class="details-note">Your secure invitation—not an edited email address—identifies the existing deposit and member record. Enter your current contact details so we can help if anything needs attention.</p>
       </div>
 
       <div class="panel">
@@ -772,10 +807,8 @@ body:has(.cookie:not([hidden])) .page {
         <div class="actions">
           <p class="summary" id="order-summary" aria-live="polite"></p>
           <button class="btn" type="submit" id="submit-btn">Continue to Checkout</button>
-          <p class="checkout-handoff" id="checkout-handoff" role="status" hidden>Secure checkout is ready. If it does not open automatically, tap below.</p>
-          <a class="btn checkout-fallback" id="checkout-fallback" hidden>Open Secure Checkout</a>
           <p class="form__error" id="form-error" role="alert"></p>
-          <p class="fine" id="offer-fineprint">MONTHLY OR ANNUAL · ONE-TIME $49 FOUNDING SLOT DEPOSIT · FOUNDING PRICING THROUGH AUGUST · 21+</p>
+          <p class="fine" id="offer-fineprint">YOUR $49 DEPOSIT IS ALREADY PAID · RECURRING MEMBERSHIP ONLY · DEADLINE SEPTEMBER 1 AT 12:00 AM PACIFIC · 21+</p>
         </div>
       </div>
     </form>
@@ -835,25 +868,25 @@ body:has(.cookie:not([hidden])) .page {
   </div>
 </footer>
 
-<div class="cookie" id="cookie-banner" role="region" aria-label="Cookie notice" hidden>
-  <p class="cookie__text">By using this site you agree to our use of analytics cookies. <a href="/privacy">Privacy Policy</a></p>
-  <button class="cookie__accept" type="button" id="cookie-accept">Accept</button>
-</div>
-
 <script>
-/* Join page config — keep legalVersions aligned with circle-checkout REQUIRED_CHECKOUT_LEGAL_VERSIONS.
+/* Private depositor config — keep legalVersions aligned with circle-checkout REQUIRED_CHECKOUT_LEGAL_VERSIONS.
    Production uses the hostname-bound DPC Turnstile widget. Preview and local
-   hosts use Cloudflare's published always-pass test key for client-side QA.
-   Checkout remains disabled server-side pending the reviewed backend enablement. */
+   hosts use Cloudflare's published always-pass test key for client-side QA. */
 function dpcTurnstileSiteKeyForHost(hostname) {
-  var isProductionJoinHost = hostname === 'www.downtownpourcollective.com'
+  var isProductionHost = hostname === 'www.downtownpourcollective.com'
     || hostname === 'downtownpourcollective.com';
-  return isProductionJoinHost
+  return isProductionHost
     ? '0x4AAAAAAECO2A5oKsePqsOg'
     : '1x00000000000000000000AA';
 }
-window.DPC_JOIN = {
-  checkoutEndpoint: 'https://ebiuspbgzggrdiaswpcc.supabase.co/functions/v1/circle-checkout',
+function dpcCheckoutEndpointForHost(hostname) {
+  return hostname === 'www.downtownpourcollective.com'
+    || hostname === 'downtownpourcollective.com'
+    ? 'https://ebiuspbgzggrdiaswpcc.supabase.co/functions/v1/circle-checkout'
+    : '';
+}
+window.DPC_DEPOSITOR_CONFIRMATION = {
+  checkoutEndpoint: dpcCheckoutEndpointForHost(window.location.hostname),
   turnstileSiteKey: dpcTurnstileSiteKeyForHost(window.location.hostname),
   turnstileAction: 'circle_checkout',
   legalVersions: {
@@ -869,24 +902,17 @@ window.DPC_JOIN = {
       tap: { monthly: 55, annual: 550 },
       cellar: { monthly: 65, annual: 650 },
       reserve: { monthly: 75, annual: 750 }
-    },
-    standard: {
-      tap: { monthly: 59, annual: null },
-      cellar: { monthly: 69, annual: null },
-      reserve: { monthly: 79, annual: null }
     }
   }
 };
 </script>
-<script src="assets/analytics.js"></script>
 <script>
-(function () {
-  var cfg = window.DPC_JOIN || {};
+window.__startDpcDepositorConfirmation = function (depositorToken) {
+  var cfg = window.DPC_DEPOSITOR_CONFIRMATION || {};
   var form = document.getElementById('join-form');
+  var inviteError = document.getElementById('invite-error');
   var errorEl = document.getElementById('form-error');
   var submitBtn = document.getElementById('submit-btn');
-  var checkoutFallback = document.getElementById('checkout-fallback');
-  var checkoutHandoff = document.getElementById('checkout-handoff');
   var summaryEl = document.getElementById('order-summary');
   var fineEl = document.getElementById('offer-fineprint');
   var turnstileSlot = document.getElementById('turnstile-slot');
@@ -894,16 +920,31 @@ window.DPC_JOIN = {
   var turnstileToken = '';
   var turnstileUnavailable = false;
   var turnstileLoadAttempts = 0;
-  var turnstileFailureTracked = false;
   var submitting = false;
-  var CHECKOUT_STALL_MS = 8000;
   var TURNSTILE_MAX_LOAD_ATTEMPTS = 50;
   var TURNSTILE_SCRIPT_ID = 'turnstile-api-script';
   var TURNSTILE_SCRIPT_SRC = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
 
-  function offerType() {
-    return Date.now() < (cfg.foundingEndsAtMs || 0) ? 'founding' : 'standard';
+  function showInviteUnavailable() {
+    depositorToken = '';
+    inviteError.hidden = false;
+    form.hidden = true;
+    if (turnstileWidgetId != null && window.turnstile && typeof window.turnstile.remove === 'function') {
+      try { window.turnstile.remove(turnstileWidgetId); } catch (error) {}
+    }
+    turnstileWidgetId = null;
+    turnstileToken = '';
   }
+
+  // The server is authoritative for the Pacific-time conversion deadline.
+  // A member's incorrect device clock must not invalidate an otherwise usable link.
+  if (!depositorToken) {
+    showInviteUnavailable();
+    return;
+  }
+  form.hidden = false;
+
+  function offerType() { return 'founding'; }
 
   function selected(name) {
     var el = form.querySelector('input[name="' + name + '"]:checked');
@@ -922,18 +963,11 @@ window.DPC_JOIN = {
       var priceEl = document.querySelector('[data-price-for="' + circle + '"]');
       var noteEl = document.querySelector('[data-price-note-for="' + circle + '"]');
       if (!priceEl) return;
-      if (offer === 'founding') {
-        priceEl.textContent = money(p.monthly) + ' / mo';
-        if (noteEl) noteEl.textContent = 'or ' + money(p.annual) + ' / year';
-      } else {
-        priceEl.textContent = money(p.monthly) + ' / mo';
-        if (noteEl) noteEl.textContent = 'standard rate';
-      }
+      priceEl.textContent = money(p.monthly) + ' / mo';
+      if (noteEl) noteEl.textContent = 'or ' + money(p.annual) + ' / year';
     });
     if (fineEl) {
-      fineEl.textContent = offer === 'founding'
-        ? 'MONTHLY OR ANNUAL · ONE-TIME $49 FOUNDING SLOT DEPOSIT · FOUNDING PRICING THROUGH AUGUST · 21+'
-        : 'MONTHLY MEMBERSHIP · STANDARD RATE · 21+';
+      fineEl.textContent = 'YOUR $49 DEPOSIT IS ALREADY PAID · RECURRING MEMBERSHIP ONLY · DEADLINE SEPTEMBER 1 AT 12:00 AM PACIFIC · 21+';
     }
     refreshSummary();
   }
@@ -951,85 +985,12 @@ window.DPC_JOIN = {
     var amount = interval === 'annual' ? p.annual : p.monthly;
     var label = circle.charAt(0).toUpperCase() + circle.slice(1);
     var period = interval === 'annual' ? 'year' : 'month';
-    var deposit = offer === 'founding'
-      ? ' plus a one-time $49 Founding Slot Deposit at signup'
-      : '';
     summaryEl.innerHTML = 'You selected <strong>' + label + ' · ' + interval + '</strong> at <strong>' +
-      money(amount) + ' / ' + period + '</strong>' + deposit + '.';
+      money(amount) + ' / ' + period + '</strong>. Your existing $49 deposit will not be charged again.';
   }
 
   function setError(msg) {
     errorEl.textContent = msg || '';
-  }
-
-  function newCheckoutFlowId() {
-    if (window.crypto && typeof window.crypto.randomUUID === 'function') {
-      return window.crypto.randomUUID();
-    }
-    if (!window.crypto || typeof window.crypto.getRandomValues !== 'function') return null;
-    var bytes = new Uint8Array(16);
-    window.crypto.getRandomValues(bytes);
-    bytes[6] = (bytes[6] & 15) | 64;
-    bytes[8] = (bytes[8] & 63) | 128;
-    var hex = Array.prototype.map.call(bytes, function (byte) {
-      return byte.toString(16).padStart(2, '0');
-    }).join('');
-    return hex.slice(0, 8) + '-' + hex.slice(8, 12) + '-' + hex.slice(12, 16) + '-' +
-      hex.slice(16, 20) + '-' + hex.slice(20);
-  }
-
-  function handoffToCheckout(url, flowId) {
-    var departed = false;
-    var stalled = false;
-    var stallTimer;
-    var detail = { flow_id: flowId };
-    function markDeparted() {
-      if (departed) return;
-      departed = true;
-      if (stallTimer) window.clearTimeout(stallTimer);
-      track('join_checkout_departed', detail);
-    }
-    function markStalled() {
-      if (departed || stalled) return;
-      stalled = true;
-      track('join_checkout_stalled', detail);
-      setError('Checkout did not open automatically. Tap “Open Secure Checkout” to continue.');
-    }
-
-    track('join_checkout_ready', detail);
-    window.addEventListener('beforeunload', markDeparted, { once: true });
-    window.addEventListener('pagehide', markDeparted, { once: true });
-    document.addEventListener('visibilitychange', function () {
-      if (document.visibilityState === 'hidden') markDeparted();
-    }, { once: true });
-    checkoutFallback.href = url;
-    checkoutFallback.onclick = function () {
-      track('join_checkout_fallback_clicked', detail);
-    };
-    checkoutFallback.hidden = false;
-    checkoutHandoff.hidden = false;
-    submitBtn.hidden = true;
-    checkoutFallback.focus();
-    var stallDelay = Number(cfg.checkoutStallMs);
-    if (!Number.isFinite(stallDelay) || stallDelay < 1) stallDelay = CHECKOUT_STALL_MS;
-    stallTimer = window.setTimeout(function () {
-      if (document.visibilityState !== 'hidden') markStalled();
-    }, stallDelay);
-    try {
-      // The optional hook is a browser-test seam; production config never sets it.
-      if (typeof cfg.navigateToCheckout === 'function') cfg.navigateToCheckout(url);
-      else window.location.assign(url);
-    } catch (error) {
-      submitting = false;
-      track('join_error', { error_code: 'navigation', flow_id: flowId });
-      markStalled();
-    }
-  }
-
-  function track(event, params) {
-    if (window.DPCAnalytics && typeof window.DPCAnalytics.track === 'function') {
-      window.DPCAnalytics.track(event, params || {});
-    }
   }
 
   function resetTurnstile() {
@@ -1053,7 +1014,6 @@ window.DPC_JOIN = {
       retryButton.addEventListener('click', function () {
         turnstileUnavailable = false;
         turnstileLoadAttempts = 0;
-        turnstileFailureTracked = false;
         setError('');
         if (window.turnstile) {
           turnstileSlot.innerHTML = '';
@@ -1063,10 +1023,6 @@ window.DPC_JOIN = {
           reloadTurnstileScript();
         }
       });
-    }
-    if (!turnstileFailureTracked) {
-      turnstileFailureTracked = true;
-      track('join_error', { error_code: 'turnstile_unavailable' });
     }
   }
 
@@ -1132,12 +1088,6 @@ window.DPC_JOIN = {
   form.addEventListener('change', function (e) {
     var t = e.target;
     if (!t || !t.name) return;
-    if (t.name === 'circle') {
-      track('join_circle_selected', { circle: t.value, offer_type: offerType() });
-    }
-    if (t.name === 'billingInterval') {
-      track('join_interval_selected', { billing_interval: t.value, offer_type: offerType() });
-    }
     refreshSummary();
   });
 
@@ -1154,8 +1104,7 @@ window.DPC_JOIN = {
     var legal = form.legal.checked;
     var offer = offerType();
     var key = cfg.turnstileSiteKey || '';
-    var needsTurnstile = key && key.indexOf('REPLACE_ME') === -1;
-    var flowId = newCheckoutFlowId();
+    var needsTurnstile = !!key && key.indexOf('REPLACE_ME') === -1;
 
     if (!circle) { setError('Choose a Circle to continue.'); return; }
     if (!billingInterval) { setError('Choose monthly or annual billing.'); return; }
@@ -1168,13 +1117,16 @@ window.DPC_JOIN = {
       setError('Please accept the membership terms to continue.');
       return;
     }
-    if (needsTurnstile && turnstileUnavailable) {
+    if (!needsTurnstile) {
+      setError('The security check is not configured. Email hello@downtownpourcollective.com for help.');
+      return;
+    }
+    if (turnstileUnavailable) {
       setError('The security check could not load. Use “Try security check again” or contact support.');
       return;
     }
-    if (needsTurnstile && !turnstileToken) {
+    if (!turnstileToken) {
       setError('Complete the security check to continue.');
-      track('join_error', { error_code: 'turnstile_incomplete' });
       return;
     }
     if (!cfg.checkoutEndpoint) {
@@ -1186,13 +1138,6 @@ window.DPC_JOIN = {
     submitBtn.disabled = true;
     submitBtn.textContent = 'Starting checkout…';
 
-    track('join_submit', {
-      circle: circle,
-      billing_interval: billingInterval,
-      offer_type: offer,
-      flow_id: flowId
-    });
-
     var payload = {
       email: email,
       firstName: firstName,
@@ -1200,10 +1145,11 @@ window.DPC_JOIN = {
       circle: circle,
       billingInterval: billingInterval,
       offerType: offer,
-      checkoutKind: 'new_member',
+      checkoutKind: 'deposit_conversion',
+      depositorConfirmationToken: depositorToken,
       acceptedAt: new Date().toISOString(),
       legalVersions: cfg.legalVersions,
-      challengeToken: needsTurnstile ? turnstileToken : 'pending-site-key'
+      challengeToken: turnstileToken
     };
 
     fetch(cfg.checkoutEndpoint, {
@@ -1218,34 +1164,34 @@ window.DPC_JOIN = {
       });
     }).then(function (result) {
       var body = result.body || {};
-      var err = body.error || {};
-      var code = err.code || '';
-      var url = body.data && body.data.checkout_url;
+      var code = (body.error && body.error.code) || '';
+      var url = safeStripeCheckoutUrl(body.data && body.data.checkout_url);
 
       if (result.status === 200 && body.success && url) {
-        handoffToCheckout(url, flowId);
+        window.location.href = url;
         return;
       }
 
-      track('join_error', { error_code: code || 'unknown', http_status: result.status, flow_id: flowId });
-
       var messages = {
         CHECKOUT_NOT_ENABLED: 'Membership checkout is temporarily unavailable. Please try again shortly or email hello@downtownpourcollective.com for help.',
-        FOUNDING_UNAVAILABLE: 'Founding memberships are full. Standard membership may still be available — email hello@downtownpourcollective.com.',
-        SIGN_IN_REQUIRED: 'This email already has an active membership. Please sign in through the app.',
+        FOUNDING_UNAVAILABLE: 'This private confirmation cannot be used. Check your invitation or email hello@downtownpourcollective.com for help.',
+        SIGN_IN_REQUIRED: 'This private confirmation cannot be used. Check your invitation or email hello@downtownpourcollective.com for help.',
         RATE_LIMITED: 'Too many attempts. Please wait a moment and try again.',
-        CHALLENGE_FAILED: 'Security check failed. Refresh the page and try again.',
-        LEGAL_VERSIONS_NOT_CURRENT: 'Please refresh the page and accept the current terms.',
-        MEMBER_NOT_ELIGIBLE: 'Checkout is unavailable for this account. Email hello@downtownpourcollective.com for help.',
-        DEPOSITOR_CONFIRMATION_INVALID: 'This deposit confirmation cannot be used. Check your invite email or contact us.'
+        CHALLENGE_FAILED: 'Security check failed. Complete the new security check below and try again.',
+        LEGAL_VERSIONS_NOT_CURRENT: 'The terms on this page are out of date. Keep this page open and email hello@downtownpourcollective.com for help.',
+        MEMBER_NOT_ELIGIBLE: 'This private confirmation cannot be used. Check your invitation or email hello@downtownpourcollective.com for help.',
+        DEPOSITOR_CONFIRMATION_INVALID: 'This private confirmation cannot be used. Check your invitation or email hello@downtownpourcollective.com for help.'
       };
-      setError(messages[code] || err.message || 'Checkout could not be started. Please try again.');
+      if (['FOUNDING_UNAVAILABLE', 'SIGN_IN_REQUIRED', 'MEMBER_NOT_ELIGIBLE', 'DEPOSITOR_CONFIRMATION_INVALID'].includes(code)) {
+        showInviteUnavailable();
+        return;
+      }
+      setError(messages[code] || 'Checkout could not be started. Please try again or email hello@downtownpourcollective.com.');
       submitting = false;
       submitBtn.disabled = false;
       submitBtn.textContent = 'Continue to Checkout';
       resetTurnstile();
     }).catch(function () {
-      track('join_error', { error_code: 'network', flow_id: flowId });
       setError('Network error. Check your connection and try again.');
       submitting = false;
       submitBtn.disabled = false;
@@ -1254,10 +1200,21 @@ window.DPC_JOIN = {
     });
   });
 
+  function safeStripeCheckoutUrl(value) {
+    if (typeof value !== 'string') return '';
+    try {
+      var parsed = new URL(value);
+      return parsed.protocol === 'https:' && parsed.hostname === 'checkout.stripe.com'
+        ? parsed.href
+        : '';
+    } catch (error) {
+      return '';
+    }
+  }
+
   refreshPrices();
   renderTurnstile();
-  if (window.DPCAnalytics) DPCAnalytics.init({ page: 'join' });
-})();
+};
 </script>
 </body>
 </html>

@@ -13,13 +13,22 @@
       "maxDuration": 15
     },
     "api/health-check.js": {
-      "maxDuration": 15
+      "maxDuration": 30
     }
   },
   "crons": [
-    { "path": "/api/health-check", "schedule": "0 * * * *" }
+    { "path": "/api/health-check", "schedule": "*/5 * * * *" }
   ],
   "headers": [
+    {
+      "source": "/depositor-confirmation",
+      "headers": [
+        { "key": "X-Robots-Tag", "value": "noindex, nofollow, noarchive" },
+        { "key": "Cache-Control", "value": "no-store" },
+        { "key": "Referrer-Policy", "value": "no-referrer" },
+        { "key": "X-Content-Type-Options", "value": "nosniff" }
+      ]
+    },
     {
       "source": "/reserved-confirmation",
       "headers": [
@@ -50,12 +59,6 @@
       "headers": [
         { "key": "X-Robots-Tag", "value": "noindex, nofollow" },
         { "key": "Cache-Control", "value": "no-store" }
-      ]
-    },
-    {
-      "source": "/join",
-      "headers": [
-        { "key": "X-Robots-Tag", "value": "noindex, nofollow" }
       ]
     },
     {

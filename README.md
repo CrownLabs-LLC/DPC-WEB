@@ -9,6 +9,7 @@ supporting pages, deployed to Vercel.
 | `/partners` | `partners.html` | Founding Partner intake (Resend) |
 | `/privacy` | `privacy.html` | Privacy Policy |
 | `/terms` | `terms.html` | Terms of Service |
+| `/depositor-confirmation` | `depositor-confirmation.html` | Private historical-depositor conversion (noindex; token in scrubbed URL fragment) |
 | `/reserved-confirmation` | `reserved-confirmation.html` | Post-deposit confirmation (noindex) |
 | `/stripe-connect/refresh` | `stripe-connect/refresh.html` | Stripe Connect Account Link expired/invalid (noindex) |
 | `/stripe-connect/return` | `stripe-connect/return.html` | Stripe Connect Account Link return (noindex) |

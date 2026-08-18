@@ -1,0 +1,34 @@
+name: Checkout navigation gate
+
+on:
+  pull_request:
+    paths:
+      - 'join.html'
+      - 'assets/analytics.js'
+      - 'api/track.js'
+      - 'api/health-check.js'
+      - 'api/dashboard-data.js'
+      - 'db/**'
+      - 'tests/e2e/**'
+      - 'scripts/**'
+      - 'playwright.config.mjs'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'vercel.json'
+      - '.github/workflows/checkout-navigation.yml'
+  workflow_dispatch:
+
+jobs:
+  checkout-navigation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npx playwright install --with-deps chromium webkit
+      - run: npm run test:e2e
