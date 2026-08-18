@@ -97,7 +97,9 @@ function mockFetch({ priorAlertFingerprint = null, recentWebhookErrors = false, 
     if (u.includes('api.resend.com/domains')) {
       if (hangResendDomains) return new Promise(() => {});
       if (resendDomainErrorName) {
-        const status = ['invalid_api_Key', 'restricted_api_key'].includes(resendDomainErrorName) ? 403 : 500;
+        const status = resendDomainErrorName === 'restricted_api_key'
+          ? 401
+          : resendDomainErrorName === 'invalid_api_Key' ? 403 : 500;
         return new Response(JSON.stringify({ name: resendDomainErrorName, message: 'Resend probe failed' }), { status, headers: { 'content-type': 'application/json' } });
       }
       return new Response(JSON.stringify({ data: { data: [] } }), { status: 200, headers: { 'content-type': 'application/json' } });
@@ -234,6 +236,7 @@ let brokenKeyFingerprint = null;
   const { out, sentEmails } = await run({ hangResendDomains: true });
   check('Resend probe timeout marks health JSON unhealthy', out.body.ok === false, out.body);
   check('Resend probe timeout is returned as a warning', out.body.warnings.some((warning) => warning.includes('timed out')), out.body);
+  check('Resend probe timeout leaves paging problems empty', out.body.problems.length === 0, out.body);
   check('Resend probe timeout alone sends no alert', out.body.alerted === false && sentEmails.length === 0, out.body);
 }
 
@@ -242,6 +245,7 @@ let brokenKeyFingerprint = null;
   const { out, sentEmails } = await run({ resendDomainErrorName: 'application_error' });
   check('transient Resend API failure marks health JSON unhealthy', out.body.ok === false, out.body);
   check('transient Resend API failure is returned as a warning', out.body.warnings.some((warning) => warning.includes('Resend probe failed')), out.body);
+  check('transient Resend API failure leaves paging problems empty', out.body.problems.length === 0, out.body);
   check('transient Resend API failure sends no alert', out.body.alerted === false && sentEmails.length === 0, out.body);
 }
 
