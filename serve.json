@@ -7,6 +7,7 @@
     { "source": "/depositor-confirmation", "destination": "/depositor-confirmation.html" },
     { "source": "/reserved-confirmation", "destination": "/reserved-confirmation.html" },
     { "source": "/stripe-connect/refresh", "destination": "/stripe-connect/refresh.html" },
-    { "source": "/stripe-connect/return", "destination": "/stripe-connect/return.html" }
+    { "source": "/stripe-connect/return", "destination": "/stripe-connect/return.html" },
+    { "source": "/admin/support", "destination": "/admin/support.html" }
   ]
 }

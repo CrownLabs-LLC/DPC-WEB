@@ -1,0 +1,1236 @@
+<!doctype html>
+<html lang="en-US">
+<head>
+<meta charset="UTF-8">
+<title>DPC Support</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+:root {
+  --page: #f9f9f7;
+  --surface-1: #fcfcfb;
+  --surface-2: #f2f1ec;
+  --text-primary: #0b0b0b;
+  --text-secondary: #52514e;
+  --text-muted: #898781;
+  --grid-line: #e1e0d9;
+  --baseline: #c3c2b7;
+  --border: rgba(11, 11, 11, 0.10);
+  --status-good: #0ca30c;
+  --status-warn: #b8730c;
+  --status-critical: #d03b3b;
+  --accent: #2a78d6;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #0d0d0d;
+    --surface-1: #1a1a19;
+    --surface-2: #232322;
+    --text-primary: #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted: #898781;
+    --grid-line: #2c2c2a;
+    --baseline: #383835;
+    --border: rgba(255, 255, 255, 0.10);
+    --status-good: #0ca30c;
+    --status-warn: #d9902a;
+    --accent: #3987e5;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--page);
+  color: var(--text-primary);
+  font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+.wrap { max-width: 1080px; margin: 0 auto; padding: 20px 16px 48px; }
+header.top { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+header.top h1 { font-size: 18px; font-weight: 650; margin: 0; }
+.meta { color: var(--text-muted); font-size: 12px; }
+.spacer { flex: 1; }
+button, .btnlike {
+  font: inherit; color: var(--text-primary); background: var(--surface-1);
+  border: 1px solid var(--border); border-radius: 8px; padding: 5px 12px; cursor: pointer;
+}
+button:hover:not(:disabled) { border-color: var(--baseline); }
+button:disabled { opacity: .45; cursor: not-allowed; }
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+button.link {
+  background: none; border: none; padding: 0; color: var(--accent);
+  text-decoration: underline; text-underline-offset: 2px;
+}
+button.tiny { padding: 1px 7px; font-size: 11px; border-radius: 6px; }
+select, input {
+  font: inherit; color: var(--text-primary); background: var(--surface-1);
+  border: 1px solid var(--border); border-radius: 8px; padding: 5px 10px;
+}
+select:disabled, input:disabled { opacity: .45; cursor: not-allowed; }
+.card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+.card h2 { font-size: 13px; font-weight: 650; color: var(--text-secondary); margin: 0 0 12px; }
+.stack { display: grid; gap: 12px; }
+
+/* ---- entry / error views ---- */
+.narrow { max-width: 400px; margin: 12vh auto; }
+.narrow h2 { font-size: 16px; color: var(--text-primary); margin: 0 0 6px; }
+.narrow p { color: var(--text-secondary); margin: 0 0 14px; }
+.narrow label { display: block; font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; }
+.narrow input { width: 100%; margin-bottom: 10px; }
+.narrow button.primary { width: 100%; }
+.err { color: var(--status-critical); font-size: 13px; min-height: 18px; margin-bottom: 6px; }
+.hint { color: var(--text-muted); font-size: 12px; }
+code.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+
+/* ---- tabs ---- */
+.tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+.tabs button[aria-selected="true"] { border-color: var(--accent); color: var(--accent); font-weight: 650; }
+
+/* ---- filters ---- */
+.filters { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 14px; }
+.field { display: grid; gap: 3px; }
+.field > span { font-size: 11px; color: var(--text-muted); }
+
+/* ---- tables ---- */
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th {
+  text-align: left; color: var(--text-muted); font-weight: 600; font-size: 12px;
+  padding: 4px 8px; border-bottom: 1px solid var(--grid-line);
+}
+td { padding: 7px 8px; border-bottom: 1px solid var(--grid-line); vertical-align: top; }
+tbody tr.row-link { cursor: pointer; }
+tbody tr.row-link:hover { background: var(--surface-2); }
+.subject { font-weight: 600; }
+.empty { color: var(--text-muted); padding: 12px 2px; }
+
+/* ---- badges ---- */
+.badge {
+  display: inline-block; font-size: 11px; font-weight: 650; line-height: 1.6;
+  padding: 0 7px; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap;
+}
+.badge.sev-urgent, .badge.st-open { color: var(--status-critical); }
+.badge.sev-high, .badge.st-in_progress { color: var(--status-warn); }
+.badge.sev-normal, .badge.st-closed { color: var(--text-muted); }
+.badge.st-resolved { color: var(--status-good); }
+.badge.esc { color: var(--status-warn); }
+
+/* ---- pager ---- */
+.pager { display: flex; align-items: center; gap: 10px; margin-top: 14px; }
+
+/* ---- detail ---- */
+.detail-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 4px; }
+.detail-head h2 { font-size: 16px; color: var(--text-primary); margin: 0; }
+dl.facts { display: grid; grid-template-columns: 160px 1fr; gap: 6px 14px; margin: 0; font-size: 13px; }
+dl.facts dt { color: var(--text-muted); font-size: 12px; }
+dl.facts dd { margin: 0; overflow-wrap: anywhere; }
+.uuid { display: inline-flex; align-items: center; gap: 6px; }
+.uuid code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+.desc { white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; }
+.actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
+.notice {
+  border: 1px solid var(--status-warn); border-radius: 8px; padding: 8px 10px;
+  font-size: 12px; color: var(--text-secondary);
+}
+.banner {
+  border: 1px solid var(--status-critical);
+  background: color-mix(in srgb, var(--status-critical) 8%, var(--surface-1));
+  border-radius: 12px; padding: 10px 14px; margin-bottom: 16px; font-weight: 600;
+}
+.loading { opacity: .45; transition: opacity .2s; }
+@media (max-width: 620px) {
+  dl.facts { grid-template-columns: 1fr; gap: 2px 0; }
+  dl.facts dd { margin-bottom: 8px; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div id="view-boot" class="card narrow">
+    <h2>DPC Support</h2>
+    <p class="hint">Loading…</p>
+  </div>
+
+  <div id="view-config" class="card narrow" hidden>
+    <h2>Dashboard not configured</h2>
+    <p id="config-detail"></p>
+    <button id="config-retry">Try again</button>
+  </div>
+
+  <div id="view-gate" class="card narrow" hidden>
+    <h2>DPC Support</h2>
+    <p>Sign in with your DPC admin account.</p>
+    <form id="signin-form" novalidate>
+      <label for="email">Email</label>
+      <input id="email" type="email" autocomplete="username" spellcheck="false" autocapitalize="none">
+      <label for="password">Password</label>
+      <input id="password" type="password" autocomplete="current-password">
+      <div class="err" id="gate-err" role="alert"></div>
+      <button class="primary" id="signin-go" type="submit">Sign in</button>
+    </form>
+    <p class="hint" id="gate-project" style="margin-top:12px"></p>
+  </div>
+
+  <div id="view-notadmin" class="card narrow" hidden>
+    <h2>Not an admin account</h2>
+    <p>
+      You're signed in as <span id="notadmin-email"></span>, but this account
+      doesn't have the admin role. Ask Brandi to provision admin access, then
+      sign in again.
+    </p>
+    <button id="notadmin-signout">Sign out</button>
+  </div>
+
+  <div id="view-expired" class="card narrow" hidden>
+    <h2>Session expired</h2>
+    <p>Your session could not be renewed. Sign in again to continue.</p>
+    <button class="primary" id="expired-signin">Sign in again</button>
+  </div>
+
+  <div id="view-app" hidden>
+    <header class="top">
+      <h1>DPC Support</h1>
+      <span class="meta" id="updated-at"></span>
+      <span class="spacer"></span>
+      <span class="meta" id="who"></span>
+      <button id="refresh">Refresh</button>
+      <button id="signout">Sign out</button>
+    </header>
+
+    <div class="banner" id="banner" hidden role="alert"></div>
+
+    <div class="tabs" role="tablist" aria-label="Support views">
+      <button role="tab" id="tab-tickets" data-tab="tickets" aria-selected="true">Tickets</button>
+      <button role="tab" id="tab-feedback" data-tab="feedback" aria-selected="false">Feedback</button>
+    </div>
+
+    <section id="panel-tickets" role="tabpanel" aria-labelledby="tab-tickets">
+      <div id="tickets-list">
+        <div class="card">
+          <div class="filters">
+            <label class="field">
+              <span>Status</span>
+              <select id="f-status">
+                <option value="">Any status</option>
+                <option value="open">Open</option>
+                <option value="in_progress">In progress</option>
+                <option value="resolved">Resolved</option>
+                <option value="closed">Closed</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>Severity</span>
+              <select id="f-severity">
+                <option value="">Any severity</option>
+                <option value="urgent">Urgent</option>
+                <option value="high">High</option>
+                <option value="normal">Normal</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>Owner</span>
+              <select id="f-owner">
+                <option value="">Any owner</option>
+                <option value="nick">Nick</option>
+                <option value="brandi">Brandi</option>
+                <option value="unassigned">Unassigned</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>Per page</span>
+              <select id="f-limit">
+                <option value="25">25</option>
+                <option value="50">50</option>
+              </select>
+            </label>
+            <button id="f-clear">Clear filters</button>
+          </div>
+          <div id="tickets-body"></div>
+          <div class="pager" id="tickets-pager" hidden>
+            <button id="tickets-prev">Previous</button>
+            <button id="tickets-next">Next</button>
+            <span class="meta" id="tickets-range"></span>
+          </div>
+        </div>
+      </div>
+      <div id="ticket-detail" class="stack" hidden></div>
+    </section>
+
+    <section id="panel-feedback" role="tabpanel" aria-labelledby="tab-feedback" hidden>
+      <div class="card">
+        <div class="filters">
+          <label class="field">
+            <span>Category</span>
+            <select id="fb-category">
+              <option value="">All categories</option>
+              <option value="idea">Idea</option>
+              <option value="bug">Bug</option>
+              <option value="praise">Praise</option>
+              <option value="other">Other</option>
+            </select>
+          </label>
+          <span class="hint" style="padding-bottom:6px">Filters this page only — the API has no server-side feedback filter.</span>
+        </div>
+        <div id="feedback-body"></div>
+        <div class="pager" id="feedback-pager" hidden>
+          <button id="feedback-prev">Previous</button>
+          <button id="feedback-next">Next</button>
+          <span class="meta" id="feedback-range"></span>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var SESSION_KEY = 'dpc_admin_session';
+  var POLL_MS = 60 * 1000;
+  var REFRESH_SKEW_S = 60;
+
+  var TICKET_CATEGORIES = {
+    redemption_issue: 'Redemption issue',
+    membership_billing: 'Membership billing',
+    venue_assignment: 'Venue assignment',
+    app_account: 'App account',
+    other: 'Other'
+  };
+  var FEEDBACK_CATEGORIES = { idea: 'Idea', bug: 'Bug', praise: 'Praise', other: 'Other' };
+  var STATUS_LABELS = { open: 'Open', in_progress: 'In progress', resolved: 'Resolved', closed: 'Closed' };
+  var SEVERITY_LABELS = { urgent: 'Urgent', high: 'High', normal: 'Normal' };
+  var OWNER_LABELS = { nick: 'Nick', brandi: 'Brandi', unassigned: 'Unassigned' };
+  // "Resolve" is its own action because it also stamps resolvedAt; a plain
+  // dropdown change must never move a ticket into 'resolved'.
+  var STATUS_CHOICES = ['open', 'in_progress', 'closed'];
+
+  var cfg = null;
+  var session = null;
+  var refreshInFlight = null;
+  // Bumped on every sign-out (and start of a new sign-in) so an in-flight
+  // refresh that completes afterwards cannot write credentials back.
+  var sessionGeneration = 0;
+
+  var state = {
+    tab: 'tickets',
+    filters: { status: '', severity: '', owner: '' },
+    limit: 25,
+    ticketOffset: 0,
+    feedbackOffset: 0,
+    tickets: null,
+    ticketsFull: false,
+    feedback: null,
+    feedbackFull: false,
+    feedbackCategory: '',
+    detailTicket: null,
+    escalateDraft: '',
+    pendingError: null,
+    busy: false,
+    // Separate counters so a background ticket refresh after triage cannot
+    // cancel an in-flight Feedback load (and vice versa).
+    ticketSeq: 0,
+    feedbackSeq: 0,
+    lastUpdated: null,
+    timer: null
+  };
+
+  /* ---------- tiny DOM helpers ---------- */
+  function $(id) { return document.getElementById(id); }
+  function el(tag, cls, text) {
+    var node = document.createElement(tag);
+    if (cls) node.className = cls;
+    if (text !== undefined && text !== null) node.textContent = String(text);
+    return node;
+  }
+  function clear(node) { node.textContent = ''; return node; }
+
+  function label(map, value) {
+    if (value === null || value === undefined || value === '') return '—';
+    if (map[value]) return map[value];
+    // The DB has no enum on `category`, so unknown values must degrade, not break.
+    return String(value).replace(/_/g, ' ').replace(/^./, function (c) { return c.toUpperCase(); });
+  }
+  function fmtWhen(iso) {
+    if (!iso) return '—';
+    var d = new Date(iso);
+    return isNaN(d.getTime()) ? String(iso) : d.toLocaleString();
+  }
+  function memberName(member) {
+    if (!member) return null;
+    var name = [member.first_name, member.last_name].filter(Boolean).join(' ').trim();
+    return name || null;
+  }
+
+  /* ---------- view switching ---------- */
+  var VIEWS = ['view-boot', 'view-config', 'view-gate', 'view-notadmin', 'view-expired', 'view-app'];
+  function setView(id) {
+    VIEWS.forEach(function (v) { $(v).hidden = v !== id; });
+  }
+
+  function showConfigError(detail) {
+    $('config-detail').textContent = detail;
+    setView('view-config');
+  }
+  function showGate(message) {
+    stopPolling();
+    $('gate-err').textContent = message || '';
+    setView('view-gate');
+    if (cfg && cfg.projectRef) {
+      $('gate-project').textContent = 'Supabase project: ' + cfg.projectRef;
+    }
+    $('email').focus();
+  }
+  function showNotAdmin() {
+    stopPolling();
+    $('notadmin-email').textContent = (session && session.user && session.user.email) || 'this account';
+    setView('view-notadmin');
+  }
+  function showExpired() {
+    stopPolling();
+    clearSession();
+    setView('view-expired');
+  }
+
+  /* ---------- session storage ---------- */
+  function readStoredSession() {
+    try {
+      var raw = localStorage.getItem(SESSION_KEY);
+      if (!raw) return null;
+      var parsed = JSON.parse(raw);
+      if (!parsed || !parsed.access_token || !parsed.refresh_token) return null;
+      return parsed;
+    } catch (e) { return null; }
+  }
+  function saveSession(next, expectedGeneration) {
+    if (expectedGeneration !== undefined && expectedGeneration !== sessionGeneration) return false;
+    session = next;
+    try { localStorage.setItem(SESSION_KEY, JSON.stringify(next)); } catch (e) {}
+    return true;
+  }
+  function clearSession() {
+    session = null;
+    try { localStorage.removeItem(SESSION_KEY); } catch (e) {}
+  }
+  function invalidateSessionWork() {
+    sessionGeneration += 1;
+    refreshInFlight = null;
+  }
+
+  /* ---------- errors ---------- */
+  function authError(kind, message) {
+    var e = new Error(message || kind);
+    e.authKind = kind;
+    return e;
+  }
+  function apiError(message, code) {
+    var e = new Error(message);
+    e.apiCode = code || null;
+    return e;
+  }
+  // Routes the auth-shaped failures to their own screens; everything else is
+  // handed back to the caller to show inline.
+  function handleAuthFailure(err) {
+    if (err && err.authKind === 'forbidden') { showNotAdmin(); return true; }
+    if (err && err.authKind === 'expired') { showExpired(); return true; }
+    if (err && err.authKind === 'signed_out') { clearSession(); showGate(''); return true; }
+    return false;
+  }
+
+  /* ---------- Supabase Auth (hand-rolled against the GoTrue REST API) ---------- */
+  function authMessage(payload, status) {
+    var text = payload && (payload.error_description || payload.msg || payload.message || payload.error);
+    if (text) return String(text);
+    return 'Sign-in failed (HTTP ' + status + ')';
+  }
+
+  function grant(grantType, body) {
+    return fetch(cfg.supabaseUrl + '/auth/v1/token?grant_type=' + grantType, {
+      method: 'POST',
+      headers: { apikey: cfg.supabaseAnonKey, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      cache: 'no-store'
+    }).then(function (resp) {
+      return resp.json().catch(function () { return {}; }).then(function (payload) {
+        if (!resp.ok) throw new Error(authMessage(payload, resp.status));
+        var now = Math.floor(Date.now() / 1000);
+        return {
+          access_token: payload.access_token,
+          refresh_token: payload.refresh_token,
+          expires_at: payload.expires_at || (now + (payload.expires_in || 3600)),
+          user: payload.user || null
+        };
+      });
+    });
+  }
+
+  function signIn(email, password) {
+    // Drop any in-flight refresh before issuing a new grant, then stamp the
+    // generation that this sign-in alone is allowed to write.
+    invalidateSessionWork();
+    var generation = sessionGeneration;
+    return grant('password', { email: email, password: password }).then(function (next) {
+      if (!saveSession(next, generation)) throw authError('signed_out');
+      return next;
+    });
+  }
+
+  // supabase-js would do this for us; without a bundler we do it by hand.
+  // A single in-flight promise keeps concurrent callers from each burning the
+  // one-use refresh token.
+  function validAccessToken() {
+    if (!session) return Promise.reject(authError('signed_out'));
+    var now = Math.floor(Date.now() / 1000);
+    if (session.expires_at - now > REFRESH_SKEW_S) return Promise.resolve(session.access_token);
+    if (!refreshInFlight) {
+      var generation = sessionGeneration;
+      var refreshToken = session.refresh_token;
+      refreshInFlight = grant('refresh_token', { refresh_token: refreshToken })
+        .then(function (next) {
+          // A refresh that finishes after sign-out must not resurrect the
+          // session — check the generation before writing anything back.
+          if (generation !== sessionGeneration) throw authError('signed_out');
+          // A refresh response omits `user` in some GoTrue versions; keep the
+          // known identity so the admin check doesn't spuriously fail.
+          if (!next.user && session) next.user = session.user;
+          if (!saveSession(next, generation)) throw authError('signed_out');
+          return next.access_token;
+        })
+        .catch(function (err) {
+          if (err && err.authKind) throw err;
+          throw authError('expired');
+        })
+        .finally(function () {
+          // Only clear the slot if this is still the active refresh; a
+          // later sign-in may have started a different one.
+          if (refreshInFlight && generation === sessionGeneration) refreshInFlight = null;
+        });
+    }
+    return refreshInFlight;
+  }
+
+  function signOut() {
+    var token = session && session.access_token;
+    stopPolling();
+    // Invalidate before clearSession so any refresh already in flight sees
+    // the bumped generation and refuses to saveSession on completion.
+    invalidateSessionWork();
+    clearSession();
+    resetData();
+    if (token && cfg) {
+      fetch(cfg.supabaseUrl + '/auth/v1/logout', {
+        method: 'POST',
+        headers: { apikey: cfg.supabaseAnonKey, Authorization: 'Bearer ' + token }
+      }).catch(function () {});
+    }
+    showGate('');
+  }
+
+  // Mirrors the predicate the Edge Functions use. This only gates the UI —
+  // the functions themselves are the real enforcement point.
+  function isAdmin(user) {
+    var meta = (user && user.app_metadata) || {};
+    return meta.role === 'admin' ||
+      (Array.isArray(meta.roles) && meta.roles.indexOf('admin') !== -1);
+  }
+
+  /* ---------- Edge Function calls ---------- */
+  function callFunction(name, body) {
+    return validAccessToken().then(function (accessToken) {
+      return fetch(cfg.supabaseUrl + '/functions/v1/' + name, {
+        method: 'POST',
+        headers: {
+          Authorization: 'Bearer ' + accessToken,
+          apikey: cfg.supabaseAnonKey,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(body || {}),
+        cache: 'no-store'
+      });
+    }).then(function (resp) {
+      return resp.json().catch(function () { return null; }).then(function (payload) {
+        if (resp.status === 401) throw authError('expired');
+        if (resp.status === 403) throw authError('forbidden');
+        if (!resp.ok || !payload || payload.success !== true) {
+          var e = (payload && payload.error) || {};
+          throw apiError(e.message || ('Request failed (HTTP ' + resp.status + ')'), e.code);
+        }
+        return payload.data;
+      });
+    });
+  }
+
+  /* ---------- data loading ---------- */
+  function resetData() {
+    state.tickets = null;
+    state.feedback = null;
+    state.detailTicket = null;
+    state.ticketOffset = 0;
+    state.feedbackOffset = 0;
+    state.lastUpdated = null;
+  }
+
+  // Loaders return payloads only — they must not write shared state. Commit
+  // happens in load() after the sequence check so a slow earlier request
+  // cannot overwrite newer filtered results.
+  function loadTickets() {
+    var body = { limit: state.limit, offset: state.ticketOffset };
+    if (state.filters.status) body.status = state.filters.status;
+    if (state.filters.severity) body.severity = state.filters.severity;
+    if (state.filters.owner) body.owner = state.filters.owner;
+    return callFunction('admin-support-queue', body).then(function (data) {
+      return { tickets: (data && data.tickets) || [] };
+    });
+  }
+
+  function loadFeedback() {
+    // The queue endpoint applies one limit/offset to both collections, so
+    // paging feedback independently means its own request; the tickets it
+    // returns are ignored here.
+    return callFunction('admin-support-queue', { limit: state.limit, offset: state.feedbackOffset })
+      .then(function (data) {
+        return { feedback: (data && data.feedbackSubmissions) || [] };
+      });
+  }
+
+  function commitTickets(rows) {
+    state.tickets = rows;
+    // No total count exists in the response — a full page is the only hint
+    // that another page might follow.
+    state.ticketsFull = rows.length === state.limit;
+    if (state.detailTicket) {
+      var fresh = rows.filter(function (t) { return t.id === state.detailTicket.id; })[0];
+      if (fresh) state.detailTicket = fresh;
+    }
+  }
+
+  function commitFeedback(rows) {
+    state.feedback = rows;
+    state.feedbackFull = rows.length === state.limit;
+  }
+
+  function load(opts) {
+    var quiet = opts && opts.quiet;
+    var tab = state.tab;
+    var seqKey = tab === 'tickets' ? 'ticketSeq' : 'feedbackSeq';
+    var seq = ++state[seqKey];
+    if (!quiet) $('view-app').classList.add('loading');
+    var work = tab === 'tickets' ? loadTickets() : loadFeedback();
+    return work.then(function (payload) {
+      if (seq !== state[seqKey]) return;
+      if (tab === 'tickets') commitTickets(payload.tickets);
+      else commitFeedback(payload.feedback);
+      state.lastUpdated = new Date();
+      $('banner').hidden = true;
+      render();
+    }).catch(function (err) {
+      if (seq !== state[seqKey]) return;
+      if (handleAuthFailure(err)) return;
+      // Sequence is per-tab: a failed Tickets request can still be "current"
+      // after the user has switched to Feedback. Don't paint its error into
+      // the visible tab.
+      if (state.tab !== tab) return;
+      var hasData = tab === 'tickets' ? state.tickets : state.feedback;
+      if (hasData) {
+        $('banner').hidden = false;
+        $('banner').textContent = 'Refresh failed: ' + err.message;
+      } else {
+        renderLoadError(err, tab);
+      }
+    }).finally(function () {
+      if (seq === state[seqKey]) $('view-app').classList.remove('loading');
+    });
+  }
+
+  function renderLoadError(err, tab) {
+    var box = tab === 'tickets' ? $('tickets-body') : $('feedback-body');
+    clear(box);
+    var wrap = el('div', 'stack');
+    wrap.appendChild(el('p', 'err', err.message));
+    var retry = el('button', '', 'Retry');
+    retry.addEventListener('click', function () { load(); });
+    wrap.appendChild(retry);
+    box.appendChild(wrap);
+    (tab === 'tickets' ? $('tickets-pager') : $('feedback-pager')).hidden = true;
+  }
+
+  /* ---------- render: shell ---------- */
+  function render() {
+    $('who').textContent = (session && session.user && session.user.email) || '';
+    $('updated-at').textContent = state.lastUpdated
+      ? 'Updated ' + state.lastUpdated.toLocaleTimeString()
+      : '';
+    $('tab-tickets').setAttribute('aria-selected', String(state.tab === 'tickets'));
+    $('tab-feedback').setAttribute('aria-selected', String(state.tab === 'feedback'));
+    $('panel-tickets').hidden = state.tab !== 'tickets';
+    $('panel-feedback').hidden = state.tab !== 'feedback';
+    if (state.tab === 'tickets') renderTickets(); else renderFeedback();
+  }
+
+  function badge(kind, value, map) {
+    return el('span', 'badge ' + kind + '-' + value, label(map, value));
+  }
+
+  /* ---------- render: tickets list ---------- */
+  function renderTickets() {
+    var detailOpen = Boolean(state.detailTicket);
+    $('tickets-list').hidden = detailOpen;
+    $('ticket-detail').hidden = !detailOpen;
+    if (detailOpen) { renderDetail(); return; }
+
+    var box = clear($('tickets-body'));
+    var rows = state.tickets;
+    if (rows === null) { box.appendChild(el('p', 'empty', 'Loading…')); $('tickets-pager').hidden = true; return; }
+    if (!rows.length) {
+      box.appendChild(el('p', 'empty', state.ticketOffset > 0
+        ? 'No tickets on this page. Go back a page.'
+        : 'No tickets match these filters.'));
+    } else {
+      var table = el('table');
+      var thead = el('thead');
+      var hr = el('tr');
+      ['Created', 'Member', 'Subject', 'Category', 'Severity', 'Status', 'Owner'].forEach(function (h) {
+        hr.appendChild(el('th', '', h));
+      });
+      thead.appendChild(hr);
+      table.appendChild(thead);
+
+      var tbody = el('tbody');
+      rows.forEach(function (t) {
+        var tr = el('tr', 'row-link');
+        tr.tabIndex = 0;
+        tr.setAttribute('role', 'link');
+        tr.setAttribute('aria-label', 'Open ticket: ' + t.subject);
+        tr.appendChild(el('td', '', fmtWhen(t.created_at)));
+
+        var who = el('td');
+        var name = memberName(t.members);
+        if (name) who.appendChild(el('div', '', name));
+        who.appendChild(el('div', name ? 'meta' : '', (t.members && t.members.email) || '—'));
+        tr.appendChild(who);
+
+        tr.appendChild(el('td', 'subject', t.subject));
+        tr.appendChild(el('td', '', label(TICKET_CATEGORIES, t.category)));
+
+        var sev = el('td');
+        sev.appendChild(badge('sev', t.severity, SEVERITY_LABELS));
+        tr.appendChild(sev);
+
+        var st = el('td');
+        st.appendChild(badge('st', t.status, STATUS_LABELS));
+        if (t.escalated_to && t.escalated_at) {
+          st.appendChild(document.createTextNode(' '));
+          st.appendChild(el('span', 'badge esc', 'Escalated'));
+        }
+        tr.appendChild(st);
+
+        tr.appendChild(el('td', '', label(OWNER_LABELS, t.owner)));
+
+        tr.addEventListener('click', function () { openDetail(t); });
+        tr.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDetail(t); }
+        });
+        tbody.appendChild(tr);
+      });
+      table.appendChild(tbody);
+      box.appendChild(table);
+    }
+    renderPager('tickets', state.ticketOffset, rows.length, state.ticketsFull);
+  }
+
+  function renderPager(which, offset, count, isFull) {
+    $(which + '-pager').hidden = false;
+    $(which + '-prev').disabled = offset === 0;
+    $(which + '-next').disabled = !isFull;
+    var range = count
+      ? 'Showing ' + (offset + 1) + '–' + (offset + count)
+      : 'Showing 0';
+    // Deliberately no total: the API returns no count for either collection.
+    $(which + '-range').textContent = range;
+  }
+
+  /* ---------- render: ticket detail ---------- */
+  function openDetail(ticket) {
+    state.detailTicket = ticket;
+    state.escalateDraft = '';
+    render();
+    window.scrollTo(0, 0);
+  }
+  function closeDetail() {
+    state.detailTicket = null;
+    render();
+  }
+
+  function uuidRow(value) {
+    if (!value) return el('span', '', '—');
+    var wrap = el('span', 'uuid');
+    wrap.appendChild(el('code', '', value));
+    var copy = el('button', 'tiny', 'Copy');
+    copy.addEventListener('click', function () {
+      var done = function () {
+        copy.textContent = 'Copied';
+        setTimeout(function () { copy.textContent = 'Copy'; }, 1500);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(value).then(done, function () { copy.textContent = 'Press ⌘C'; });
+      } else {
+        copy.textContent = 'Press ⌘C';
+      }
+    });
+    wrap.appendChild(copy);
+    return wrap;
+  }
+
+  function fact(dl, term, node) {
+    dl.appendChild(el('dt', '', term));
+    var dd = el('dd');
+    if (typeof node === 'string') dd.textContent = node; else dd.appendChild(node);
+    dl.appendChild(dd);
+  }
+
+  function renderDetail() {
+    var t = state.detailTicket;
+    if (!t) return;
+    var box = clear($('ticket-detail'));
+
+    var back = el('button', '', '← Back to queue');
+    back.addEventListener('click', closeDetail);
+    var backRow = el('div');
+    backRow.appendChild(back);
+    box.appendChild(backRow);
+
+    /* --- summary card --- */
+    var head = el('div', 'card');
+    var titleRow = el('div', 'detail-head');
+    titleRow.appendChild(el('h2', '', t.subject));
+    titleRow.appendChild(badge('sev', t.severity, SEVERITY_LABELS));
+    titleRow.appendChild(badge('st', t.status, STATUS_LABELS));
+    if (t.escalated_to && t.escalated_at) titleRow.appendChild(el('span', 'badge esc', 'Escalated'));
+    head.appendChild(titleRow);
+    head.appendChild(el('p', 'meta', 'Opened ' + fmtWhen(t.created_at) + ' · last updated ' + fmtWhen(t.updated_at)));
+
+    if (t.escalated_to && !t.escalated_at) {
+      head.appendChild(el('div', 'notice',
+        'Half-escalated record: escalated_to is set but escalated_at is not. Use Escalate or Clear escalation to fix it.'));
+    } else if (!t.escalated_to && t.escalated_at) {
+      head.appendChild(el('div', 'notice',
+        'Half-escalated record: escalated_at is set but escalated_to is not. Use Escalate or Clear escalation to fix it.'));
+    }
+    if (t.attachment_path) {
+      head.appendChild(el('div', 'notice',
+        'This ticket has attachment_path "' + t.attachment_path + '". No intake flow writes that column today and there is no ' +
+        'sanctioned way to turn it into a download link from this app — flag it to Brandi.'));
+    }
+    box.appendChild(head);
+
+    /* --- details card --- */
+    var details = el('div', 'card');
+    details.appendChild(el('h2', '', 'Details'));
+    var dl = el('dl', 'facts');
+    var name = memberName(t.members);
+    fact(dl, 'Member', t.members
+      ? (name ? name + ' · ' + t.members.email : t.members.email)
+      : (t.member_id ? 'Deleted or unlinked member' : '—'));
+    fact(dl, 'Member ID', uuidRow(t.member_id));
+    fact(dl, 'Category', label(TICKET_CATEGORIES, t.category));
+    fact(dl, 'Ticket ID', uuidRow(t.id));
+    fact(dl, 'Related venue', uuidRow(t.related_venue_id));
+    fact(dl, 'Related credit', uuidRow(t.related_credit_id));
+    fact(dl, 'Related redemption', uuidRow(t.related_redemption_attempt_id));
+    fact(dl, 'First response', fmtWhen(t.first_response_at));
+    if (t.resolved_at && (t.status === 'open' || t.status === 'in_progress')) {
+      fact(dl, 'Previously resolved at', fmtWhen(t.resolved_at));
+    } else {
+      fact(dl, 'Resolved at', fmtWhen(t.resolved_at));
+    }
+    fact(dl, 'Escalated to', t.escalated_to || '—');
+    fact(dl, 'Escalated at', fmtWhen(t.escalated_at));
+    details.appendChild(dl);
+
+    details.appendChild(el('h2', '', 'Description'));
+    details.appendChild(el('p', 'desc' + (t.description ? '' : ' empty'), t.description || 'No description provided.'));
+    box.appendChild(details);
+
+    box.appendChild(renderTriage(t));
+  }
+
+  function renderTriage(t) {
+    var card = el('div', 'card');
+    card.appendChild(el('h2', '', 'Triage'));
+
+    var errBox = el('div', 'err');
+    errBox.id = 'triage-err';
+
+    function submit(patch) {
+      if (state.busy) return;
+      state.busy = true;
+      errBox.textContent = '';
+      renderDetail();
+      callFunction('admin-support-triage', Object.assign({ ticketId: t.id }, patch))
+        .then(function (data) {
+          // The triage response omits `members`; keep the joined member from
+          // the row we already have so the detail view doesn't lose it.
+          var updated = Object.assign({}, t, data.ticket);
+          updated.members = t.members;
+          state.detailTicket = updated;
+          // Refetch tickets on the ticket sequence only — never touch
+          // feedbackSeq, or a Feedback tab load started mid-triage would be
+          // discarded and stuck on "Loading…".
+          var seq = ++state.ticketSeq;
+          return loadTickets().then(function (payload) {
+            if (seq !== state.ticketSeq) return;
+            commitTickets(payload.tickets);
+          });
+        })
+        .then(function () { state.lastUpdated = new Date(); })
+        .catch(function (err) {
+          if (handleAuthFailure(err)) return;
+          if (err.apiCode === 'first_response_already_set') {
+            state.pendingError =
+              'First response was already recorded (possibly by another admin). Refreshing the ticket.';
+            var seq = ++state.ticketSeq;
+            return loadTickets().then(function (payload) {
+              if (seq !== state.ticketSeq) return;
+              commitTickets(payload.tickets);
+              if (state.detailTicket && state.tickets) {
+                var fresh = state.tickets.filter(function (row) {
+                  return row.id === state.detailTicket.id;
+                })[0];
+                if (fresh) state.detailTicket = fresh;
+              }
+            }).catch(function (refreshErr) {
+              if (handleAuthFailure(refreshErr)) {
+                state.pendingError = null;
+                return;
+              }
+              state.pendingError =
+                'First response was already recorded, but the ticket could not be refreshed.';
+            });
+          }
+          if (err.apiCode === 'support_ticket_not_found') {
+            state.pendingError = 'This ticket no longer exists. Go back to the queue and refresh.';
+            return;
+          }
+          state.pendingError = err.message;
+        })
+        .finally(function () {
+          state.busy = false;
+          renderDetail();
+          if (state.pendingError) {
+            var live = $('triage-err');
+            if (live) live.textContent = state.pendingError;
+            state.pendingError = null;
+          }
+        });
+    }
+
+    /* --- row 1: plain field changes (no timestamps touched) --- */
+    var row1 = el('div', 'actions');
+
+    var statusField = el('label', 'field');
+    statusField.appendChild(el('span', '', 'Status'));
+    var statusSel = el('select');
+    // 'resolved' appears only so the control can display the current value;
+    // reaching it requires the explicit Resolve action.
+    if (t.status === 'resolved') {
+      var placeholder = el('option', '', 'Resolved');
+      placeholder.value = 'resolved';
+      placeholder.disabled = true;
+      statusSel.appendChild(placeholder);
+    }
+    STATUS_CHOICES.forEach(function (s) {
+      var opt = el('option', '', STATUS_LABELS[s]);
+      opt.value = s;
+      statusSel.appendChild(opt);
+    });
+    statusSel.value = t.status;
+    statusSel.disabled = state.busy;
+    statusSel.addEventListener('change', function () {
+      // Reopening keeps resolved_at as historical evidence — don't null it.
+      submit({ status: statusSel.value });
+    });
+    statusField.appendChild(statusSel);
+    row1.appendChild(statusField);
+
+    row1.appendChild(enumField('Severity', SEVERITY_LABELS, ['urgent', 'high', 'normal'], t.severity, function (v) {
+      submit({ severity: v });
+    }));
+    row1.appendChild(enumField('Owner', OWNER_LABELS, ['nick', 'brandi', 'unassigned'], t.owner, function (v) {
+      submit({ owner: v });
+    }));
+    card.appendChild(row1);
+
+    /* --- row 2: timestamped actions --- */
+    var row2 = el('div', 'actions');
+    row2.style.marginTop = '12px';
+
+    var firstResp = el('button', '', 'Mark first response');
+    // One-time event for the life of the ticket: nothing server-side stops a
+    // second click from overwriting the original timestamp.
+    firstResp.disabled = state.busy || Boolean(t.first_response_at);
+    firstResp.title = t.first_response_at
+      ? 'First response was already recorded ' + fmtWhen(t.first_response_at)
+      : 'Stamps first_response_at with the current time';
+    firstResp.addEventListener('click', function () {
+      submit({ firstResponseAt: new Date().toISOString() });
+    });
+    row2.appendChild(firstResp);
+
+    var resolve = el('button', 'primary', 'Resolve');
+    // Gated on status, not on resolved_at — a reopened ticket keeps its old
+    // resolved_at and must still be resolvable again.
+    resolve.disabled = state.busy || t.status === 'resolved' || t.status === 'closed';
+    resolve.addEventListener('click', function () {
+      submit({ status: 'resolved', resolvedAt: new Date().toISOString() });
+    });
+    row2.appendChild(resolve);
+    card.appendChild(row2);
+
+    /* --- row 3: escalation (both fields always move together) --- */
+    var row3 = el('div', 'actions');
+    row3.style.marginTop = '12px';
+
+    var escInput = el('input');
+    var escGo = el('button', '', 'Escalate');
+
+    var escField = el('label', 'field');
+    escField.appendChild(el('span', '', 'Escalate to'));
+    escInput.type = 'text';
+    escInput.placeholder = t.escalated_to || 'e.g. Stripe support';
+    escInput.value = state.escalateDraft;
+    escInput.disabled = state.busy;
+    escInput.addEventListener('input', function () {
+      state.escalateDraft = escInput.value;
+      escGo.disabled = state.busy || !escInput.value.trim();
+    });
+    escField.appendChild(escInput);
+    row3.appendChild(escField);
+
+    escGo.disabled = state.busy || !state.escalateDraft.trim();
+    escGo.addEventListener('click', function () {
+      var to = escInput.value.trim();
+      if (!to) return;
+      state.escalateDraft = '';
+      // escalated_to and escalated_at must move together — a half-escalated
+      // record is accepted by the API but recognized as escalated by nothing.
+      submit({ escalatedTo: to, escalatedAt: new Date().toISOString() });
+    });
+    row3.appendChild(escGo);
+
+    var escClear = el('button', '', 'Clear escalation');
+    escClear.disabled = state.busy || !(t.escalated_to || t.escalated_at);
+    escClear.addEventListener('click', function () {
+      submit({ escalatedTo: null, escalatedAt: null });
+    });
+    row3.appendChild(escClear);
+    card.appendChild(row3);
+
+    card.appendChild(errBox);
+    return card;
+  }
+
+  function enumField(title, labels, values, current, onChange) {
+    var field = el('label', 'field');
+    field.appendChild(el('span', '', title));
+    var sel = el('select');
+    values.forEach(function (v) {
+      var opt = el('option', '', labels[v]);
+      opt.value = v;
+      sel.appendChild(opt);
+    });
+    sel.value = current;
+    sel.disabled = state.busy;
+    sel.addEventListener('change', function () { onChange(sel.value); });
+    field.appendChild(sel);
+    return field;
+  }
+
+  /* ---------- render: feedback ---------- */
+  function renderFeedback() {
+    var box = clear($('feedback-body'));
+    var rows = state.feedback;
+    if (rows === null) { box.appendChild(el('p', 'empty', 'Loading…')); $('feedback-pager').hidden = true; return; }
+
+    var shown = state.feedbackCategory
+      ? rows.filter(function (r) { return r.category === state.feedbackCategory; })
+      : rows;
+
+    if (!shown.length) {
+      box.appendChild(el('p', 'empty', rows.length
+        ? 'No feedback in this category on this page.'
+        : (state.feedbackOffset > 0 ? 'No feedback on this page. Go back a page.' : 'No feedback yet.')));
+    } else {
+      var table = el('table');
+      var thead = el('thead');
+      var hr = el('tr');
+      ['Received', 'Member', 'Category', 'Message', 'App version'].forEach(function (h) {
+        hr.appendChild(el('th', '', h));
+      });
+      thead.appendChild(hr);
+      table.appendChild(thead);
+      var tbody = el('tbody');
+      shown.forEach(function (r) {
+        var tr = el('tr');
+        tr.appendChild(el('td', '', fmtWhen(r.created_at)));
+        var who = el('td');
+        var name = memberName(r.members);
+        if (name) who.appendChild(el('div', '', name));
+        who.appendChild(el('div', name ? 'meta' : '', (r.members && r.members.email) || '—'));
+        tr.appendChild(who);
+        tr.appendChild(el('td', '', label(FEEDBACK_CATEGORIES, r.category)));
+        var msg = el('td');
+        msg.appendChild(el('p', 'desc', r.message));
+        tr.appendChild(msg);
+        tr.appendChild(el('td', '', r.app_version || '—'));
+        tbody.appendChild(tr);
+      });
+      table.appendChild(tbody);
+      box.appendChild(table);
+    }
+    renderPager('feedback', state.feedbackOffset, rows.length, state.feedbackFull);
+  }
+
+  /* ---------- polling ---------- */
+  function startPolling() {
+    stopPolling();
+    state.timer = setInterval(function () {
+      if (document.hidden || state.busy) return;
+      load({ quiet: true });
+    }, POLL_MS);
+  }
+  function stopPolling() {
+    if (state.timer) { clearInterval(state.timer); state.timer = null; }
+  }
+
+  /* ---------- boot ---------- */
+  function enterApp() {
+    setView('view-app');
+    render();
+    startPolling();
+    load();
+  }
+
+  function afterSignIn() {
+    if (!isAdmin(session.user)) { showNotAdmin(); return; }
+    resetData();
+    enterApp();
+  }
+
+  function boot() {
+    setView('view-boot');
+    fetch('/api/admin-config', { cache: 'no-store' })
+      .then(function (resp) { return resp.json(); })
+      .then(function (payload) {
+        if (!payload || !payload.configured) {
+          var reason = payload && payload.reason;
+          showConfigError(
+            reason === 'service_role_key_refused'
+              ? 'ADMIN_SUPABASE_ANON_KEY looks like a service-role key. That key bypasses row-level security and is never served to the browser — replace it with the anon (publishable) key in Vercel.'
+              : 'Set ADMIN_SUPABASE_URL and ADMIN_SUPABASE_ANON_KEY in the Vercel project so this dashboard knows which Supabase project to sign in against.'
+          );
+          return;
+        }
+        cfg = payload;
+        session = readStoredSession();
+        if (!session) { showGate(''); return; }
+        if (!isAdmin(session.user)) { showNotAdmin(); return; }
+        enterApp();
+      })
+      .catch(function () {
+        showConfigError('Could not reach /api/admin-config. Check that the site is deployed and try again.');
+      });
+  }
+
+  /* ---------- wire up ---------- */
+  $('config-retry').addEventListener('click', boot);
+
+  $('signin-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var email = $('email').value.trim();
+    var password = $('password').value;
+    if (!email || !password) { $('gate-err').textContent = 'Enter your email and password.'; return; }
+    $('signin-go').disabled = true;
+    $('gate-err').textContent = '';
+    signIn(email, password).then(function () {
+      $('password').value = '';
+      afterSignIn();
+    }).catch(function (err) {
+      $('gate-err').textContent = err.message;
+    }).finally(function () {
+      $('signin-go').disabled = false;
+    });
+  });
+
+  $('notadmin-signout').addEventListener('click', signOut);
+  $('expired-signin').addEventListener('click', function () { showGate(''); });
+  $('signout').addEventListener('click', signOut);
+  $('refresh').addEventListener('click', function () { load(); });
+
+  document.querySelectorAll('.tabs button').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var tab = b.dataset.tab;
+      if (state.tab === tab) return;
+      state.tab = tab;
+      render();
+      var loaded = tab === 'tickets' ? state.tickets : state.feedback;
+      if (loaded === null) load();
+    });
+  });
+
+  ['status', 'severity', 'owner'].forEach(function (key) {
+    $('f-' + key).addEventListener('change', function () {
+      state.filters[key] = $('f-' + key).value;
+      // Without this, changing a filter on page 3 would show page 3 of a
+      // different result set.
+      state.ticketOffset = 0;
+      state.detailTicket = null;
+      load();
+    });
+  });
+  $('f-limit').addEventListener('change', function () {
+    state.limit = Number($('f-limit').value);
+    state.ticketOffset = 0;
+    state.feedbackOffset = 0;
+    load();
+  });
+  $('f-clear').addEventListener('click', function () {
+    state.filters = { status: '', severity: '', owner: '' };
+    ['status', 'severity', 'owner'].forEach(function (key) { $('f-' + key).value = ''; });
+    state.ticketOffset = 0;
+    state.detailTicket = null;
+    load();
+  });
+
+  $('tickets-prev').addEventListener('click', function () {
+    state.ticketOffset = Math.max(0, state.ticketOffset - state.limit);
+    load();
+  });
+  $('tickets-next').addEventListener('click', function () {
+    state.ticketOffset += state.limit;
+    load();
+  });
+  $('feedback-prev').addEventListener('click', function () {
+    state.feedbackOffset = Math.max(0, state.feedbackOffset - state.limit);
+    load();
+  });
+  $('feedback-next').addEventListener('click', function () {
+    state.feedbackOffset += state.limit;
+    load();
+  });
+  $('fb-category').addEventListener('change', function () {
+    state.feedbackCategory = $('fb-category').value;
+    renderFeedback();
+  });
+
+  window.addEventListener('focus', function () {
+    if ($('view-app').hidden || state.busy) return;
+    // Focus fires often; don't re-hit the API for a view that's already fresh.
+    if (state.lastUpdated && Date.now() - state.lastUpdated.getTime() < 15000) return;
+    load({ quiet: true });
+  });
+
+  boot();
+})();
+</script>
+</body>
+</html>
