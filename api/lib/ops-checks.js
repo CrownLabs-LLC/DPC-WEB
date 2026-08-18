@@ -114,15 +114,24 @@ export async function healthChecks(stripe, resend) {
   const resendResult = results[stripeProbes.length];
   let resendOk = false;
   let resendDetail = '';
+  let resendPage = true;
   if (resendResult.status === 'fulfilled') {
     resendOk = !resendResult.value?.error;
     resendDetail = resendResult.value?.error
       ? String(resendResult.value.error.message || resendResult.value.error.name || 'error')
       : '';
+    if (!resendOk) {
+      const errorName = String(resendResult.value.error?.name || '').toLowerCase();
+      // A single timeout, rate limit, or provider-side failure is noisy on a
+      // five-minute cadence. Keep it visible on the dashboard and in logs,
+      // but page only for an explicit credential rejection.
+      resendPage = ['missing_api_key', 'invalid_api_key', 'restricted_api_key'].includes(errorName);
+    }
   } else {
     resendDetail = String(resendResult.reason?.message || resendResult.reason);
+    resendPage = false;
   }
-  checks.push({ name: 'Resend key accepted by Resend', ok: resendOk, detail: resendDetail });
+  checks.push({ name: 'Resend key accepted by Resend', ok: resendOk, detail: resendDetail, page: resendPage });
 
   if (supabaseConfigured()) {
     const supabaseResult = results[stripeProbes.length + 1];

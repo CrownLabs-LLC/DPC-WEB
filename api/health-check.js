@@ -64,6 +64,7 @@ function escapeHtml(s) {
 // fingerprint), text carries the human/run-specific detail for the email.
 async function gatherProblems(now) {
   const problems = [];
+  const warnings = [];
   const stripeKey = process.env.STRIPE_SECRET_KEY;
   const resendKey = process.env.RESEND_API_KEY;
 
@@ -116,6 +117,14 @@ async function gatherProblems(now) {
       healthChecks(stripe, resend).then((checks) => {
         for (const check of checks) {
           if (!check.ok) {
+            if (check.page === false) {
+              console.warn('health-check: non-paging provider warning', check.name, check.detail);
+              warnings.push({
+                key: `check:${check.name}`,
+                text: check.detail ? `${check.name} — ${check.detail}` : check.name,
+              });
+              continue;
+            }
             problems.push({
               key: `check:${check.name}`,
               text: check.detail ? `${check.name} — ${check.detail}` : check.name,
@@ -175,7 +184,8 @@ async function gatherProblems(now) {
 
   await Promise.allSettled(jobs);
   problems.sort((a, b) => (a.key < b.key ? -1 : 1));
-  return problems;
+  warnings.sort((a, b) => (a.key < b.key ? -1 : 1));
+  return { problems, warnings };
 }
 
 function fingerprintOf(problems) {
@@ -251,7 +261,7 @@ export default async function handler(req, res) {
     }
   };
 
-  const problems = await timed('gather_ms', () => gatherProblems(now));
+  const { problems, warnings } = await timed('gather_ms', () => gatherProblems(now));
   const fingerprint = problems.length ? fingerprintOf(problems) : null;
   let alerted = false;
   let throttled = false;
@@ -298,9 +308,10 @@ export default async function handler(req, res) {
 
   res.setHeader('Cache-Control', 'no-store');
   return res.status(200).json({
-    ok: problems.length === 0,
+    ok: problems.length === 0 && warnings.length === 0,
     checked_at: new Date(now).toISOString(),
     problems: problems.map((p) => p.text),
+    warnings: warnings.map((warning) => warning.text),
     fingerprint,
     alerted,
     throttled,

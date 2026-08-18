@@ -180,6 +180,12 @@ events undelivered for over 30 minutes, or webhook errors logged in the last
 75 minutes. Every probe has a bounded timeout so the checker survives the
 outages it exists to detect.
 
+Resend paging distinguishes credential failures from provider noise. Missing,
+invalid, and restricted API keys remain paging problems. A timeout, provider
+5xx, or `rate_limit_exceeded` response from `domains.list` is returned in the
+health-check JSON as a warning and remains red on the dashboard, but does not
+send an alert email.
+
 The checkout canary only fetches the production join page, sends an `OPTIONS`
 request, and sends malformed JSON that must be rejected with `INVALID_REQUEST`.
 It never sends a valid challenge or member details and cannot create a checkout
@@ -203,7 +209,9 @@ Setup (required — the endpoint refuses to run without it):
    job after the deploy. Five-minute schedules require the Pro plan.
 
 To test it: `curl -H "Authorization: Bearer $CRON_SECRET" https://www.downtownpourcollective.com/api/health-check`
-returns `{"ok":true,...}` when everything is green.
+returns `{"ok":true,...}` when everything is green. Non-paging provider
+failures return `ok: false` with a `warnings` array and an empty `problems`
+array.
 
 Known limitations: (1) if `RESEND_API_KEY` itself is the thing that breaks,
 the alert email can't send — the failure still shows on the dashboard and in
