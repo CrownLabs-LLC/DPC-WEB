@@ -21,6 +21,16 @@ test('a successful checkout handoff reaches Stripe with correlated lifecycle eve
   await page.route('**/api/track', async (route) => {
     await route.fulfill({ status: 202, contentType: 'application/json', body: '{"stored":true}' });
   });
+  // /join blocks checkout until it can read the live legal-version tuple, and
+  // the static e2e server has no functions. Stub the endpoint so the page's own
+  // fetch/revalidate path still runs for real.
+  await page.route('**/api/legal-versions*', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ tos: '3.0', privacy: '4.2', memberTerms: '3.0', autoRenewalTerms: '3.0' }),
+    });
+  });
   await page.route('https://checkout.stripe.test/**', async (route) => {
     await route.fulfill({ contentType: 'text/html', body: '<h1>Stripe Checkout reached</h1>' });
   });
@@ -82,6 +92,16 @@ test('a blocked checkout navigation leaves a visible native recovery link and re
   await page.route('**/api/track', async (route) => {
     await route.fulfill({ status: 202, contentType: 'application/json', body: '{"stored":true}' });
   });
+  // /join blocks checkout until it can read the live legal-version tuple, and
+  // the static e2e server has no functions. Stub the endpoint so the page's own
+  // fetch/revalidate path still runs for real.
+  await page.route('**/api/legal-versions*', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ tos: '3.0', privacy: '4.2', memberTerms: '3.0', autoRenewalTerms: '3.0' }),
+    });
+  });
   await page.goto('/join');
   await page.evaluate(() => {
     window.DPC_JOIN.checkoutStallMs = 50;
@@ -127,6 +147,16 @@ test('pagehide records departure, clears the watchdog, and survives bfcache rest
   });
   await page.route('**/api/track', async (route) => {
     await route.fulfill({ status: 202, contentType: 'application/json', body: '{"stored":true}' });
+  });
+  // /join blocks checkout until it can read the live legal-version tuple, and
+  // the static e2e server has no functions. Stub the endpoint so the page's own
+  // fetch/revalidate path still runs for real.
+  await page.route('**/api/legal-versions*', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ tos: '3.0', privacy: '4.2', memberTerms: '3.0', autoRenewalTerms: '3.0' }),
+    });
   });
   await page.goto('/join');
   await page.evaluate(() => {

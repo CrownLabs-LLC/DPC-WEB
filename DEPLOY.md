@@ -315,6 +315,72 @@ backend repo.
 
 ---
 
+### 2g. Live legal versions — /api/legal-versions
+
+`/join` and `/depositor-confirmation` no longer carry a hardcoded legal-version
+tuple. They read it from this endpoint at load and revalidate it immediately
+before submitting.
+
+**Why.** The tuple is consent evidence: `circle-checkout` forwards whatever the
+page submits into `record_pre_payment_legal_acceptance`, which writes it to
+`member_legal_acceptances` with IP and user agent. Hardcoding it meant every
+legal-version bump was a synchronized-deploy problem, and any cached page or
+still-open tab kept submitting a version the server had moved past — checkout
+then failed with `LEGAL_VERSIONS_NOT_CURRENT`. That is what took `/join` down on
+2026-08-17. Letting the server silently stamp the current version instead would
+be worse: it would record consent to a document the member was never shown.
+
+**How it works.**
+
+- The endpoint calls the `membership/`-owned `SECURITY DEFINER` RPC
+  `current_checkout_legal_versions()` with `SUPABASE_SERVICE_ROLE_KEY`. It does
+  not read `member_legal_current_versions` directly — that table is RLS-enabled
+  with privileges to `postgres` only, and a direct read fails closed.
+- Success returns `{tos, privacy, memberTerms, autoRenewalTerms}` with
+  `Cache-Control: public, max-age=0, s-maxage=10, stale-while-revalidate=50`.
+- `?fresh=1` returns `no-store` and always hits the RPC. Pages use the plain URL
+  on load and `?fresh=1` at submit and after a server rejection.
+- **Every failure returns 503 with `no-store` and no tuple** — RPC error,
+  permission denied, `legal_currentness_unavailable`, or a structurally
+  incomplete success. There is deliberately no fallback tuple; a fallback is the
+  original bug. When it is down, both pages disable checkout and say so.
+
+**Cache scope and its limits.** `s-maxage` is load-bearing: Vercel caches a
+Function response only when `s-maxage` is present, so a regression to a bare
+`max-age` would silently disable the whole mitigation (`npm test` asserts on
+`s-maxage=10` specifically). The cache is segmented per Vercel region, so the
+floor is roughly one RPC per 10s window *per region*, not globally. A cached
+tuple can be up to ~60s stale; that is safe because every submit revalidates
+uncached and the transactional DB gate remains authoritative.
+
+**Known exposure — Vercel Firewall decision required.** The route is
+unauthenticated and reachable before Turnstile by necessity, and DPC-WEB has no
+rate limit or reverse proxy in front of it. The cache reduces *naive* abuse
+(crawlers, casual scripted floods) to near-zero marginal DB cost. It does not
+stop a determined attacker who discovers `?fresh=1` and sends it on every
+request, which forces a live RPC each time. **Before announcing this change,
+confirm whether Vercel Firewall / Attack Challenge Mode covers
+`/api/legal-versions` and record the outcome here** — enabled and configured, or
+an explicit time-boxed deferral. "We forgot to check" is not an acceptable
+outcome for a route we already know is exposed.
+
+> Firewall decision: _pending — record the outcome (enabled / deferred until
+> DATE) before announcing._
+
+**Monitoring.** The five-minute health cron (§2d) probes the endpoint with
+`?fresh=1` — deliberately bypassing the CDN, since a cached 200 would keep
+reporting healthy straight through a grant regression or a missing singleton
+row. It pages on a non-200 and on a structurally incomplete tuple, because an
+incomplete tuple blocks checkout exactly as hard as an outage does.
+
+**Deployment order.** The DPC-side RPC migration
+(`20260820120000_current_checkout_legal_versions_rpc.sql`, PR #335) must be
+applied to production before this site deploys — the endpoint has nothing to
+call otherwise. **Rollback runs in reverse:** once this is live, restore the
+previous site deploy *first* and confirm `/join` and `/depositor-confirmation`
+are healthy before touching the RPC. Never revoke the grant out from under a
+live caller; leaving the RPC in place as a compatibility shim costs nothing.
+
 ## 3. GA4 — measurement ID
 
 1. <https://analytics.google.com> → **Admin** → **Create property** →

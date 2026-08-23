@@ -132,14 +132,14 @@ assert.equal(configFor('downtownpourcollective.com').turnstileSiteKey, '0x4AAAAA
 assert.equal(configFor('dpc-preview.vercel.app').turnstileSiteKey, testKey);
 assert.equal(configFor('127.0.0.1').turnstileSiteKey, testKey);
 assert.notEqual(configFor('www.downtownpourcollective.com').turnstileSiteKey, testKey);
-assert.deepEqual(
-  { ...configFor('www.downtownpourcollective.com').legalVersions },
-  {
-    tos: '3.0',
-    privacy: '4.2',
-    memberTerms: '3.0',
-    autoRenewalTerms: '3.0',
-  },
+// Inverted deliberately. This used to pin the tuple to the values the server
+// required; pinning is what broke /join when the server moved and cached pages
+// did not. The config must now carry no tuple at all — join.html reads it live
+// from /api/legal-versions.
+assert.equal(
+  configFor('www.downtownpourcollective.com').legalVersions,
+  undefined,
+  'join config must not carry a legal-version tuple; it is read from /api/legal-versions',
 );
 
 const rewrites = JSON.parse(serve).rewrites;
@@ -230,5 +230,45 @@ assert.match(deploy, /join_checkout_ready/);
 assert.match(deploy, /join_checkout_departed/);
 assert.match(deploy, /join_checkout_fallback_clicked/);
 assert.match(deploy, /join_checkout_stalled/);
+
+// Legal versions are read live from /api/legal-versions. Reintroducing a
+// hardcoded tuple in either checkout page is the exact regression that took
+// /join down on 2026-08-17 — every cached copy of the page keeps submitting a
+// version the server has already moved past. Guard the concept, not one shape:
+// the object literal, a quoted version string on any of the four keys, and the
+// absence of the live read all fail here.
+for (const [page, markup] of [
+  ['join.html', join],
+  ['depositor-confirmation.html', depositorConfirmation],
+]) {
+  assert.doesNotMatch(
+    markup,
+    /legalVersions\s*:\s*\{/,
+    `${page} reintroduced a hardcoded legalVersions object literal`,
+  );
+  assert.doesNotMatch(
+    markup,
+    /\b(?:tos|privacy|memberTerms|autoRenewalTerms)\s*:\s*['"]\d/,
+    `${page} reintroduced a hardcoded legal version string`,
+  );
+  assert.match(markup, /\/api\/legal-versions/, `${page} no longer reads live legal versions`);
+  assert.match(markup, /\?fresh=1/, `${page} no longer revalidates uncached before submit`);
+  assert.match(
+    markup,
+    /Our terms were updated\. Please review and accept the current terms\./,
+    `${page} lost the re-accept prompt`,
+  );
+}
+
+// /join must not be CDN- or browser-cached: a cached copy is how a stale page
+// survives a deploy. /depositor-confirmation already carried this header.
+for (const source of ['/join', '/depositor-confirmation']) {
+  const rule = vercel.headers.find((entry) => entry.source === source);
+  assert.ok(rule, `vercel.json has no headers rule for ${source}`);
+  assert.ok(
+    rule.headers.some((h) => h.key === 'Cache-Control' && h.value === 'no-store'),
+    `${source} is missing Cache-Control: no-store`,
+  );
+}
 
 console.log('Release-readiness static checks passed.');
