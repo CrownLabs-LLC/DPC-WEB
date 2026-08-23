@@ -135,10 +135,11 @@ Copy the printed `whsec_…` into a local `.env` for `vercel dev`.
 ### 2c. Ops dashboard — /dashboard
 
 A token-protected operations view at `https://www.downtownpourcollective.com/dashboard`:
-site visits and deposit-CTA clicks (first-party, anonymous), deposits pulled
-live from Stripe, undelivered Stripe webhook events, webhook error log, and
-health checks that verify the Stripe/Resend/Supabase keys actually work (not
-just that they're set — this is the check that catches a rotated key).
+subscriber health, action-needed billing states, membership mix, anonymous
+website and checkout-handoff signals, undelivered Stripe webhook events,
+webhook errors, and health checks that verify the Stripe/Resend/Supabase keys
+actually work (not just that they're set — this is the check that catches a
+rotated key).
 
 Setup (one time):
 
@@ -146,21 +147,33 @@ Setup (one time):
    [`db/setup.sql`](db/setup.sql) → Run. Creates or updates `site_events` (anonymous
    funnel beacons; anon key can only append) and `webhook_logs` (service-role
    only).
-2. **Supabase** → Project Settings → API: copy the **Project URL**, the
+2. **DPC database migration prerequisite** → before deploying this web change,
+   apply `20260821160000_ops_subscription_overview.sql` from the DPC app repo to
+   staging and then production. Confirm `public.ops_subscription_overview`
+   exists and execute remains granted only to `service_role`. This RPC is owned
+   by the DPC billing module and is intentionally not duplicated in
+   `db/setup.sql`. If PostgREST initially returns `PGRST202`, allow its schema
+   cache to reload and verify the RPC again before continuing.
+3. **Supabase** → Project Settings → API: copy the **Project URL**, the
    **anon public** key, and the **service_role** key (keep the last one secret).
-3. **Vercel** → Environment Variables (Production):
+4. **Vercel** → Environment Variables (Production):
    - `SUPABASE_URL` — the project URL
    - `SUPABASE_ANON_KEY` — anon public key (append-only funnel writes)
    - `SUPABASE_SERVICE_ROLE_KEY` — service role key (dashboard reads, webhook log)
    - `DASHBOARD_TOKEN` — any long random string; this is the dashboard password
      (e.g. run `openssl rand -hex 24`). Store it in 1Password.
-4. Redeploy.
+5. Configure Preview with the staging project's `SUPABASE_URL` and
+   `SUPABASE_SERVICE_ROLE_KEY`, then deploy to Preview. Open `/dashboard` and
+   confirm subscriber health, action-needed, and membership-mix data populate
+   without an RPC error; a "not configured" state does not pass this check.
+   Then deploy to Production.
 
 Acceptance: visit `/dashboard`, enter the token → KPI tiles, charts, and every
-health row green. Browse the homepage and click a deposit CTA → the visit and
-click appear on the dashboard within a minute. The dashboard works without the
-Supabase vars too (Stripe/health sections only) — funnel tiles show
-"not configured" until step 3 is done.
+health row green, including **Stripe key can read subscriptions**. Start a
+membership checkout attempt → the attempt appears in Acquisition signals
+within a minute. The dashboard page still loads without Supabase variables in
+a local or preview environment, but subscriber and acquisition sections show
+"not configured" until steps 2–4 are complete.
 
 Privacy note: the funnel beacons store event name, page, path, and referrer
 hostname plus a sanitized join failure code and HTTP status only — no cookies,
@@ -174,7 +187,7 @@ five minutes. It runs a non-transactional checkout canary, checks recent
 browser handoff signals, runs the same live checks as the dashboard, and **emails
 an alert** to `nick@` + `hello@` (override with `ALERT_TO` / `ALERT_FROM`)
 when anything is wrong: a missing env var, a Stripe key that fails a
-capability the app needs (reading Checkout Sessions, PaymentIntents, or
+capability the app needs (reading Checkout Sessions, Subscriptions, or
 Events), a test-mode key, a rejected Resend key, Supabase unreachable, Stripe
 events undelivered for over 30 minutes, or webhook errors logged in the last
 75 minutes. Every probe has a bounded timeout so the checker survives the
@@ -218,7 +231,7 @@ the alert email can't send — the failure still shows on the dashboard and in
 the Vercel cron logs; (2) the Stripe probes cover **read** capabilities only —
 the webhook also needs Checkout Session **write** (it stamps `welcome_sent`
 metadata), which has no safe probe. If you ever switch to a restricted key,
-grant Checkout Sessions read *and* write, PaymentIntents read, and Events
+grant Checkout Sessions read *and* write, Subscriptions read, and Events
 read.
 
 ### 2e. Checkout release gate — automated and physical devices
