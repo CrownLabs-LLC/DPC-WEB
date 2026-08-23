@@ -162,9 +162,11 @@ Setup (one time):
    - `SUPABASE_SERVICE_ROLE_KEY` — service role key (dashboard reads, webhook log)
    - `DASHBOARD_TOKEN` — any long random string; this is the dashboard password
      (e.g. run `openssl rand -hex 24`). Store it in 1Password.
-5. Deploy to Preview first. Open `/dashboard` and confirm subscriber health,
-   action-needed, and membership-mix data load without an RPC error. Then deploy
-   to Production.
+5. Configure Preview with the staging project's `SUPABASE_URL` and
+   `SUPABASE_SERVICE_ROLE_KEY`, then deploy to Preview. Open `/dashboard` and
+   confirm subscriber health, action-needed, and membership-mix data populate
+   without an RPC error; a "not configured" state does not pass this check.
+   Then deploy to Production.
 
 Acceptance: visit `/dashboard`, enter the token → KPI tiles, charts, and every
 health row green, including **Stripe key can read subscriptions**. Start a

@@ -174,7 +174,7 @@ assert.match(dashboardApi, /event=in\.\(page_view,membership_checkout_complete\)
 assert.match(dashboardApi, /event=eq\.join_error/);
 assert.match(dashboardApi, /normalizeSubscriptionOverview/);
 assert.match(dashboardApi, /unique_active_members: countOrNull/);
-assert.doesNotMatch(dashboardApi, /return overview;/);
+assert.match(dashboardApi, /return normalizeSubscriptionOverview\(overview\);/);
 assert.match(dashboard, /Join errors/);
 assert.match(dashboard, /Checkout completions/);
 assert.match(dashboard, /No collection attempt recorded/);

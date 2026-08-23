@@ -375,10 +375,12 @@ details.tableview summary { cursor: pointer; color: var(--text-secondary); font-
   function actionRow(label, count, detail, tone) {
     var row = el('div', 'ops-row');
     var copy = el('div');
+    var knownCount = typeof count === 'number' && Number.isFinite(count);
+    var resolvedTone = knownCount ? (count === 0 ? 'good' : (tone || '')) : '';
     copy.appendChild(el('div', 'ops-label', label));
     copy.appendChild(el('div', 'ops-detail', detail));
     row.appendChild(copy);
-    row.appendChild(el('div', 'ops-count ' + (tone || ''), fmt(count)));
+    row.appendChild(el('div', 'ops-count ' + resolvedTone, fmt(count)));
     return row;
   }
 
@@ -426,12 +428,12 @@ details.tableview summary { cursor: pointer; color: var(--text-secondary); font-
       (dunning.retry_overdue || 0) -
       (dunning.retries_exhausted || 0)
     ) : null;
-    box.appendChild(actionRow('Retries exhausted', dunning.retries_exhausted, 'No further retry scheduled after at least one attempt.', dunning.retries_exhausted ? 'critical' : 'good'));
-    box.appendChild(actionRow('Retry overdue', dunning.retry_overdue, 'Scheduled retry time has passed.', dunning.retry_overdue ? 'critical' : 'good'));
-    box.appendChild(actionRow('No collection attempt recorded', attempts.zero, 'Includes first attempt not scheduled by Stripe.', attempts.zero ? 'warning' : 'good'));
-    box.appendChild(actionRow('Payment verification missing', payment.missing, 'Memberships without verified payment evidence.', payment.missing ? 'warning' : 'good'));
-    box.appendChild(actionRow('Founding grace ending within 7 days', dunning.grace_expiring_7d, 'Founding access that needs conversion follow-up.', dunning.grace_expiring_7d ? 'warning' : 'good'));
-    box.appendChild(actionRow('Cancellation access ending within 7 days', access.ending_7d, 'Cancelled memberships approaching access end.', access.ending_7d ? 'warning' : 'good'));
+    box.appendChild(actionRow('Retries exhausted', dunning.retries_exhausted, 'No further retry scheduled after at least one attempt.', 'critical'));
+    box.appendChild(actionRow('Retry overdue', dunning.retry_overdue, 'Scheduled retry time has passed.', 'critical'));
+    box.appendChild(actionRow('No collection attempt recorded', attempts.zero, 'Includes first attempt not scheduled by Stripe.', 'warning'));
+    box.appendChild(actionRow('Payment verification missing', payment.missing, 'Memberships without verified payment evidence.', 'warning'));
+    box.appendChild(actionRow('Founding grace ending within 7 days', dunning.grace_expiring_7d, 'Founding access that needs conversion follow-up.', 'warning'));
+    box.appendChild(actionRow('Cancellation access ending within 7 days', access.ending_7d, 'Cancelled memberships approaching access end.', 'warning'));
     box.appendChild(actionRow('Retry scheduled within 24 hours', dunning.next_retry_24h, 'Upcoming automatic collection attempts.'));
     box.appendChild(actionRow('Other dunning timing', otherDunning, 'Retries more than 24 hours away or outside the immediate timing buckets.'));
   }

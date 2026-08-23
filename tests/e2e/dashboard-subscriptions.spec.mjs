@@ -123,6 +123,9 @@ test('partial subscription payload uses placeholders while independent sections 
 
   const paid24h = page.locator('#subscriber-kpis .label').filter({ hasText: /^New paid · last 24 hours$/ }).locator('..');
   await expect(paid24h).toContainText('—');
+  const retries = page.locator('#subscription-actions .ops-row').filter({ hasText: 'Retries exhausted' });
+  await expect(retries.locator('.ops-count')).toHaveText('—');
+  await expect(retries.locator('.ops-count')).not.toHaveClass(/good|warning|critical/);
   await expect(page.getByRole('heading', { name: 'Acquisition signals' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'System health' })).toBeVisible();
 });
