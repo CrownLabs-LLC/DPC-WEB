@@ -174,7 +174,7 @@ five minutes. It runs a non-transactional checkout canary, checks recent
 browser handoff signals, runs the same live checks as the dashboard, and **emails
 an alert** to `nick@` + `hello@` (override with `ALERT_TO` / `ALERT_FROM`)
 when anything is wrong: a missing env var, a Stripe key that fails a
-capability the app needs (reading Checkout Sessions, PaymentIntents, or
+capability the app needs (reading Checkout Sessions, Subscriptions, or
 Events), a test-mode key, a rejected Resend key, Supabase unreachable, Stripe
 events undelivered for over 30 minutes, or webhook errors logged in the last
 75 minutes. Every probe has a bounded timeout so the checker survives the
@@ -218,7 +218,7 @@ the alert email can't send — the failure still shows on the dashboard and in
 the Vercel cron logs; (2) the Stripe probes cover **read** capabilities only —
 the webhook also needs Checkout Session **write** (it stamps `welcome_sent`
 metadata), which has no safe probe. If you ever switch to a restricted key,
-grant Checkout Sessions read *and* write, PaymentIntents read, and Events
+grant Checkout Sessions read *and* write, Subscriptions read, and Events
 read.
 
 ### 2e. Checkout release gate — automated and physical devices

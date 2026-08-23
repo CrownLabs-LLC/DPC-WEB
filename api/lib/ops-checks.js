@@ -31,6 +31,21 @@ export async function supabaseSelect(pathAndQuery, timeoutMs = PROBE_TIMEOUT_MS)
   return resp.json();
 }
 
+export async function supabaseRpc(functionName, args, timeoutMs = PROBE_TIMEOUT_MS) {
+  const resp = await fetch(`${process.env.SUPABASE_URL}/rest/v1/rpc/${encodeURIComponent(functionName)}`, {
+    method: 'POST',
+    signal: AbortSignal.timeout(timeoutMs),
+    headers: {
+      apikey: process.env.SUPABASE_SERVICE_ROLE_KEY,
+      authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify(args),
+  });
+  if (!resp.ok) throw new Error(`supabase rpc returned ${resp.status}`);
+  return resp.json();
+}
+
 export async function supabaseInsert(table, row, timeoutMs = PROBE_TIMEOUT_MS) {
   const resp = await fetch(`${process.env.SUPABASE_URL}/rest/v1/${table}`, {
     method: 'POST',
@@ -60,7 +75,7 @@ export async function listUndeliveredEvents(stripe, limit = 20) {
 
 // Env presence, live-mode, and per-capability key probes. The probes exercise
 // the read permissions the app actually uses (Checkout Sessions for the
-// webhook, PaymentIntents + Events for dashboard/alerts) so a least-privilege
+// webhook, Subscriptions + Events for dashboard/alerts) so a least-privilege
 // restricted key is judged on what production needs, not on Balance access.
 // The webhook's one write (checkout.sessions.update for the welcome_sent
 // marker) has no safe read-only probe — see DEPLOY.md.
@@ -93,7 +108,7 @@ export async function healthChecks(stripe, resend) {
 
   const stripeProbes = [
     ['Stripe key can read checkout sessions', () => stripe.checkout.sessions.list({ limit: 1 }, { timeout: PROBE_TIMEOUT_MS })],
-    ['Stripe key can read payment intents', () => stripe.paymentIntents.list({ limit: 1 }, { timeout: PROBE_TIMEOUT_MS })],
+    ['Stripe key can read subscriptions', () => stripe.subscriptions.list({ limit: 1 }, { timeout: PROBE_TIMEOUT_MS })],
     ['Stripe key can read events', () => stripe.events.list({ limit: 1 }, { timeout: PROBE_TIMEOUT_MS })],
   ];
   const results = await Promise.allSettled([

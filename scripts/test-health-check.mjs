@@ -64,7 +64,7 @@ function mockStripeHttps({ keyOk = true, staleEvent = false } = {}) {
             ? [{ id: 'evt_stale', type: 'checkout.session.completed', created: Math.floor(Date.now() / 1000) - 7200, pending_webhooks: 1 }]
             : [],
         };
-      } else if (path.startsWith('/v1/checkout/sessions') || path.startsWith('/v1/payment_intents')) {
+      } else if (path.startsWith('/v1/checkout/sessions') || path.startsWith('/v1/subscriptions')) {
         res.statusCode = 200;
         body = { object: 'list', has_more: false, data: [] };
       } else {

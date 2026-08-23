@@ -175,24 +175,39 @@ process.env.SUPABASE_ANON_KEY = 'anon_test_key';
 
 const STRIPE_FIXTURES = {
   '/v1/checkout/sessions': { object: 'list', has_more: false, data: [] },
-  '/v1/payment_intents': {
-    object: 'list', has_more: false,
-    data: [
-      {
-        id: 'pi_1', object: 'payment_intent', status: 'succeeded', currency: 'usd',
-        amount: 4900, created: Math.floor(Date.now() / 1000) - 3600,
-        latest_charge: { billing_details: { email: 'buyer@example.com', name: 'Pat Buyer' } },
-      },
-      {
-        id: 'pi_2', object: 'payment_intent', status: 'succeeded', currency: 'usd',
-        amount: 14900, created: Math.floor(Date.now() / 1000) - 7200, latest_charge: null,
-      },
-    ],
-  },
+  '/v1/subscriptions': { object: 'list', has_more: false, data: [] },
   '/v1/events': {
     object: 'list', has_more: false,
     data: [{ id: 'evt_bad', type: 'checkout.session.completed', created: Math.floor(Date.now() / 1000) - 600, pending_webhooks: 1 }],
   },
+};
+
+const OPS_SUBSCRIPTION_OVERVIEW = {
+  totals: {
+    active: 9,
+    past_due: 4,
+    cancelled: 2,
+    paused: 1,
+    terminated: 3,
+    unique_active_members: 7,
+  },
+  new_paid: { h24: 1, d7: 3, d30: 8 },
+  by_circle: [
+    { circle: 'tap', interval: 'monthly', offer_type: 'standard', count: 4 },
+    { circle: 'cellar', interval: 'annual', offer_type: 'founding', count: 3 },
+    { circle: 'reserve', interval: 'monthly', offer_type: 'unknown', count: 2 },
+  ],
+  payment_verification: { verified: 11, missing: 2 },
+  dunning: {
+    in_dunning: 4,
+    attempts: { zero: 2, one: 0, two: 1, three: 0, four_plus: 1 },
+    next_retry_24h: 1,
+    retry_overdue: 1,
+    retries_exhausted: 1,
+    grace_expiring_7d: 1,
+  },
+  access: { cancelled_with_access: 1, ending_7d: 1 },
+  renewals: { due_7d: 2 },
 };
 
 function mockStripeHttps() {
@@ -213,9 +228,21 @@ function mockStripeHttps() {
   };
 }
 
-function mockDashboardFetch({ hangResendDomains = false } = {}) {
-  return async (url) => {
+function mockDashboardFetch({ hangResendDomains = false, failSubscriptionOverview = false } = {}) {
+  return async (url, opts = {}) => {
     const u = String(url);
+    if (u.includes('/rest/v1/rpc/ops_subscription_overview')) {
+      if (failSubscriptionOverview) {
+        return new Response('{"message":"report unavailable"}', { status: 503 });
+      }
+      check('subscription overview uses POST', opts.method === 'POST', opts);
+      const body = JSON.parse(opts.body || '{}');
+      check('subscription overview pins the dashboard clock', Boolean(Date.parse(body.p_now)), body);
+      return new Response(JSON.stringify(OPS_SUBSCRIPTION_OVERVIEW), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    }
     if (u.includes('/rest/v1/site_events')) {
       const now = Date.now();
       const checkoutRows = [
@@ -230,7 +257,7 @@ function mockDashboardFetch({ hangResendDomains = false } = {}) {
       const rows = [
         { ts: new Date(now - 3600e3).toISOString(), event: 'page_view' },
         { ts: new Date(now - 3600e3).toISOString(), event: 'page_view' },
-        { ts: new Date(now - 3500e3).toISOString(), event: 'deposit_click' },
+        { ts: new Date(now - 3500e3).toISOString(), event: 'membership_checkout_complete' },
         { ts: new Date(now - 3400e3).toISOString(), event: 'join_error', error_code: 'turnstile_unavailable' },
         { ts: new Date(now - 3300e3).toISOString(), event: 'join_error', error_code: 'turnstile_unavailable' },
         { ts: new Date(now - 3200e3).toISOString(), event: 'join_error', error_code: 'CHECKOUT_NOT_ENABLED' },
@@ -244,7 +271,7 @@ function mockDashboardFetch({ hangResendDomains = false } = {}) {
         ? checkoutRows
         : u.includes('event=eq.join_error')
         ? rows.filter((row) => row.event === 'join_error')
-        : rows.filter((row) => ['page_view', 'deposit_click', 'deposit_confirmed'].includes(row.event));
+        : rows.filter((row) => ['page_view', 'membership_checkout_complete'].includes(row.event));
       return new Response(JSON.stringify(filtered), { status: 200, headers: { 'content-type': 'application/json' } });
     }
     if (u.includes('/rest/v1/webhook_logs')) {
@@ -296,7 +323,10 @@ process.env.SUPABASE_SERVICE_ROLE_KEY = 'service_test_key';
   check('dashboard authorized -> 200', out.status === 200, out.status);
   check('dashboard days honored', out.body?.days === 7, out.body?.days);
   const f = out.body?.funnel;
-  check('funnel counts current period only', f?.totals?.visits === 2 && f?.totals?.clicks === 1, f?.totals);
+  check('funnel counts current period only', f?.totals?.visits === 2 && f?.totals?.confirmations === 1, f?.totals);
+  check('daily acquisition counts checkout attempts', (
+    f?.daily?.reduce((sum, row) => sum + row.checkout_attempts, 0) === 2
+  ), f?.daily);
   check('funnel previous period counted', f?.prev?.visits === 1, f?.prev);
   check('join errors counted by code', (
     f?.totals?.join_errors === 6
@@ -317,18 +347,43 @@ process.env.SUPABASE_SERVICE_ROLE_KEY = 'service_test_key';
   check('funnel and join-error events use separate query budgets', (
     f?.truncated === false
   ), f);
-  const dep = out.body?.deposits;
-  check('deposits filter to $49 succeeded', dep?.count === 1 && dep?.amount_cents === 4900, dep);
-  check('deposit email surfaced', dep?.recent?.[0]?.email === 'buyer@example.com', dep?.recent);
+  const overview = out.body?.subscription_overview;
+  check('billing-owned subscription overview is returned', (
+    overview?.totals?.active === 9
+    && overview?.dunning?.retries_exhausted === 1
+    && overview?.renewals?.due_7d === 2
+  ), overview);
+  check('subscription overview remains PII-free', (
+    !/email|first_name|last_name|stripe_customer_id/i.test(JSON.stringify(overview))
+  ), overview);
   const alerts = out.body?.alerts;
   check('undelivered stripe events surfaced', alerts?.undelivered_events?.length === 1, alerts);
   check('webhook error log surfaced', alerts?.webhook_errors?.length === 1, alerts);
   const health = out.body?.health;
   const byName = Object.fromEntries((health || []).map((c) => [c.name, c]));
   check('health: checkout session read probe ok', byName['Stripe key can read checkout sessions']?.ok === true, byName);
-  check('health: payment intent read probe ok', byName['Stripe key can read payment intents']?.ok === true, byName);
+  check('health: subscription read probe ok', byName['Stripe key can read subscriptions']?.ok === true, byName);
   check('health: live mode detected from key prefix', byName['Stripe key is live mode']?.ok === true, byName);
   check('health: resend key accepted', byName['Resend key accepted by Resend']?.ok === true, byName);
+}
+
+// Case: the billing report degrades independently while the dashboard stays up.
+{
+  const origFetch = globalThis.fetch;
+  const origHttpsRequest = https.request;
+  globalThis.fetch = mockDashboardFetch({ failSubscriptionOverview: true });
+  https.request = mockStripeHttps();
+  const handler = await fresh('../api/dashboard-data.js');
+  const { res, out } = mockRes();
+  await handler({ method: 'GET', headers: { authorization: 'Bearer sekret-token' }, query: { days: '30' } }, res);
+  globalThis.fetch = origFetch;
+  https.request = origHttpsRequest;
+
+  check('subscription report failure keeps dashboard available', (
+    out.status === 200
+    && out.body?.subscription_overview?.error?.startsWith('subscription overview:')
+    && out.body?.funnel?.totals?.visits === 2
+  ), out.body);
 }
 
 // A transient Resend probe timeout stays red on the dashboard even though the

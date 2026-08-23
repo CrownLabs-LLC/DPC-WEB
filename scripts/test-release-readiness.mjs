@@ -168,7 +168,7 @@ assert.match(trackApi, /if \(event === 'join_error'\)/);
 assert.match(trackApi, /ALLOWED_ERROR_CODES\.has\(s\) \? s : 'unknown'/);
 assert.match(dashboardApi, /join_error_codes/);
 assert.match(dashboardApi, /Object\.create\(null\)/);
-assert.match(dashboardApi, /event=in\.\(page_view,deposit_click,deposit_confirmed\)/);
+assert.match(dashboardApi, /event=in\.\(page_view,membership_checkout_complete\)/);
 assert.match(dashboardApi, /event=eq\.join_error/);
 assert.match(dashboard, /Join errors/);
 assert.match(dashboard, /Funnel data reached its query limit; counts are incomplete/);
