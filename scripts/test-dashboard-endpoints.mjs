@@ -183,6 +183,7 @@ const STRIPE_FIXTURES = {
 };
 
 const OPS_SUBSCRIPTION_OVERVIEW = {
+  member_email: 'must-not-leak@example.com',
   totals: {
     active: 9,
     past_due: 4,
@@ -193,9 +194,10 @@ const OPS_SUBSCRIPTION_OVERVIEW = {
   },
   new_paid: { h24: 1, d7: 3, d30: 8 },
   by_circle: [
-    { circle: 'tap', interval: 'monthly', offer_type: 'standard', count: 4 },
+    { circle: 'tap', interval: 'monthly', offer_type: 'standard', count: 4, stripe_customer_id: 'cus_must_not_leak' },
     { circle: 'cellar', interval: 'annual', offer_type: 'founding', count: 3 },
     { circle: 'reserve', interval: 'monthly', offer_type: 'unknown', count: 2 },
+    { circle: 'must-not-leak@example.com', interval: 'monthly', offer_type: 'standard', count: 1 },
   ],
   payment_verification: { verified: 11, missing: 2 },
   dunning: {
@@ -228,7 +230,7 @@ function mockStripeHttps() {
   };
 }
 
-function mockDashboardFetch({ hangResendDomains = false, failSubscriptionOverview = false } = {}) {
+function mockDashboardFetch({ hangResendDomains = false, failSubscriptionOverview = false, partialSubscriptionOverview = false } = {}) {
   return async (url, opts = {}) => {
     const u = String(url);
     if (u.includes('/rest/v1/rpc/ops_subscription_overview')) {
@@ -238,7 +240,9 @@ function mockDashboardFetch({ hangResendDomains = false, failSubscriptionOvervie
       check('subscription overview uses POST', opts.method === 'POST', opts);
       const body = JSON.parse(opts.body || '{}');
       check('subscription overview pins the dashboard clock', Boolean(Date.parse(body.p_now)), body);
-      return new Response(JSON.stringify(OPS_SUBSCRIPTION_OVERVIEW), {
+      return new Response(JSON.stringify(partialSubscriptionOverview
+        ? { totals: OPS_SUBSCRIPTION_OVERVIEW.totals }
+        : OPS_SUBSCRIPTION_OVERVIEW), {
         status: 200,
         headers: { 'content-type': 'application/json' },
       });
@@ -354,7 +358,7 @@ process.env.SUPABASE_SERVICE_ROLE_KEY = 'service_test_key';
     && overview?.renewals?.due_7d === 2
   ), overview);
   check('subscription overview remains PII-free', (
-    !/email|first_name|last_name|stripe_customer_id/i.test(JSON.stringify(overview))
+    !/must-not-leak|email|first_name|last_name|stripe_customer_id/i.test(JSON.stringify(overview))
   ), overview);
   const alerts = out.body?.alerts;
   check('undelivered stripe events surfaced', alerts?.undelivered_events?.length === 1, alerts);
@@ -365,6 +369,28 @@ process.env.SUPABASE_SERVICE_ROLE_KEY = 'service_test_key';
   check('health: subscription read probe ok', byName['Stripe key can read subscriptions']?.ok === true, byName);
   check('health: live mode detected from key prefix', byName['Stripe key is live mode']?.ok === true, byName);
   check('health: resend key accepted', byName['Resend key accepted by Resend']?.ok === true, byName);
+}
+
+// Case: a partial but valid aggregate is projected safely instead of leaking
+// undefined values or suppressing independent dashboard sections.
+{
+  const origFetch = globalThis.fetch;
+  const origHttpsRequest = https.request;
+  globalThis.fetch = mockDashboardFetch({ partialSubscriptionOverview: true });
+  https.request = mockStripeHttps();
+  const handler = await fresh('../api/dashboard-data.js');
+  const { res, out } = mockRes();
+  await handler({ method: 'GET', headers: { authorization: 'Bearer sekret-token' }, query: { days: '30' } }, res);
+  globalThis.fetch = origFetch;
+  https.request = origHttpsRequest;
+
+  check('partial subscription report is normalized without hiding other sections', (
+    out.status === 200
+    && out.body?.subscription_overview?.totals?.active === 9
+    && out.body?.subscription_overview?.new_paid?.h24 === null
+    && out.body?.funnel?.totals?.visits === 2
+    && Array.isArray(out.body?.health)
+  ), out.body);
 }
 
 // Case: the billing report degrades independently while the dashboard stays up.

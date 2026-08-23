@@ -87,14 +87,14 @@ button.primary { background: var(--accent); border-color: var(--accent); color: 
 .ops-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 16px; padding: 9px 0; border-bottom: 1px solid var(--grid-line); }
 .ops-row:last-child { border-bottom: 0; padding-bottom: 0; }
 .ops-label { font-weight: 600; }
-.ops-count { align-self: center; grid-column: 2; grid-row: 1 / span 2; font-size: 19px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.ops-count { align-self: center; grid-column: 2; font-size: 19px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .ops-detail { color: var(--text-muted); font-size: 12px; }
 .ops-count.critical { color: var(--status-critical); }
 .ops-count.warning { color: var(--delta-bad); }
 .ops-count.good { color: var(--status-good); }
 .status-breakdown { display: grid; grid-template-columns: repeat(5, minmax(68px, 1fr)); gap: 8px; margin-bottom: 14px; }
 .status-stat { padding-bottom: 8px; border-bottom: 1px solid var(--grid-line); }
-.status-stat strong { display: block; font-size: 18px; font-variant-numeric: tabular-nums; }
+.status-value { font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .status-stat span { color: var(--text-muted); font-size: 11px; }
 .table-scroll { overflow-x: auto; }
 @media (max-width: 820px) {
@@ -242,6 +242,7 @@ details.tableview summary { cursor: pointer; color: var(--text-secondary); font-
     return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
   }
   function fmt(n) {
+    if (n === null || n === undefined || typeof n !== 'number' || !Number.isFinite(n)) return '—';
     if (n >= 10000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
     return n.toLocaleString('en-US');
   }
@@ -324,7 +325,7 @@ details.tableview summary { cursor: pointer; color: var(--text-secondary); font-
       problems.push(d.funnel.totals.checkout_stalled + ' checkout handoff(s) stalled');
     }
     var overview = d.subscription_overview || {};
-    if (overview.error || overview.configured === false) {
+    if (overview.error) {
       problems.push('Subscription report unavailable');
     } else if (overview.dunning) {
       if (overview.dunning.retries_exhausted) problems.push(overview.dunning.retries_exhausted + ' subscription retry sequence(s) exhausted');
@@ -377,7 +378,7 @@ details.tableview summary { cursor: pointer; color: var(--text-secondary); font-
     copy.appendChild(el('div', 'ops-label', label));
     copy.appendChild(el('div', 'ops-detail', detail));
     row.appendChild(copy);
-    row.appendChild(el('div', 'ops-count ' + (tone || ''), fmt(count || 0)));
+    row.appendChild(el('div', 'ops-count ' + (tone || ''), fmt(count)));
     return row;
   }
 
@@ -416,21 +417,23 @@ details.tableview summary { cursor: pointer; color: var(--text-secondary); font-
       return;
     }
     var dunning = overview.dunning || {};
+    var attempts = dunning.attempts || {};
     var payment = overview.payment_verification || {};
     var access = overview.access || {};
-    var otherDunning = Math.max(0,
-      (dunning.in_dunning || 0) -
+    var otherDunning = typeof dunning.in_dunning === 'number' ? Math.max(0,
+      dunning.in_dunning -
       (dunning.next_retry_24h || 0) -
       (dunning.retry_overdue || 0) -
       (dunning.retries_exhausted || 0)
-    );
+    ) : null;
     box.appendChild(actionRow('Retries exhausted', dunning.retries_exhausted, 'No further retry scheduled after at least one attempt.', dunning.retries_exhausted ? 'critical' : 'good'));
     box.appendChild(actionRow('Retry overdue', dunning.retry_overdue, 'Scheduled retry time has passed.', dunning.retry_overdue ? 'critical' : 'good'));
+    box.appendChild(actionRow('No collection attempt recorded', attempts.zero, 'Includes first attempt not scheduled by Stripe.', attempts.zero ? 'warning' : 'good'));
     box.appendChild(actionRow('Payment verification missing', payment.missing, 'Memberships without verified payment evidence.', payment.missing ? 'warning' : 'good'));
     box.appendChild(actionRow('Founding grace ending within 7 days', dunning.grace_expiring_7d, 'Founding access that needs conversion follow-up.', dunning.grace_expiring_7d ? 'warning' : 'good'));
     box.appendChild(actionRow('Cancellation access ending within 7 days', access.ending_7d, 'Cancelled memberships approaching access end.', access.ending_7d ? 'warning' : 'good'));
     box.appendChild(actionRow('Retry scheduled within 24 hours', dunning.next_retry_24h, 'Upcoming automatic collection attempts.'));
-    box.appendChild(actionRow('Other dunning states', otherDunning, 'Includes first attempt not scheduled and retries more than 24 hours away.'));
+    box.appendChild(actionRow('Other dunning timing', otherDunning, 'Retries more than 24 hours away or outside the immediate timing buckets.'));
   }
 
   function renderMembershipMix(overview) {
@@ -451,7 +454,7 @@ details.tableview summary { cursor: pointer; color: var(--text-secondary); font-
     ].forEach(function (item) {
       var stat = el('div', 'status-stat');
       stat.appendChild(el('span', '', item[0]));
-      stat.appendChild(el('strong', '', fmt(item[1])));
+      stat.appendChild(el('div', 'status-value', fmt(item[1])));
       status.appendChild(stat);
     });
     box.appendChild(status);
@@ -498,6 +501,7 @@ details.tableview summary { cursor: pointer; color: var(--text-secondary); font-
     box.appendChild(tile('Checkout attempts', fmt(f.totals.join_submits || 0), f.totals.join_submits || 0, f.prev.join_submits || 0, true));
     box.appendChild(tile('Reached checkout handoff', fmt(f.totals.checkout_ready || 0), f.totals.checkout_ready || 0, f.prev.checkout_ready || 0, true));
     box.appendChild(tile('Departed for Stripe', fmt(f.totals.checkout_departed || 0), f.totals.checkout_departed || 0, f.prev.checkout_departed || 0, true));
+    box.appendChild(tile('Checkout completions', fmt(f.totals.confirmations || 0), f.totals.confirmations || 0, f.prev.confirmations || 0, true));
     box.appendChild(tile('Recovery link used', fmt(f.totals.checkout_fallback_clicks || 0), f.totals.checkout_fallback_clicks || 0, f.prev.checkout_fallback_clicks || 0, false));
     box.appendChild(tile('Stalled handoffs', fmt(f.totals.checkout_stalled || 0), f.totals.checkout_stalled || 0, f.prev.checkout_stalled || 0, false));
   }

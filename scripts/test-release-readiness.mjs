@@ -160,6 +160,8 @@ assert.match(deploy, /Do not\s+deploy the matching web change until both checks 
 assert.match(deploy, /physical iPhone in Safari/);
 assert.match(deploy, /physical\s+Android phone in Chrome/);
 assert.match(deploy, /20260814_checkout_handoff_observability\.sql/);
+assert.match(deploy, /20260821160000_ops_subscription_overview\.sql/);
+assert.match(deploy, /Stripe key can read subscriptions/);
 
 assert.match(analytics, /sendEvent\('join_error', params\)/);
 assert.match(analytics, /error_code:/);
@@ -170,7 +172,12 @@ assert.match(dashboardApi, /join_error_codes/);
 assert.match(dashboardApi, /Object\.create\(null\)/);
 assert.match(dashboardApi, /event=in\.\(page_view,membership_checkout_complete\)/);
 assert.match(dashboardApi, /event=eq\.join_error/);
+assert.match(dashboardApi, /normalizeSubscriptionOverview/);
+assert.match(dashboardApi, /unique_active_members: countOrNull/);
+assert.doesNotMatch(dashboardApi, /return overview;/);
 assert.match(dashboard, /Join errors/);
+assert.match(dashboard, /Checkout completions/);
+assert.match(dashboard, /No collection attempt recorded/);
 assert.match(dashboard, /Funnel data reached its query limit; counts are incomplete/);
 assert.match(dashboard, /CHECKOUT_NOT_ENABLED|join_error_codes/);
 assert.match(dashboard, /Stalled handoffs/);

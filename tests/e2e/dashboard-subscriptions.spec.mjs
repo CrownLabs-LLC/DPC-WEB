@@ -92,7 +92,8 @@ test('subscription operations lead the dashboard without deposit or member PII v
   await expect(active).toContainText('7 unique subscribers');
 
   await expect(page.locator('#subscription-actions')).toContainText('Retries exhausted');
-  await expect(page.locator('#subscription-actions')).toContainText('Other dunning states');
+  await expect(page.locator('#subscription-actions')).toContainText('No collection attempt recorded');
+  await expect(page.locator('#subscription-actions')).toContainText('Other dunning timing');
   await expect(page.locator('#subscription-actions')).toContainText('first attempt not scheduled');
 
   await expect(page.getByRole('heading', { name: 'Membership mix' })).toBeVisible();
@@ -101,9 +102,29 @@ test('subscription operations lead the dashboard without deposit or member PII v
   await expect(page.locator('#membership-mix')).toContainText('Unknown');
 
   await expect(page.getByRole('heading', { name: 'Acquisition signals' })).toBeVisible();
+  await expect(page.locator('#acquisition-kpis')).toContainText('Checkout completions');
   await expect(page.getByText('Recent deposits')).toHaveCount(0);
   await expect(page.getByText('Collected', { exact: true })).toHaveCount(0);
   await expect(page.locator('body')).not.toContainText('buyer@example.com');
+});
+
+test('partial subscription payload uses placeholders while independent sections keep rendering', async ({ page }) => {
+  await page.unroute('**/api/dashboard-data?**');
+  await page.route('**/api/dashboard-data?**', async (route) => {
+    const payload = dashboardPayload();
+    payload.subscription_overview = { totals: OVERVIEW.totals };
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(payload),
+    });
+  });
+  await page.goto('/dashboard');
+
+  const paid24h = page.locator('#subscriber-kpis .label').filter({ hasText: /^New paid · last 24 hours$/ }).locator('..');
+  await expect(paid24h).toContainText('—');
+  await expect(page.getByRole('heading', { name: 'Acquisition signals' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'System health' })).toBeVisible();
 });
 
 test('subscription report failure stays visible without hiding acquisition and health', async ({ page }) => {
@@ -122,4 +143,22 @@ test('subscription report failure stays visible without hiding acquisition and h
   await expect(page.locator('#subscriber-kpis')).toContainText('Subscription report unavailable');
   await expect(page.getByRole('heading', { name: 'Acquisition signals' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'System health' })).toBeVisible();
+});
+
+test('an intentionally unconfigured preview does not raise an RPC failure banner', async ({ page }) => {
+  await page.unroute('**/api/dashboard-data?**');
+  await page.route('**/api/dashboard-data?**', async (route) => {
+    const payload = dashboardPayload();
+    payload.funnel.totals.checkout_stalled = 0;
+    payload.subscription_overview = { configured: false };
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(payload),
+    });
+  });
+  await page.goto('/dashboard');
+
+  await expect(page.locator('#subscriber-kpis')).toContainText('Subscription report unavailable');
+  await expect(page.locator('#banner')).not.toContainText('Subscription report unavailable');
 });

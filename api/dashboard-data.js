@@ -18,6 +18,9 @@ import {
 } from './lib/ops-checks.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+const CIRCLES = new Set(['tap', 'cellar', 'reserve']);
+const BILLING_INTERVALS = new Set(['monthly', 'annual']);
+const OFFER_TYPES = new Set(['standard', 'founding', 'unknown']);
 const JOIN_ERROR_CODES = new Set([
   'turnstile_unavailable',
   'turnstile_incomplete',
@@ -150,6 +153,80 @@ async function funnelSection(days, now) {
   };
 }
 
+function isRecord(value) {
+  return Boolean(value && typeof value === 'object' && !Array.isArray(value));
+}
+
+function countOrNull(value) {
+  return Number.isInteger(value) && value >= 0 ? value : null;
+}
+
+function dimensionOrUnknown(value, allowed) {
+  return allowed.has(value) ? value : 'unknown';
+}
+
+// Project the cross-repository RPC response onto the fields this dashboard is
+// allowed to expose. Besides containing shape drift, this keeps unexpected
+// identity fields from ever crossing the DPC-WEB API boundary.
+function normalizeSubscriptionOverview(overview) {
+  if (!isRecord(overview.totals)) {
+    throw new Error('billing report is missing totals');
+  }
+  const totals = overview.totals;
+  const paid = isRecord(overview.new_paid) ? overview.new_paid : {};
+  const payment = isRecord(overview.payment_verification) ? overview.payment_verification : {};
+  const dunning = isRecord(overview.dunning) ? overview.dunning : {};
+  const attempts = isRecord(dunning.attempts) ? dunning.attempts : {};
+  const access = isRecord(overview.access) ? overview.access : {};
+  const renewals = isRecord(overview.renewals) ? overview.renewals : {};
+  return {
+    totals: {
+      active: countOrNull(totals.active),
+      past_due: countOrNull(totals.past_due),
+      cancelled: countOrNull(totals.cancelled),
+      paused: countOrNull(totals.paused),
+      terminated: countOrNull(totals.terminated),
+      unique_active_members: countOrNull(totals.unique_active_members),
+    },
+    new_paid: {
+      h24: countOrNull(paid.h24),
+      d7: countOrNull(paid.d7),
+      d30: countOrNull(paid.d30),
+    },
+    by_circle: (Array.isArray(overview.by_circle) ? overview.by_circle : [])
+      .filter(isRecord)
+      .map((row) => ({
+        circle: dimensionOrUnknown(row.circle, CIRCLES),
+        interval: dimensionOrUnknown(row.interval, BILLING_INTERVALS),
+        offer_type: dimensionOrUnknown(row.offer_type, OFFER_TYPES),
+        count: countOrNull(row.count),
+      })),
+    payment_verification: {
+      verified: countOrNull(payment.verified),
+      missing: countOrNull(payment.missing),
+    },
+    dunning: {
+      in_dunning: countOrNull(dunning.in_dunning),
+      attempts: {
+        zero: countOrNull(attempts.zero),
+        one: countOrNull(attempts.one),
+        two: countOrNull(attempts.two),
+        three: countOrNull(attempts.three),
+        four_plus: countOrNull(attempts.four_plus),
+      },
+      next_retry_24h: countOrNull(dunning.next_retry_24h),
+      retry_overdue: countOrNull(dunning.retry_overdue),
+      retries_exhausted: countOrNull(dunning.retries_exhausted),
+      grace_expiring_7d: countOrNull(dunning.grace_expiring_7d),
+    },
+    access: {
+      cancelled_with_access: countOrNull(access.cancelled_with_access),
+      ending_7d: countOrNull(access.ending_7d),
+    },
+    renewals: { due_7d: countOrNull(renewals.due_7d) },
+  };
+}
+
 async function subscriptionOverviewSection(now) {
   if (!supabaseConfigured()) return { configured: false };
   const overview = await supabaseRpc('ops_subscription_overview', {
@@ -158,7 +235,7 @@ async function subscriptionOverviewSection(now) {
   if (!overview || typeof overview !== 'object' || Array.isArray(overview)) {
     throw new Error('billing report returned an invalid payload');
   }
-  return overview;
+  return normalizeSubscriptionOverview(overview);
 }
 
 // Webhook failures from both sides: our own error log, and Stripe's view of
