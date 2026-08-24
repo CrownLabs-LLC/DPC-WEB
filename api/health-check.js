@@ -36,6 +36,12 @@ const THROTTLE_HOURS = 6;
 const CHECKOUT_SIGNAL_WINDOW_MIN = 10;
 const CANARY_TIMEOUT_MS = 3000;
 const JOIN_URL = 'https://www.downtownpourcollective.com/join';
+// Probed with ?fresh=1 so the check exercises the live RPC rather than a CDN
+// hit: a cached 200 would keep reporting healthy through a grant regression
+// or a missing singleton. /join and /depositor-confirmation block checkout
+// entirely when this endpoint is down, so it is a checkout-critical surface.
+const LEGAL_VERSIONS_URL = 'https://www.downtownpourcollective.com/api/legal-versions?fresh=1';
+const LEGAL_VERSION_KEYS = ['tos', 'privacy', 'memberTerms', 'autoRenewalTerms'];
 const CHECKOUT_ENDPOINT = 'https://ebiuspbgzggrdiaswpcc.supabase.co/functions/v1/circle-checkout';
 // End-to-end budget: gather is ~4s (bounded probes, concurrent). The alert
 // path below gets 2s + 4s + 2s, keeping the worst case around 12s — inside
@@ -69,6 +75,32 @@ async function gatherProblems(now) {
   const resendKey = process.env.RESEND_API_KEY;
 
   const jobs = [];
+
+  // Checkout blocks when the live legal-version tuple cannot be read, so probe
+  // the endpoint itself — including the shape, since a structurally incomplete
+  // 200 fails checkout exactly as hard as a 503 does.
+  jobs.push((async () => {
+    try {
+      const { response, body } = await withTimeout(
+        fetch(LEGAL_VERSIONS_URL, { headers: { accept: 'application/json' } })
+          .then(async (res) => ({ response: res, body: await res.text() })),
+        CANARY_TIMEOUT_MS,
+        'legal-versions canary'
+      );
+      if (!response.ok) {
+        problems.push({ key: 'legal-versions:unavailable', text: `/api/legal-versions is unhealthy (HTTP ${response.status}) — join and depositor checkout are blocked` });
+        return;
+      }
+      let tuple = null;
+      try { tuple = JSON.parse(body); } catch { /* handled as incomplete below */ }
+      const missing = LEGAL_VERSION_KEYS.filter((key) => typeof tuple?.[key] !== 'string' || !tuple[key]);
+      if (missing.length) {
+        problems.push({ key: 'legal-versions:incomplete', text: `/api/legal-versions returned an incomplete tuple (missing: ${missing.join(', ')})` });
+      }
+    } catch (err) {
+      problems.push({ key: 'legal-versions:unreachable', text: `/api/legal-versions could not be probed: ${String(err?.message || err)}` });
+    }
+  })());
 
   // Non-transactional production canary: verify the live join bundle still
   // contains its native recovery path and the checkout function rejects bad

@@ -24,6 +24,8 @@ const OFFER_TYPES = new Set(['standard', 'founding', 'unknown']);
 const JOIN_ERROR_CODES = new Set([
   'turnstile_unavailable',
   'turnstile_incomplete',
+  'legal_versions_unavailable',
+  'legal_versions_changed',
   'network',
   'navigation',
   'unknown',

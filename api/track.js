@@ -34,6 +34,8 @@ const JOIN_FLOW_EVENTS = new Set([
 const ALLOWED_ERROR_CODES = new Set([
   'turnstile_unavailable',
   'turnstile_incomplete',
+  'legal_versions_unavailable',
+  'legal_versions_changed',
   'navigation',
   'network',
   'unknown',

@@ -869,7 +869,10 @@ body:has(.cookie:not([hidden])) .page {
 </footer>
 
 <script>
-/* Private depositor config — keep legalVersions aligned with circle-checkout REQUIRED_CHECKOUT_LEGAL_VERSIONS.
+/* Private depositor config. Legal versions are deliberately NOT here: they
+   are read live from /api/legal-versions at load and revalidated at submit,
+   so a cached copy of this page can never submit a tuple the server has
+   moved past. See plans/join-legal-version-staleness-remediation in DPC.
    Production uses the hostname-bound DPC Turnstile widget. Preview and local
    hosts use Cloudflare's published always-pass test key for client-side QA. */
 function dpcTurnstileSiteKeyForHost(hostname) {
@@ -889,12 +892,6 @@ window.DPC_DEPOSITOR_CONFIRMATION = {
   checkoutEndpoint: dpcCheckoutEndpointForHost(window.location.hostname),
   turnstileSiteKey: dpcTurnstileSiteKeyForHost(window.location.hostname),
   turnstileAction: 'circle_checkout',
-  legalVersions: {
-    tos: '3.0',
-    privacy: '4.2',
-    memberTerms: '3.0',
-    autoRenewalTerms: '3.0'
-  },
   /* Founding window ends 2026-09-01 00:00 America/Los_Angeles (PDT = UTC-7). */
   foundingEndsAtMs: Date.parse('2026-09-01T07:00:00.000Z'),
   prices: {
@@ -989,8 +986,96 @@ window.__startDpcDepositorConfirmation = function (depositorToken) {
       money(amount) + ' / ' + period + '</strong>. Your existing $49 deposit will not be charged again.';
   }
 
-  function setError(msg) {
+  var errorIsSticky = false;
+  function setError(msg, sticky) {
     errorEl.textContent = msg || '';
+    errorIsSticky = Boolean(msg) && Boolean(sticky);
+  }
+
+  /* The Turnstile callback fires whenever a fresh token lands — including the
+     one auto-issued right after a reset — and it clears the error line. That
+     must not wipe a message the member still has to act on: the re-accept
+     prompt IS the instruction to re-tick, and the fail-closed notice is the
+     only explanation for a disabled button. Challenge-owned messages still
+     clear normally; a new submit clears stickiness by calling setError(''). */
+  function clearChallengeError() {
+    if (!errorIsSticky) setError('');
+  }
+
+  /* Legal versions are consent evidence, not configuration: what we submit is
+     written to member_legal_acceptances with IP and user agent. So the page
+     reads the current tuple live rather than carrying a literal that goes
+     stale in any cached copy. Every submit revalidates; a change between load
+     and submit forces an explicit re-accept, never a silent upgrade. Fails
+     closed throughout: there is no fallback tuple, by design. */
+  var LEGAL_VERSIONS_ENDPOINT = '/api/legal-versions';
+  var LEGAL_VERSION_KEYS = ['tos', 'privacy', 'memberTerms', 'autoRenewalTerms'];
+  var acceptedVersions = null;
+
+  function fetchLegalVersions(fresh) {
+    /* The on-load read may use the CDN-cached path; submit-time and
+       post-rejection reads must not. Never conflate the two. */
+    var url = fresh ? LEGAL_VERSIONS_ENDPOINT + '?fresh=1' : LEGAL_VERSIONS_ENDPOINT;
+    return fetch(url, { headers: { accept: 'application/json' } }).then(function (res) {
+      if (!res.ok) throw new Error('legal versions unavailable');
+      return res.json();
+    }).then(function (body) {
+      var tuple = {};
+      for (var i = 0; i < LEGAL_VERSION_KEYS.length; i++) {
+        var key = LEGAL_VERSION_KEYS[i];
+        if (!body || typeof body[key] !== 'string' || !body[key]) {
+          throw new Error('legal versions incomplete');
+        }
+        tuple[key] = body[key];
+      }
+      return tuple;
+    });
+  }
+
+  function sameVersions(a, b) {
+    if (!a || !b) return false;
+    for (var i = 0; i < LEGAL_VERSION_KEYS.length; i++) {
+      if (a[LEGAL_VERSION_KEYS[i]] !== b[LEGAL_VERSION_KEYS[i]]) return false;
+    }
+    return true;
+  }
+
+  function legalVersionsUnavailable() {
+    /* No submit path. An honest unavailable state beats a submit that is
+       certain to be rejected, and beats reusing a tuple we cannot confirm. */
+    acceptedVersions = null;
+    submitting = false;
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Continue to Checkout';
+    setError('We could not confirm the current terms. Refresh the page to try again, or email hello@downtownpourcollective.com for help.', true);
+  }
+
+  function promptLegalReaccept(versions, challengeConsumed) {
+    /* Never auto-substitute a tuple the member has not been shown.
+       challengeConsumed distinguishes the two callers: detecting the change
+       before we post leaves the Turnstile token unused and still valid, so
+       resetting it would force a pointless re-solve; a server rejection means
+       the token was already spent verifying that request and a new one is
+       required. */
+    acceptedVersions = versions;
+    if (form.legal) form.legal.checked = false;
+    submitting = false;
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Continue to Checkout';
+    setError('Our terms were updated. Please review and accept the current terms.', true);
+    if (challengeConsumed) resetTurnstile();
+  }
+
+  function loadLegalVersions() {
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Loading…';
+    fetchLegalVersions(false).then(function (versions) {
+      acceptedVersions = versions;
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Continue to Checkout';
+    }).catch(function () {
+      legalVersionsUnavailable();
+    });
   }
 
   function resetTurnstile() {
@@ -1075,7 +1160,7 @@ window.__startDpcDepositorConfirmation = function (depositorToken) {
         callback: function (token) {
           turnstileToken = token || '';
           turnstileUnavailable = false;
-          setError('');
+          clearChallengeError();
         },
         'expired-callback': function () { turnstileToken = ''; },
         'error-callback': showTurnstileUnavailable
@@ -1138,65 +1223,92 @@ window.__startDpcDepositorConfirmation = function (depositorToken) {
     submitBtn.disabled = true;
     submitBtn.textContent = 'Starting checkout…';
 
-    var payload = {
-      email: email,
-      firstName: firstName,
-      lastName: lastName,
-      circle: circle,
-      billingInterval: billingInterval,
-      offerType: offer,
-      checkoutKind: 'deposit_conversion',
-      depositorConfirmationToken: depositorToken,
-      acceptedAt: new Date().toISOString(),
-      legalVersions: cfg.legalVersions,
-      challengeToken: turnstileToken
-    };
-
-    fetch(cfg.checkoutEndpoint, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(payload)
-    }).then(function (res) {
-      return res.json().then(function (body) {
-        return { status: res.status, body: body };
-      }).catch(function () {
-        return { status: res.status, body: null };
-      });
-    }).then(function (result) {
-      var body = result.body || {};
-      var code = (body.error && body.error.code) || '';
-      var url = safeStripeCheckoutUrl(body.data && body.data.checkout_url);
-
-      if (result.status === 200 && body.success && url) {
-        window.location.href = url;
-        return;
-      }
-
-      var messages = {
-        CHECKOUT_NOT_ENABLED: 'Membership checkout is temporarily unavailable. Please try again shortly or email hello@downtownpourcollective.com for help.',
-        FOUNDING_UNAVAILABLE: 'This private confirmation cannot be used. Check your invitation or email hello@downtownpourcollective.com for help.',
-        SIGN_IN_REQUIRED: 'This private confirmation cannot be used. Check your invitation or email hello@downtownpourcollective.com for help.',
-        RATE_LIMITED: 'Too many attempts. Please wait a moment and try again.',
-        CHALLENGE_FAILED: 'Security check failed. Complete the new security check below and try again.',
-        LEGAL_VERSIONS_NOT_CURRENT: 'The terms on this page are out of date. Keep this page open and email hello@downtownpourcollective.com for help.',
-        MEMBER_NOT_ELIGIBLE: 'This private confirmation cannot be used. Check your invitation or email hello@downtownpourcollective.com for help.',
-        DEPOSITOR_CONFIRMATION_INVALID: 'This private confirmation cannot be used. Check your invitation or email hello@downtownpourcollective.com for help.'
+    function postCheckout(versions) {
+      var payload = {
+        email: email,
+        firstName: firstName,
+        lastName: lastName,
+        circle: circle,
+        billingInterval: billingInterval,
+        offerType: offer,
+        checkoutKind: 'deposit_conversion',
+        depositorConfirmationToken: depositorToken,
+        acceptedAt: new Date().toISOString(),
+        legalVersions: versions,
+        challengeToken: turnstileToken
       };
-      if (['FOUNDING_UNAVAILABLE', 'SIGN_IN_REQUIRED', 'MEMBER_NOT_ELIGIBLE', 'DEPOSITOR_CONFIRMATION_INVALID'].includes(code)) {
-        showInviteUnavailable();
+
+      fetch(cfg.checkoutEndpoint, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(payload)
+      }).then(function (res) {
+        return res.json().then(function (body) {
+          return { status: res.status, body: body };
+        }).catch(function () {
+          return { status: res.status, body: null };
+        });
+      }).then(function (result) {
+        var body = result.body || {};
+        var code = (body.error && body.error.code) || '';
+        var url = safeStripeCheckoutUrl(body.data && body.data.checkout_url);
+
+        if (result.status === 200 && body.success && url) {
+          window.location.href = url;
+          return;
+        }
+
+        if (code === 'LEGAL_VERSIONS_NOT_CURRENT') {
+          /* The genuine race: a version bump landed between our submit-time
+             re-read and the server's validation. Re-read, clear consent, make
+             the member re-accept. Never auto-resubmit. */
+          fetchLegalVersions(true).then(function (current) {
+            promptLegalReaccept(current, true);
+          }).catch(function () {
+            legalVersionsUnavailable();
+          });
+          return;
+        }
+
+        var messages = {
+          CHECKOUT_NOT_ENABLED: 'Membership checkout is temporarily unavailable. Please try again shortly or email hello@downtownpourcollective.com for help.',
+          FOUNDING_UNAVAILABLE: 'This private confirmation cannot be used. Check your invitation or email hello@downtownpourcollective.com for help.',
+          SIGN_IN_REQUIRED: 'This private confirmation cannot be used. Check your invitation or email hello@downtownpourcollective.com for help.',
+          RATE_LIMITED: 'Too many attempts. Please wait a moment and try again.',
+          CHALLENGE_FAILED: 'Security check failed. Complete the new security check below and try again.',
+          MEMBER_NOT_ELIGIBLE: 'This private confirmation cannot be used. Check your invitation or email hello@downtownpourcollective.com for help.',
+          DEPOSITOR_CONFIRMATION_INVALID: 'This private confirmation cannot be used. Check your invitation or email hello@downtownpourcollective.com for help.'
+        };
+        if (['FOUNDING_UNAVAILABLE', 'SIGN_IN_REQUIRED', 'MEMBER_NOT_ELIGIBLE', 'DEPOSITOR_CONFIRMATION_INVALID'].includes(code)) {
+          showInviteUnavailable();
+          return;
+        }
+        setError(messages[code] || 'Checkout could not be started. Please try again or email hello@downtownpourcollective.com.');
+        submitting = false;
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Continue to Checkout';
+        resetTurnstile();
+      }).catch(function () {
+        setError('Network error. Check your connection and try again.');
+        submitting = false;
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Continue to Checkout';
+        resetTurnstile();
+      });
+    }
+
+    /* Revalidate uncached immediately before posting. The transactional
+       DB gate is still authoritative — this only shrinks the window and
+       turns a server rejection into a re-accept the member understands. */
+    fetchLegalVersions(true).then(function (versions) {
+      if (!sameVersions(versions, acceptedVersions)) {
+        promptLegalReaccept(versions, false);
         return;
       }
-      setError(messages[code] || 'Checkout could not be started. Please try again or email hello@downtownpourcollective.com.');
-      submitting = false;
-      submitBtn.disabled = false;
-      submitBtn.textContent = 'Continue to Checkout';
-      resetTurnstile();
+      acceptedVersions = versions;
+      postCheckout(versions);
     }).catch(function () {
-      setError('Network error. Check your connection and try again.');
-      submitting = false;
-      submitBtn.disabled = false;
-      submitBtn.textContent = 'Continue to Checkout';
-      resetTurnstile();
+      legalVersionsUnavailable();
     });
   });
 
@@ -1214,6 +1326,7 @@ window.__startDpcDepositorConfirmation = function (depositorToken) {
 
   refreshPrices();
   renderTurnstile();
+  loadLegalVersions();
 };
 </script>
 </body>

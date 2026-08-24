@@ -41,10 +41,15 @@ assert.match(page, /depositorConfirmationToken: depositorToken/);
 assert.match(page, /function offerType\(\) \{ return 'founding'; \}/);
 assert.match(page, /parsed\.protocol === 'https:' && parsed\.hostname === 'checkout\.stripe\.com'/);
 assert.match(page, /window\.location\.href = url/);
-assert.match(page, /tos: '3\.0'/);
-assert.match(page, /privacy: '4\.2'/);
-assert.match(page, /memberTerms: '3\.0'/);
-assert.match(page, /autoRenewalTerms: '3\.0'/);
+// Inverted deliberately: a hardcoded tuple here is the regression that broke
+// /join on 2026-08-17. The page must read versions live and revalidate before
+// submitting, not carry a literal that any cached copy will submit forever.
+assert.doesNotMatch(page, /legalVersions\s*:\s*\{/);
+assert.doesNotMatch(page, /\b(?:tos|privacy|memberTerms|autoRenewalTerms)\s*:\s*['"]\d/);
+assert.match(page, /LEGAL_VERSIONS_ENDPOINT = '\/api\/legal-versions'/);
+assert.match(page, /fetchLegalVersions\(true\)/);
+assert.match(page, /legalVersions: versions,/);
+assert.match(page, /Our terms were updated\. Please review and accept the current terms\./);
 assert.match(page, /0x4AAAAAAECO2A5oKsePqsOg/);
 assert.match(page, /1x00000000000000000000AA/);
 assert.match(page, /checkoutEndpoint: dpcCheckoutEndpointForHost\(window\.location\.hostname\)/);
@@ -56,7 +61,15 @@ assert.match(page, /id="invite-error"[^>]+hidden/);
 assert.match(page, /id="join-form"[^>]+hidden/);
 assert.match(page, /DEPOSITOR_CONFIRMATION_INVALID[\s\S]*showInviteUnavailable\(\)/);
 assert.match(page, /CHALLENGE_FAILED: 'Security check failed\. Complete the new security check below and try again\.'/);
-assert.match(page, /LEGAL_VERSIONS_NOT_CURRENT: 'The terms on this page are out of date\. Keep this page open and email hello@downtownpourcollective\.com for help\.'/);
+// The old copy told the member to keep a doomed page open and email support,
+// because the page had no way to obtain current versions. It can now recover
+// on its own: re-read uncached, clear consent, and require an explicit
+// re-accept. Never an automatic resubmit — that would record consent to terms
+// the member was never shown.
+assert.match(page, /if \(code === 'LEGAL_VERSIONS_NOT_CURRENT'\) \{/);
+assert.match(page, /promptLegalReaccept\(current, true\);/);
+assert.match(page, /promptLegalReaccept\(versions, false\);/);
+assert.doesNotMatch(page, /Keep this page open and email/);
 assert.doesNotMatch(page, /Date\.now\(\)\s*>=\s*\(cfg\.foundingEndsAtMs/);
 
 const configScript = page.match(
@@ -75,14 +88,10 @@ assert.equal(configFor('preview.vercel.app').checkoutEndpoint, '');
 assert.equal(configFor('127.0.0.1').checkoutEndpoint, '');
 assert.equal(configFor('www.downtownpourcollective.com').turnstileSiteKey, '0x4AAAAAAECO2A5oKsePqsOg');
 assert.equal(configFor('127.0.0.1').turnstileSiteKey, '1x00000000000000000000AA');
-assert.deepEqual(
-  { ...configFor('www.downtownpourcollective.com').legalVersions },
-  {
-    tos: '3.0',
-    privacy: '4.2',
-    memberTerms: '3.0',
-    autoRenewalTerms: '3.0',
-  },
+assert.equal(
+  configFor('www.downtownpourcollective.com').legalVersions,
+  undefined,
+  'depositor config must not carry a legal-version tuple; it is read from /api/legal-versions',
 );
 
 const joinConfigScript = joinPage.match(
@@ -91,11 +100,18 @@ const joinConfigScript = joinPage.match(
 assert.ok(joinConfigScript, 'public join config must remain executable in isolation');
 const joinContext = { window: { location: { hostname: 'www.downtownpourcollective.com' } }, Date };
 vm.runInNewContext(joinConfigScript, joinContext);
-assert.deepEqual(
-  { ...configFor('www.downtownpourcollective.com').legalVersions },
-  { ...joinContext.window.DPC_JOIN.legalVersions },
-  'public and private checkout pages must submit the same legal versions',
-);
+// Both pages must submit the same legal versions. That parity used to be
+// asserted by comparing two literals, which only ever proved the two copies
+// agreed with each other — not with the server. It now holds structurally:
+// neither page carries a tuple, and both read the same endpoint.
+assert.equal(joinContext.window.DPC_JOIN.legalVersions, undefined);
+for (const [label, markup] of [['join.html', joinPage], ['depositor-confirmation.html', page]]) {
+  assert.match(
+    markup,
+    /LEGAL_VERSIONS_ENDPOINT = '\/api\/legal-versions'/,
+    `${label} must read legal versions from the shared endpoint`,
+  );
+}
 
 const bootstrap = page.match(
   /<script id="depositor-token-bootstrap">([\s\S]*?)<\/script>/,

@@ -79,7 +79,7 @@ function mockStripeHttps({ keyOk = true, staleEvent = false } = {}) {
 }
 
 // fetch mock for Resend + Supabase; records sent alert emails + throttle reads.
-function mockFetch({ priorAlertFingerprint = null, recentWebhookErrors = false, supabaseDown = false, hangEmail = false, hangResendDomains = false, resendDomainErrorName = '', joinCanaryBroken = false, stalledHandoff = false, fallbackHandoff = false, canaryDelayMs = 0 } = {}, sentEmails, stats) {
+function mockFetch({ priorAlertFingerprint = null, recentWebhookErrors = false, supabaseDown = false, hangEmail = false, hangResendDomains = false, resendDomainErrorName = '', joinCanaryBroken = false, legalVersionsStatus = 200, legalVersionsBody = null, stalledHandoff = false, fallbackHandoff = false, canaryDelayMs = 0 } = {}, sentEmails, stats) {
   return async (url, opts) => {
     const u = String(url);
     if (u === 'https://www.downtownpourcollective.com/join') {
@@ -88,6 +88,12 @@ function mockFetch({ priorAlertFingerprint = null, recentWebhookErrors = false, 
         ? '<html><h1>Join</h1></html>'
         : '<a id="checkout-fallback">Open Secure Checkout</a><style>.btn[hidden]{display:none!important}</style>join_checkout_stalled window.location.assign';
       return new Response(body, { status: 200 });
+    }
+    if (u.startsWith('https://www.downtownpourcollective.com/api/legal-versions')) {
+      if (canaryDelayMs) await new Promise((resolve) => setTimeout(resolve, canaryDelayMs));
+      stats.legalVersionsUrls.push(u);
+      const body = legalVersionsBody ?? { tos: '3.0', privacy: '4.2', memberTerms: '3.0', autoRenewalTerms: '3.0' };
+      return new Response(JSON.stringify(body), { status: legalVersionsStatus, headers: { 'content-type': 'application/json' } });
     }
     if (u.includes('/functions/v1/circle-checkout')) {
       if (canaryDelayMs) await new Promise((resolve) => setTimeout(resolve, canaryDelayMs));
@@ -139,7 +145,7 @@ async function run(mockOpts = {}, envTweaks = null, reqHeaders = { authorization
   setHealthyEnv();
   if (envTweaks) envTweaks();
   const sentEmails = [];
-  const stats = { throttleReads: 0 };
+  const stats = { throttleReads: 0, legalVersionsUrls: [] };
   const origFetch = globalThis.fetch;
   const origHttps = https.request;
   globalThis.fetch = mockFetch(mockOpts, sentEmails, stats);
@@ -204,7 +210,7 @@ async function run(mockOpts = {}, envTweaks = null, reqHeaders = { authorization
   check('fallback use alone sends no alert', sentEmails.length === 0, sentEmails);
 }
 
-// Case 8: the three bounded canary probes run concurrently
+// Case 8: the four bounded canary probes run concurrently
 {
   const { out, elapsed } = await run({ canaryDelayMs: 300 });
   check('parallel canary remains healthy', out.body.ok === true, out.body);
@@ -303,6 +309,31 @@ let brokenKeyFingerprint = null;
   check('supabase down flagged', out.body.problems.some((p) => p.includes('Supabase reachable')), out.body.problems);
   check('supabase down -> alert still sent', out.body.alerted === true && sentEmails.length === 1, out.body);
   check('supabase down -> throttle read skipped', stats.throttleReads === 0, stats);
+}
+
+// Case 21: /api/legal-versions is down -> both checkout pages block, so page.
+{
+  const { out, sentEmails } = await run({ legalVersionsStatus: 503 });
+  check('legal-versions outage flagged', out.body.problems.some((p) => p.includes('/api/legal-versions is unhealthy')), out.body.problems);
+  check('legal-versions outage names the consequence', out.body.problems.some((p) => p.includes('checkout are blocked')), out.body.problems);
+  check('legal-versions outage -> alert sent', out.body.alerted === true && sentEmails.length === 1, out.body);
+}
+
+// Case 22: a structurally incomplete 200 breaks checkout exactly as hard as a
+// 503 does — this is what future schema drift looks like — so it must page too.
+{
+  const { out } = await run({ legalVersionsBody: { tos: '3.0', privacy: '4.2', memberTerms: '3.0' } });
+  check('incomplete legal-versions tuple flagged', out.body.problems.some((p) => p.includes('incomplete tuple')), out.body.problems);
+  check('incomplete legal-versions names the missing key', out.body.problems.some((p) => p.includes('autoRenewalTerms')), out.body.problems);
+}
+
+// Case 23: the probe must bypass the CDN. A cached 200 would keep reporting
+// healthy straight through a grant regression or a missing singleton row.
+{
+  const { out, stats } = await run({});
+  check('legal-versions probed exactly once', stats.legalVersionsUrls.length === 1, stats.legalVersionsUrls);
+  check('legal-versions probe uses ?fresh=1', stats.legalVersionsUrls.every((u) => u.includes('fresh=1')), stats.legalVersionsUrls);
+  check('healthy legal-versions raises nothing', !out.body.problems.some((p) => p.includes('legal-versions')), out.body.problems);
 }
 
 process.exit(failures ? 1 : 0);
