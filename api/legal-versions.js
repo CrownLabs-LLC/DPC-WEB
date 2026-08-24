@@ -19,9 +19,10 @@
 //
 // Caching: this route is unauthenticated and reachable before Turnstile by
 // necessity (it is what the page fetches to render current-terms state).
-// Vercel WAF rate-limits the exact route to 100 requests per 60 seconds per
-// IP, including requests with `?fresh=1`. `s-maxage` additionally collapses
-// the default path to roughly one RPC per 10s window per Vercel cache region.
+// A Vercel WAF rule rate-limits this exact path per IP, including requests
+// with `?fresh=1`; DEPLOY.md §2g is the source of truth for its live rule ID
+// and limits. `s-maxage` additionally collapses the default path to roughly
+// one RPC per 10s window per Vercel cache region.
 // `?fresh=1` bypasses that cache for submit-time revalidation, which must never
 // read a stale tuple. See plans/join-legal-version-staleness-remediation.
 //
