@@ -358,8 +358,9 @@ before Turnstile by necessity. Production rate-limits the exact
 `/api/legal-versions` request path per source IP, including requests carrying
 `?fresh=1`, while the cache further reduces repeated reads on the default
 path. Keep live rule identifiers, thresholds, validation evidence, and
-residual-exposure analysis in the private DPC rollout record:
-`docs/rollout-20260820120000-checkout-legal-versions-2026-08-24.md`.
+residual-exposure analysis in the private DPC operations note:
+`docs/operations/legal-versions-firewall.md`. The completed rollout evidence
+remains immutable and is not the live configuration source.
 
 The fail-closed checkout trade-off applies to the firewall too: a `429` means
 the pages cannot confirm the live legal tuple, so submission stays blocked.
