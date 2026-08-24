@@ -353,19 +353,24 @@ floor is roughly one RPC per 10s window *per region*, not globally. A cached
 tuple can be up to ~60s stale; that is safe because every submit revalidates
 uncached and the transactional DB gate remains authoritative.
 
-**Known exposure — Vercel Firewall decision required.** The route is
+**Known exposure — Vercel Firewall decision.** The route is
 unauthenticated and reachable before Turnstile by necessity, and DPC-WEB has no
 rate limit or reverse proxy in front of it. The cache reduces *naive* abuse
 (crawlers, casual scripted floods) to near-zero marginal DB cost. It does not
 stop a determined attacker who discovers `?fresh=1` and sends it on every
-request, which forces a live RPC each time. **Before announcing this change,
-confirm whether Vercel Firewall / Attack Challenge Mode covers
-`/api/legal-versions` and record the outcome here** — enabled and configured, or
-an explicit time-boxed deferral. "We forgot to check" is not an acceptable
-outcome for a route we already know is exposed.
+request, which forces a live RPC each time.
 
-> Firewall decision: _pending — record the outcome (enabled / deferred until
-> DATE) before announcing._
+> Firewall decision: **enabled 2026-08-24 UTC.** Vercel WAF rule
+> `rule_rate_limit_legal_versions_rpc_iXi2bH` ("Rate limit legal versions
+> RPC") matches Request Path exactly equal to `/api/legal-versions`, which
+> includes requests carrying `?fresh=1`. It applies a fixed-window limit of
+> 100 requests per 60 seconds per IP and returns Vercel's standard rate-limit
+> response (`429`) when exceeded. It has no persistent IP-block duration and
+> affects no other route. Production readback reported the rule enabled,
+> active, valid, and free of validation errors at WAF configuration version 1.
+> A post-publication PR-preview smoke confirmed both the plain endpoint and
+> `?fresh=1` still returned HTTP 200 with the exact four-key tuple; the fresh
+> response retained `Cache-Control: no-store`.
 
 **Monitoring.** The five-minute health cron (§2d) probes the endpoint with
 `?fresh=1` — deliberately bypassing the CDN, since a cached 200 would keep
