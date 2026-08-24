@@ -18,11 +18,12 @@
 // version strings only — no consent rows, no member data, no PII.
 //
 // Caching: this route is unauthenticated and reachable before Turnstile by
-// necessity (it is what the page fetches to render current-terms state), and
-// DPC-WEB has no rate limit or firewall in front of it. `s-maxage` collapses
+// necessity (it is what the page fetches to render current-terms state).
+// Vercel WAF rate-limits the exact route to 100 requests per 60 seconds per
+// IP, including requests with `?fresh=1`. `s-maxage` additionally collapses
 // the default path to roughly one RPC per 10s window per Vercel cache region.
-// `?fresh=1` bypasses that for the submit-time revalidation, which must never
-// read a cached tuple. See plans/join-legal-version-staleness-remediation.
+// `?fresh=1` bypasses that cache for submit-time revalidation, which must never
+// read a stale tuple. See plans/join-legal-version-staleness-remediation.
 //
 // Fails closed in every failure mode: no baked-in fallback tuple, ever. A
 // fallback would reintroduce exactly the staleness bug this endpoint exists
