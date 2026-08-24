@@ -353,30 +353,18 @@ floor is roughly one RPC per 10s window *per region*, not globally. A cached
 tuple can be up to ~60s stale; that is safe because every submit revalidates
 uncached and the transactional DB gate remains authoritative.
 
-**Known exposure — Vercel Firewall decision.** The route is unauthenticated
-and reachable before Turnstile by necessity. The cache reduces *naive* abuse
-(crawlers, casual scripted floods) to near-zero marginal DB cost, and the WAF
-rule below caps request volume per source IP, including `?fresh=1`. A
-distributed attacker using enough source IPs remains outside that protection.
+**Vercel Firewall contract.** The route is unauthenticated and reachable
+before Turnstile by necessity. Production rate-limits the exact
+`/api/legal-versions` request path per source IP, including requests carrying
+`?fresh=1`, while the cache further reduces repeated reads on the default
+path. Keep live rule identifiers, thresholds, validation evidence, and
+residual-exposure analysis in the private DPC rollout record:
+`docs/rollout-20260820120000-checkout-legal-versions-2026-08-24.md`.
 
-> Firewall decision: **enabled 2026-08-24 UTC.** Vercel WAF rule
-> `rule_rate_limit_legal_versions_rpc_iXi2bH` ("Rate limit legal versions
-> RPC") matches Request Path exactly equal to `/api/legal-versions`, which
-> includes requests carrying `?fresh=1`. It applies a fixed-window limit of
-> 100 requests per 60 seconds per IP and returns Vercel's standard rate-limit
-> response (`429`) when exceeded. It has no persistent IP-block duration and
-> affects no other route. Production readback reported the rule enabled,
-> active, valid, and free of validation errors at WAF configuration version 1.
-> A post-publication PR-preview smoke confirmed both the plain endpoint and
-> `?fresh=1` still returned HTTP 200 with the exact four-key tuple; the fresh
-> response retained `Cache-Control: no-store`.
-
-The fail-closed checkout trade-off applies to the firewall too: a member whose
-IP reaches the shared limit receives `429`, and both checkout pages currently
-disable submission because they cannot confirm the live legal tuple. Shared
-NATs can therefore cause members to collide on one IP budget. Track distinct
-`429` recovery copy and retry behavior separately; do not weaken the legal
-currentness gate.
+The fail-closed checkout trade-off applies to the firewall too: a `429` means
+the pages cannot confirm the live legal tuple, so submission stays blocked.
+Track distinct `429` recovery copy and in-page retry behavior separately; do
+not weaken the legal-currentness gate.
 
 **Monitoring.** The five-minute health cron (§2d) probes the endpoint with
 `?fresh=1` — deliberately bypassing the CDN, since a cached 200 would keep
