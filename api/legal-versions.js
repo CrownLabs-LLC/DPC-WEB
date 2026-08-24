@@ -21,7 +21,7 @@
 // necessity (it is what the page fetches to render current-terms state).
 // A Vercel WAF rule rate-limits this exact path per IP, including requests
 // with `?fresh=1`; DEPLOY.md §2g documents the public behavioral contract.
-// Live rule configuration belongs in the private rollout record. `s-maxage`
+// Live rule configuration belongs in the private operations note. `s-maxage`
 // additionally collapses the default path to roughly one RPC per 10s window
 // per Vercel cache region.
 // `?fresh=1` bypasses that cache for submit-time revalidation, which must never
