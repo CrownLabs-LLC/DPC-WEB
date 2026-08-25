@@ -167,14 +167,18 @@ assert.match(deploy, /production deployments come only from\s+Vercel's Git integ
 assert.match(deploy, /Do not run `vercel --prod` from a local\s+checkout/);
 
 const packageJson = JSON.parse(packageSource);
+const localProductionDeployPattern = /\b(?:vercel|vc)\b.*(?:--prod\b|--target(?:=|\s+)production\b)/;
 const localProductionDeployScript = Object.entries(packageJson.scripts ?? {}).find(
-  ([, command]) => /\bvercel\b.*(?:--prod\b|--target(?:=|\s+)production\b)/.test(command),
+  ([, command]) => localProductionDeployPattern.test(command),
 );
 assert.equal(
   localProductionDeployScript,
   undefined,
   'package.json must not expose a local Vercel production-deploy script',
 );
+for (const command of ['vercel --prod', 'vc --prod']) {
+  assert.match(command, localProductionDeployPattern, `${command} must remain guarded`);
+}
 
 assert.match(analytics, /sendEvent\('join_error', params\)/);
 assert.match(analytics, /error_code:/);
