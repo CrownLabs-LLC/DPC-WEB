@@ -55,6 +55,12 @@ bottom of the file).
 See [`DEPLOY.md`](DEPLOY.md) for the full launch checklist (Stripe, Resend, GA4,
 DNS, Vercel).
 
+## Deployment
+
+Production deploys through Vercel's Git integration when a reviewed change is
+merged to GitHub `main`. The repository does not support uploading a local
+checkout to production; use pull-request previews for pre-merge verification.
+
 ## Source of truth
 The handoff brief that produced these files is preserved in
 [`DESIGN_HANDOFF.md`](DESIGN_HANDOFF.md). Treat it as authoritative for copy,
