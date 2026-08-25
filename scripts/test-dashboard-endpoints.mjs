@@ -102,7 +102,7 @@ process.env.SUPABASE_ANON_KEY = 'anon_test_key';
   ]) {
     const { res, out } = mockRes();
     const detail = event === 'join_error'
-      ? { error_code: 'CHECKOUT_IN_PROGRESS', http_status: 409 }
+      ? { error_code: 'legal_versions_rate_limited', http_status: 429 }
       : event.startsWith('join_')
         ? { flow_id: '019ffeb2-9ac1-71e5-96c5-0c69b70f247e' }
         : {};
@@ -114,7 +114,7 @@ process.env.SUPABASE_ANON_KEY = 'anon_test_key';
   const joinError = calls.find((call) => call.event === 'join_error');
   check(
     'track persists sanitized join error detail',
-    joinError?.error_code === 'CHECKOUT_IN_PROGRESS' && joinError?.http_status === 409,
+    joinError?.error_code === 'legal_versions_rate_limited' && joinError?.http_status === 429,
     joinError
   );
   const joinSubmit = calls.find((call) => call.event === 'join_submit');

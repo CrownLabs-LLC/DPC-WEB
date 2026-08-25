@@ -1079,9 +1079,9 @@ window.DPC_JOIN = {
 
   function legalRetryDelay(error) {
     if (Number.isFinite(error.retryAfterMs)) {
-      /* The live WAF owns this value. Respect it rather than coupling the page
-         to today's window; the capped exponential delay is only a fallback. */
-      return Math.max(1000, error.retryAfterMs);
+      /* Respect the live WAF value without letting an anomalous or forged
+         header strand checkout beyond the same bounded recovery window. */
+      return Math.min(LEGAL_RETRY_MAX_MS, Math.max(1000, error.retryAfterMs));
     }
     return Math.min(
       LEGAL_RETRY_MAX_MS,
@@ -1102,6 +1102,7 @@ window.DPC_JOIN = {
     clearLegalRetryTimer();
     legalRetryBtn.hidden = false;
     setError('Too many attempts. Please wait a moment and try again.', true);
+    track('join_error', { error_code: 'legal_versions_rate_limited', http_status: 429 });
     updateLegalRetryCountdown();
   }
 

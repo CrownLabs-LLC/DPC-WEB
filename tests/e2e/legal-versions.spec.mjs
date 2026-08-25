@@ -14,7 +14,13 @@ const BUMPED = { ...CURRENT, privacy: '4.3' };
 
 // serveLegalVersions: (requestUrl, callIndex) => ({status, body}) | null
 async function setup(page, { serveLegalVersions, checkout } = {}) {
-  const state = { legalVersionUrls: [], checkoutPayloads: [] };
+  const state = { legalVersionUrls: [], checkoutPayloads: [], trackPayloads: [] };
+
+  // Make telemetry observable through Playwright's request routing in both
+  // engines. WebKit does not expose sendBeacon requests to page.route.
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'sendBeacon', { value: undefined, configurable: true });
+  });
 
   await page.route('https://challenges.cloudflare.com/turnstile/**', async (route) => {
     await route.fulfill({
@@ -24,6 +30,7 @@ async function setup(page, { serveLegalVersions, checkout } = {}) {
     });
   });
   await page.route('**/api/track', async (route) => {
+    state.trackPayloads.push(JSON.parse(route.request().postData() || '{}'));
     await route.fulfill({ status: 202, contentType: 'application/json', body: '{"stored":true}' });
   });
   await page.route('https://checkout.stripe.com/**', async (route) => {
@@ -97,6 +104,13 @@ for (const recoveryPage of RECOVERY_PAGES) {
     await expect(page.locator('#form-error')).toHaveText('Too many attempts. Please wait a moment and try again.');
     await expect(retry).toBeVisible();
     await expect(retry).toBeDisabled();
+    if (recoveryPage.name === 'join') {
+      await expect.poll(() => state.trackPayloads.some((payload) => (
+        payload.event === 'join_error'
+          && payload.error_code === 'legal_versions_rate_limited'
+          && payload.http_status === 429
+      ))).toBe(true);
+    }
 
     // Even synthetic repeated clicks during the cooldown cannot spend another
     // request; the handler checks both disabled and in-flight state.
@@ -137,6 +151,22 @@ for (const recoveryPage of RECOVERY_PAGES) {
     await expect(page.locator('#legal-versions-retry')).toBeHidden();
     expect(state.legalVersionUrls).toHaveLength(1);
     expect(state.checkoutPayloads).toHaveLength(0);
+  });
+
+  test(`${recoveryPage.name}: an excessive Retry-After is capped`, async ({ page }) => {
+    await setup(page, {
+      serveLegalVersions: () => ({
+        status: 429,
+        headers: {
+          'retry-after': recoveryPage.name === 'join'
+            ? '86400'
+            : 'Fri, 31 Dec 9999 23:59:59 GMT',
+        },
+      }),
+    });
+    await page.goto(recoveryPage.url);
+
+    await expect(page.locator('#legal-versions-retry')).toHaveText('Try again in 60s');
   });
 
   test(`${recoveryPage.name}: a submit-time 429 never auto-submits after recovery`, async ({ page }) => {
