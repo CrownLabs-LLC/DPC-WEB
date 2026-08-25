@@ -3,10 +3,11 @@ import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
-const [join, support, deploy, serve, analytics, trackApi, dashboard, dashboardApi, setupSql, migrationSql, checkoutMigrationSql, playwrightConfig, checkoutWorkflow, ...linkedPages] = await Promise.all([
+const [join, support, deploy, packageSource, serve, analytics, trackApi, dashboard, dashboardApi, setupSql, migrationSql, checkoutMigrationSql, playwrightConfig, checkoutWorkflow, ...linkedPages] = await Promise.all([
   read('join.html'),
   read('support.html'),
   read('DEPLOY.md'),
+  read('package.json'),
   read('serve.json'),
   read('assets/analytics.js'),
   read('api/track.js'),
@@ -162,6 +163,18 @@ assert.match(deploy, /physical\s+Android phone in Chrome/);
 assert.match(deploy, /20260814_checkout_handoff_observability\.sql/);
 assert.match(deploy, /20260821160000_ops_subscription_overview\.sql/);
 assert.match(deploy, /Stripe key can read subscriptions/);
+assert.match(deploy, /production deployments come only from\s+Vercel's Git integration/);
+assert.match(deploy, /Do not run `vercel --prod` from a local\s+checkout/);
+
+const packageJson = JSON.parse(packageSource);
+const localProductionDeployScript = Object.entries(packageJson.scripts ?? {}).find(
+  ([, command]) => /\bvercel\b.*(?:--prod\b|--target(?:=|\s+)production\b)/.test(command),
+);
+assert.equal(
+  localProductionDeployScript,
+  undefined,
+  'package.json must not expose a local Vercel production-deploy script',
+);
 
 assert.match(analytics, /sendEvent\('join_error', params\)/);
 assert.match(analytics, /error_code:/);

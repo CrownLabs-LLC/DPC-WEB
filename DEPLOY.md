@@ -411,7 +411,7 @@ You said you have these — copy them in and commit.
 
 ---
 
-## 5. Vercel — deploy
+## 5. Vercel — Git-integrated deploy
 
 1. <https://vercel.com> → **Add New** → **Project** → import `CrownLabs-LLC/DPC-WEB`.
 2. Framework preset: **Other**. Root directory: leave default. Build command:
@@ -434,6 +434,13 @@ You said you have these — copy them in and commit.
    with the member site direction.
 6. Test on the Vercel preview URL first, then after DNS propagates re-test on
    the real domain.
+
+After the initial project import, production deployments come only from
+Vercel's Git integration: merge a reviewed change to GitHub `main`, then verify
+the deployment created for that exact commit. The repository intentionally has
+no local production-deploy npm script. Do not run `vercel --prod` from a local
+checkout; it uploads the invoking directory and can bypass GitHub `main`.
+Pull-request previews remain the pre-merge verification path.
 
 Acceptance:
 - `https://www.downtownpourcollective.com/` loads.
