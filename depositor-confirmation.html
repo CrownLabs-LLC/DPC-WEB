@@ -464,6 +464,19 @@ a:focus-visible, button:focus-visible, input:focus-visible, [tabindex]:focus-vis
   text-align: left;
 }
 .form__error:empty { display: none; }
+.legal-retry {
+  display: inline-block;
+  margin-top: 10px;
+  border: 1px solid rgba(196, 163, 90, 0.7);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--cream);
+  padding: 8px 12px;
+  font: inherit;
+  cursor: pointer;
+}
+.legal-retry[hidden] { display: none; }
+.legal-retry[disabled] { opacity: 0.55; cursor: not-allowed; }
 
 .fine {
   margin: 14px 0 0;
@@ -808,6 +821,7 @@ body:has(.cookie:not([hidden])) .page {
           <p class="summary" id="order-summary" aria-live="polite"></p>
           <button class="btn" type="submit" id="submit-btn">Continue to Checkout</button>
           <p class="form__error" id="form-error" role="alert"></p>
+          <button class="legal-retry" type="button" id="legal-versions-retry" hidden disabled>Try again</button>
           <p class="fine" id="offer-fineprint">YOUR $49 DEPOSIT IS ALREADY PAID · RECURRING MEMBERSHIP ONLY · DEADLINE SEPTEMBER 1 AT 12:00 AM PACIFIC · 21+</p>
         </div>
       </div>
@@ -910,6 +924,7 @@ window.__startDpcDepositorConfirmation = function (depositorToken) {
   var inviteError = document.getElementById('invite-error');
   var errorEl = document.getElementById('form-error');
   var submitBtn = document.getElementById('submit-btn');
+  var legalRetryBtn = document.getElementById('legal-versions-retry');
   var summaryEl = document.getElementById('order-summary');
   var fineEl = document.getElementById('offer-fineprint');
   var turnstileSlot = document.getElementById('turnstile-slot');
@@ -921,6 +936,13 @@ window.__startDpcDepositorConfirmation = function (depositorToken) {
   var TURNSTILE_MAX_LOAD_ATTEMPTS = 50;
   var TURNSTILE_SCRIPT_ID = 'turnstile-api-script';
   var TURNSTILE_SCRIPT_SRC = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+  var LEGAL_RETRY_BASE_MS = 5000;
+  var LEGAL_RETRY_MAX_MS = 60000;
+  var legalRetryAttempts = 0;
+  var legalRetryTimer = null;
+  var legalRetryReadyAt = 0;
+  var legalRetryInFlight = false;
+  var legalRetryRecovery = null;
 
   function showInviteUnavailable() {
     depositorToken = '';
@@ -1012,12 +1034,27 @@ window.__startDpcDepositorConfirmation = function (depositorToken) {
   var LEGAL_VERSION_KEYS = ['tos', 'privacy', 'memberTerms', 'autoRenewalTerms'];
   var acceptedVersions = null;
 
+  function retryAfterMs(res) {
+    if (!res.headers || typeof res.headers.get !== 'function') return null;
+    var value = res.headers.get('retry-after');
+    if (!value) return null;
+    var seconds = Number(value);
+    if (Number.isFinite(seconds) && seconds >= 0) return seconds * 1000;
+    var dateMs = Date.parse(value);
+    return Number.isFinite(dateMs) ? Math.max(0, dateMs - Date.now()) : null;
+  }
+
   function fetchLegalVersions(fresh) {
     /* The on-load read may use the CDN-cached path; submit-time and
        post-rejection reads must not. Never conflate the two. */
     var url = fresh ? LEGAL_VERSIONS_ENDPOINT + '?fresh=1' : LEGAL_VERSIONS_ENDPOINT;
     return fetch(url, { headers: { accept: 'application/json' } }).then(function (res) {
-      if (!res.ok) throw new Error('legal versions unavailable');
+      if (!res.ok) {
+        var error = new Error('legal versions unavailable');
+        error.status = res.status;
+        if (res.status === 429) error.retryAfterMs = retryAfterMs(res);
+        throw error;
+      }
       return res.json();
     }).then(function (body) {
       var tuple = {};
@@ -1040,15 +1077,113 @@ window.__startDpcDepositorConfirmation = function (depositorToken) {
     return true;
   }
 
+  function clearLegalRetryTimer() {
+    if (legalRetryTimer) window.clearTimeout(legalRetryTimer);
+    legalRetryTimer = null;
+  }
+
+  function resetLegalRetryUi() {
+    clearLegalRetryTimer();
+    legalRetryAttempts = 0;
+    legalRetryReadyAt = 0;
+    legalRetryInFlight = false;
+    legalRetryRecovery = null;
+    legalRetryBtn.hidden = true;
+    legalRetryBtn.disabled = true;
+    legalRetryBtn.textContent = 'Try again';
+  }
+
+  function updateLegalRetryCountdown() {
+    var remaining = legalRetryReadyAt - Date.now();
+    if (remaining <= 0) {
+      legalRetryTimer = null;
+      legalRetryBtn.disabled = false;
+      legalRetryBtn.textContent = 'Try again';
+      return;
+    }
+    legalRetryBtn.disabled = true;
+    legalRetryBtn.textContent = 'Try again in ' + Math.ceil(remaining / 1000) + 's';
+    legalRetryTimer = window.setTimeout(updateLegalRetryCountdown, Math.min(1000, remaining));
+  }
+
+  function legalRetryDelay(error) {
+    if (Number.isFinite(error.retryAfterMs)) {
+      /* The live WAF owns this value. Respect it rather than coupling the page
+         to today's window; the capped exponential delay is only a fallback. */
+      return Math.max(1000, error.retryAfterMs);
+    }
+    return Math.min(
+      LEGAL_RETRY_MAX_MS,
+      LEGAL_RETRY_BASE_MS * Math.pow(2, Math.min(legalRetryAttempts - 1, 4))
+    );
+  }
+
+  function legalVersionsRateLimited(error, recovery) {
+    /* Keep any prior tuple only as comparison context. Checkout stays disabled,
+       and the retry itself always reads ?fresh=1 before any submit path returns. */
+    submitting = false;
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Continue to Checkout';
+    legalRetryInFlight = false;
+    legalRetryRecovery = recovery;
+    legalRetryAttempts += 1;
+    legalRetryReadyAt = Date.now() + legalRetryDelay(error);
+    clearLegalRetryTimer();
+    legalRetryBtn.hidden = false;
+    setError('Too many attempts. Please wait a moment and try again.', true);
+    updateLegalRetryCountdown();
+  }
+
   function legalVersionsUnavailable() {
     /* No submit path. An honest unavailable state beats a submit that is
        certain to be rejected, and beats reusing a tuple we cannot confirm. */
     acceptedVersions = null;
     submitting = false;
+    resetLegalRetryUi();
     submitBtn.disabled = true;
     submitBtn.textContent = 'Continue to Checkout';
     setError('We could not confirm the current terms. Refresh the page to try again, or email hello@downtownpourcollective.com for help.', true);
   }
+
+  function handleLegalVersionsFailure(error, recovery) {
+    if (error && error.status === 429) {
+      legalVersionsRateLimited(error, recovery);
+      return;
+    }
+    legalVersionsUnavailable();
+  }
+
+  function legalVersionsLoaded(versions) {
+    resetLegalRetryUi();
+    acceptedVersions = versions;
+    submitting = false;
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Continue to Checkout';
+    setError('');
+  }
+
+  function resumeAfterLegalRetry(versions) {
+    if (acceptedVersions && !sameVersions(versions, acceptedVersions)) {
+      promptLegalReaccept(versions, false);
+      return;
+    }
+    legalVersionsLoaded(versions);
+  }
+
+  legalRetryBtn.addEventListener('click', function () {
+    if (legalRetryBtn.disabled || legalRetryInFlight || !legalRetryRecovery) return;
+    var recovery = legalRetryRecovery;
+    legalRetryInFlight = true;
+    legalRetryBtn.disabled = true;
+    legalRetryBtn.textContent = 'Checking…';
+    fetchLegalVersions(true).then(function (versions) {
+      resetLegalRetryUi();
+      recovery(versions);
+    }).catch(function (error) {
+      legalRetryInFlight = false;
+      handleLegalVersionsFailure(error, recovery);
+    });
+  });
 
   function promptLegalReaccept(versions, challengeConsumed) {
     /* Never auto-substitute a tuple the member has not been shown.
@@ -1057,6 +1192,7 @@ window.__startDpcDepositorConfirmation = function (depositorToken) {
        resetting it would force a pointless re-solve; a server rejection means
        the token was already spent verifying that request and a new one is
        required. */
+    resetLegalRetryUi();
     acceptedVersions = versions;
     if (form.legal) form.legal.checked = false;
     submitting = false;
@@ -1069,12 +1205,8 @@ window.__startDpcDepositorConfirmation = function (depositorToken) {
   function loadLegalVersions() {
     submitBtn.disabled = true;
     submitBtn.textContent = 'Loading…';
-    fetchLegalVersions(false).then(function (versions) {
-      acceptedVersions = versions;
-      submitBtn.disabled = false;
-      submitBtn.textContent = 'Continue to Checkout';
-    }).catch(function () {
-      legalVersionsUnavailable();
+    fetchLegalVersions(false).then(legalVersionsLoaded).catch(function (error) {
+      handleLegalVersionsFailure(error, legalVersionsLoaded);
     });
   }
 
@@ -1178,7 +1310,7 @@ window.__startDpcDepositorConfirmation = function (depositorToken) {
 
   form.addEventListener('submit', function (e) {
     e.preventDefault();
-    if (submitting) return;
+    if (submitting || legalRetryRecovery) return;
     setError('');
 
     var circle = selected('circle');
@@ -1264,8 +1396,10 @@ window.__startDpcDepositorConfirmation = function (depositorToken) {
              the member re-accept. Never auto-resubmit. */
           fetchLegalVersions(true).then(function (current) {
             promptLegalReaccept(current, true);
-          }).catch(function () {
-            legalVersionsUnavailable();
+          }).catch(function (error) {
+            handleLegalVersionsFailure(error, function (current) {
+              promptLegalReaccept(current, true);
+            });
           });
           return;
         }
@@ -1307,8 +1441,8 @@ window.__startDpcDepositorConfirmation = function (depositorToken) {
       }
       acceptedVersions = versions;
       postCheckout(versions);
-    }).catch(function () {
-      legalVersionsUnavailable();
+    }).catch(function (error) {
+      handleLegalVersionsFailure(error, resumeAfterLegalRetry);
     });
   });
 
