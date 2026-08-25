@@ -36,6 +36,7 @@ const ALLOWED_ERROR_CODES = new Set([
   'turnstile_incomplete',
   'legal_versions_unavailable',
   'legal_versions_changed',
+  'legal_versions_rate_limited',
   'navigation',
   'network',
   'unknown',

@@ -364,8 +364,14 @@ remains immutable and is not the live configuration source.
 
 The fail-closed checkout trade-off applies to the firewall too: a `429` means
 the pages cannot confirm the live legal tuple, so submission stays blocked.
-Track distinct `429` recovery copy and in-page retry behavior separately; do
-not weaken the legal-currentness gate.
+Both pages show “Too many attempts. Please wait a moment and try again,” keep
+the retry action disabled for the response's `Retry-After` interval (or a
+bounded exponential cooldown when the header is absent), and make the retry
+read `?fresh=1`. Repeated clicks and form submissions during that wait spend no
+additional requests. A successful retry never auto-submits: it either safely
+re-enables checkout for another fresh submit-time read or, if the tuple changed,
+clears consent and requires re-acceptance. Non-`429` failures retain the
+unavailable state. There is still no fallback tuple.
 
 **Monitoring.** The five-minute health cron (§2d) probes the endpoint with
 `?fresh=1` — deliberately bypassing the CDN, since a cached 200 would keep
