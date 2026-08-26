@@ -152,7 +152,10 @@ for (const recoveryPage of RECOVERY_PAGES) {
     if (recoveryPage.configure) await recoveryPage.configure(page);
 
     const retry = page.locator('#legal-versions-retry');
-    await expect(page.locator('#submit-btn')).toBeDisabled();
+    const submit = page.locator('#submit-btn');
+    await expect(submit).toBeDisabled();
+    await expect(submit).toHaveCSS('background-color', 'rgba(196, 163, 90, 0.45)');
+    await expect(submit).toHaveCSS('cursor', 'not-allowed');
     await expect(page.locator('#form-error')).toContainText('could not confirm the current terms');
     await expect(retry).toBeVisible();
     await expect(retry).toBeEnabled();
@@ -242,7 +245,7 @@ for (const recoveryPage of RECOVERY_PAGES) {
     expect(state.checkoutPayloads).toHaveLength(0);
   });
 
-  test(`${recoveryPage.name}: an incomplete retry response remains fail-closed`, async ({ page }) => {
+  test(`${recoveryPage.name}: an incomplete retry response remains fail-closed and backs off`, async ({ page }) => {
     const state = await setup(page, {
       serveLegalVersions: (_url, index) => (index === 0
         ? { status: 429, headers: { 'retry-after': '1' } }
@@ -257,7 +260,8 @@ for (const recoveryPage of RECOVERY_PAGES) {
     await expect(page.locator('#submit-btn')).toBeDisabled();
     await expect(page.locator('#form-error')).toContainText('could not confirm the current terms');
     await expect(retry).toBeVisible();
-    await expect(retry).toBeEnabled();
+    await expect(retry).toBeDisabled();
+    await expect(retry).toHaveText('Try again in 10s');
     expect(state.legalVersionUrls).toHaveLength(2);
     expect(state.legalVersionUrls[1]).toContain('fresh=1');
     expect(state.checkoutPayloads).toHaveLength(0);

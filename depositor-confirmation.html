@@ -451,6 +451,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, [tabindex]:focus-vis
 .btn:hover { background: var(--gold-hover); }
 .btn:active { background: var(--gold-press); }
 .btn[disabled] {
+  background: rgba(196, 163, 90, 0.45);
   opacity: 0.55;
   cursor: not-allowed;
 }
@@ -1138,12 +1139,21 @@ window.__startDpcDepositorConfirmation = function (depositorToken) {
     /* No submit path. Keep any prior tuple only as comparison context, then
        require a fresh successful read before checkout can be enabled again. */
     submitting = false;
-    resetLegalRetryUi();
+    clearLegalRetryTimer();
+    legalRetryInFlight = false;
     submitBtn.disabled = true;
     submitBtn.textContent = 'Continue to Checkout';
     legalRetryRecovery = recovery;
+    legalRetryAttempts += 1;
     legalRetryBtn.hidden = false;
-    legalRetryBtn.disabled = false;
+    if (legalRetryAttempts > 1) {
+      legalRetryReadyAt = Date.now() + legalRetryDelay({});
+      updateLegalRetryCountdown();
+    } else {
+      legalRetryReadyAt = 0;
+      legalRetryBtn.disabled = false;
+      legalRetryBtn.textContent = 'Try again';
+    }
     setError('We could not confirm the current terms. Select Try again below, or email hello@downtownpourcollective.com for help.', true);
   }
 
