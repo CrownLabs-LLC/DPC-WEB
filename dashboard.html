@@ -103,6 +103,20 @@ button.primary { background: var(--accent); border-color: var(--accent); color: 
   .window-note { white-space: normal; }
   .status-breakdown { grid-template-columns: repeat(3, minmax(68px, 1fr)); }
 }
+.funnel-step { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+.funnel-step:last-child { border-bottom: 0; }
+.funnel-step .fs-label { font-weight: 600; }
+.funnel-step .fs-count { font-variant-numeric: tabular-nums; font-weight: 600; }
+.funnel-step .fs-bar { grid-column: 1 / -1; height: 8px; border-radius: 4px; background: var(--grid-line); overflow: hidden; }
+.funnel-step .fs-fill { height: 100%; border-radius: 4px; background: var(--series-visits); }
+.funnel-step .fs-note { grid-column: 1 / -1; font-size: 12px; color: var(--text-muted); }
+.funnel-step .fs-note .fs-drop { color: var(--delta-bad); font-weight: 600; }
+.funnel-step.fs-entrance .fs-fill { background: var(--series-checkout-attempts); }
+.entrances { display: grid; grid-template-columns: repeat(auto-fit, minmax(132px, 1fr)); gap: 10px; }
+.entrance { border: 1px solid var(--border); border-radius: 8px; padding: 10px; }
+.entrance .en-label { font-size: 12px; color: var(--text-muted); }
+.entrance .en-value { font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.entrance .en-note { font-size: 11px; color: var(--text-muted); }
 .chart-wrap { position: relative; }
 .chart-wrap svg { display: block; width: 100%; height: auto; }
 .legend { display: flex; gap: 16px; font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; }
@@ -195,9 +209,23 @@ details.tableview summary { cursor: pointer; color: var(--text-secondary); font-
           <button data-days="90">Last 90 days</button>
         </div>
       </div>
+      <div class="grid2" style="margin-bottom:16px">
+        <div class="card">
+          <h2>Where visitors are lost</h2>
+          <p class="empty" style="margin:0 0 4px">Each step as a share of the one it follows.</p>
+          <div id="funnel-steps"></div>
+        </div>
+        <div class="card">
+          <h2>How they arrive at Join</h2>
+          <p class="empty" style="margin:0 0 10px">Homepage click-throughs read the pitch first. Cold arrivals — flyer QR scans, typed links, ads pointed straight at /join — did not.</p>
+          <div class="entrances" id="join-entrances"></div>
+          <h2 style="margin-top:16px">Landing-page traffic by source</h2>
+          <div class="entrances" id="traffic-sources" style="margin-top:8px"></div>
+        </div>
+      </div>
       <div class="kpis" id="acquisition-kpis"></div>
       <div class="card">
-        <h2>Traffic and checkout attempts per day</h2>
+        <h2>Homepage and Join page views per day</h2>
         <div class="legend" id="line-legend"></div>
         <div class="chart-wrap" id="line-chart"></div>
       </div>
@@ -305,6 +333,8 @@ details.tableview summary { cursor: pointer; color: var(--text-secondary); font-
     });
     renderBanner(d);
     renderSubscriptions(d);
+    renderFunnelSteps(d);
+    renderEntrances(d);
     renderAcquisitionKpis(d);
     renderCharts(d);
     renderDailyTable(d);
@@ -323,6 +353,15 @@ details.tableview summary { cursor: pointer; color: var(--text-secondary); font-
     if (d.funnel && d.funnel.truncated) problems.push('Funnel data reached its query limit; counts are incomplete');
     if (d.funnel && d.funnel.totals && d.funnel.totals.checkout_stalled) {
       problems.push(d.funnel.totals.checkout_stalled + ' checkout handoff(s) stalled');
+    }
+    var blocked = (d.funnel && d.funnel.blocked_windows) || [];
+    if (blocked.length) {
+      var attempts = blocked.reduce(function (sum, w) { return sum + w.submits; }, 0);
+      problems.push(
+        'Checkout blocked in ' + blocked.length + ' hour(s): ' + attempts
+        + ' attempt(s) and none reached Stripe (latest ' + blocked[0].hour.replace('T', ' ') + ':00 PT'
+        + (blocked[0].top_error_code ? ', ' + blocked[0].top_error_code : '') + ')'
+      );
     }
     var overview = d.subscription_overview || {};
     if (overview.error) {
@@ -483,6 +522,111 @@ details.tableview summary { cursor: pointer; color: var(--text-secondary); font-
     box.appendChild(scroll);
   }
 
+  var JOIN_ENTRY_LABELS = {
+    from_site: ['From the homepage', 'clicked through'],
+    direct: ['Direct / QR scan', 'flyers, typed links'],
+    meta: ['Meta, straight to Join', 'ad skipped the homepage'],
+    search: ['Search', ''],
+    other: ['Other referrer', ''],
+    return: ['Back from Stripe', 'not a new arrival']
+  };
+  var SOURCE_LABELS = {
+    meta: ['Meta', 'Instagram + Facebook'],
+    direct: ['Direct', 'QR scans, typed links'],
+    search: ['Search', ''],
+    other: ['Other', ''],
+    internal: ['On-site', 'not a new arrival']
+  };
+
+  function pct(part, whole) {
+    if (!whole) return null;
+    return (part / whole) * 100;
+  }
+  function fmtPct(value) {
+    if (value === null) return '—';
+    return (value < 10 ? value.toFixed(1) : Math.round(value)) + '%';
+  }
+
+  function renderFunnelSteps(d) {
+    var box = $('funnel-steps');
+    box.textContent = '';
+    var f = d.funnel || {};
+    if (!f.configured || !Array.isArray(f.steps)) {
+      box.appendChild(el('p', 'empty', f.error || 'Supabase not configured yet'));
+      return;
+    }
+    var byKey = {};
+    f.steps.forEach(function (step) { byKey[step.key] = step; });
+    var widest = 0;
+    f.steps.forEach(function (step) { widest = Math.max(widest, step.count || 0); });
+
+    f.steps.forEach(function (step) {
+      var row = el('div', 'funnel-step' + (step.key === 'join' ? ' fs-entrance' : ''));
+      row.appendChild(el('div', 'fs-label', step.label));
+      row.appendChild(el('div', 'fs-count', fmt(step.count)));
+      var bar = el('div', 'fs-bar');
+      var fill = el('div', 'fs-fill');
+      fill.style.width = (widest ? (step.count / widest) * 100 : 0) + '%';
+      bar.appendChild(fill);
+      row.appendChild(bar);
+
+      var note = el('div', 'fs-note');
+      var parent = step.of ? byKey[step.of] : null;
+      if (parent && step.count > parent.count) {
+        // Form submissions are attempts, not people: one visitor retrying a
+        // failing checkout logs several. Reporting that as a conversion rate
+        // would print a share above 100% and a drop-off of zero.
+        note.textContent = fmt(step.count) + ' attempts from ' + fmt(parent.count) + ' '
+          + parent.label + ' — repeat tries inflate this';
+      } else if (parent) {
+        var rate = pct(step.count, parent.count);
+        note.appendChild(document.createTextNode(fmtPct(rate) + ' of ' + parent.label + ' · '));
+        var lost = el('span', 'fs-drop', fmt(Math.max(0, parent.count - step.count)) + ' lost here');
+        note.appendChild(lost);
+      } else if (step.key === 'join') {
+        note.textContent = fmt(f.cold_join_entries || 0) + ' of these arrived cold, without seeing the homepage';
+      } else {
+        note.textContent = 'Top of funnel';
+      }
+      row.appendChild(note);
+      box.appendChild(row);
+    });
+  }
+
+  function entranceTile(label, note, value, share) {
+    var card = el('div', 'entrance');
+    card.appendChild(el('div', 'en-label', label));
+    card.appendChild(el('div', 'en-value', fmt(value)));
+    var detail = share === null ? (note || '') : fmtPct(share) + (note ? ' · ' + note : '');
+    card.appendChild(el('div', 'en-note', detail));
+    return card;
+  }
+
+  function renderGroupTiles(boxId, counts, labels, order) {
+    var box = $(boxId);
+    box.textContent = '';
+    if (!counts) { box.appendChild(el('p', 'empty', 'No data yet.')); return; }
+    var total = 0;
+    order.forEach(function (key) { total += counts[key] || 0; });
+    var shown = 0;
+    order.forEach(function (key) {
+      var value = counts[key] || 0;
+      if (!value) return;
+      shown += 1;
+      var meta = labels[key] || [key, ''];
+      box.appendChild(entranceTile(meta[0], meta[1], value, pct(value, total)));
+    });
+    if (!shown) box.appendChild(el('p', 'empty', 'No data yet.'));
+  }
+
+  function renderEntrances(d) {
+    var f = d.funnel || {};
+    renderGroupTiles('join-entrances', f.join_entries, JOIN_ENTRY_LABELS,
+      ['from_site', 'direct', 'meta', 'search', 'other', 'return']);
+    renderGroupTiles('traffic-sources', f.sources, SOURCE_LABELS,
+      ['meta', 'direct', 'search', 'other', 'internal']);
+  }
+
   function renderAcquisitionKpis(d) {
     var box = $('acquisition-kpis');
     box.textContent = '';
@@ -491,7 +635,9 @@ details.tableview summary { cursor: pointer; color: var(--text-secondary); font-
       box.appendChild(metricTile('Acquisition signals', '—', f.error || 'Supabase not configured yet'));
       return;
     }
-    box.appendChild(tile('Visits', fmt(f.totals.visits), f.totals.visits, f.prev.visits, true));
+    var visitsTile = tile('Page views · all pages', fmt(f.totals.visits), f.totals.visits, f.prev.visits, true);
+    visitsTile.appendChild(el('div', 'delta', 'Homepage ' + fmt(f.totals.home_views || 0) + ' · Join ' + fmt(f.totals.join_views || 0)));
+    box.appendChild(visitsTile);
     var joinErrorTile = tile('Join errors', fmt(f.totals.join_errors || 0), f.totals.join_errors || 0, f.prev.join_errors || 0, false);
     var errorCodes = f.totals.join_error_codes || {};
     var breakdown = Object.keys(errorCodes)
@@ -570,8 +716,8 @@ details.tableview summary { cursor: pointer; color: var(--text-secondary); font-
     var legend = $('line-legend');
     legend.textContent = '';
     var series = [
-      { name: 'Visits', short: 'Visits', color: cssVar('--series-visits'), get: function (r) { return r.visits; } },
-      { name: 'Checkout attempts', short: 'Attempts', color: cssVar('--series-checkout-attempts'), get: function (r) { return r.checkout_attempts; } }
+      { name: 'Homepage views', short: 'Homepage', color: cssVar('--series-visits'), get: function (r) { return r.home_views; } },
+      { name: 'Join page views', short: 'Join', color: cssVar('--series-checkout-attempts'), get: function (r) { return r.join_views; } }
     ];
     series.forEach(function (s) {
       var item = el('span');
@@ -582,9 +728,9 @@ details.tableview summary { cursor: pointer; color: var(--text-secondary); font-
       legend.appendChild(item);
     });
 
-    var svg = svgEl('svg', { viewBox: '0 0 ' + CHART_W + ' ' + CHART_H, role: 'img', 'aria-label': 'Daily visits and checkout attempts' });
+    var svg = svgEl('svg', { viewBox: '0 0 ' + CHART_W + ' ' + CHART_H, role: 'img', 'aria-label': 'Daily homepage and Join page views' });
     var maxVal = 0;
-    daily.forEach(function (r) { maxVal = Math.max(maxVal, r.visits, r.checkout_attempts); });
+    daily.forEach(function (r) { maxVal = Math.max(maxVal, r.home_views, r.join_views); });
     var yMax = niceMax(maxVal);
     var dims = frame(svg, yMax);
     var n = daily.length;
@@ -663,7 +809,7 @@ details.tableview summary { cursor: pointer; color: var(--text-secondary); font-
     var table = el('table');
     var thead = el('thead');
     var hr = el('tr');
-    ['Date', 'Visits', 'Checkout attempts', 'Success-page views'].forEach(function (h, i) {
+    ['Date', 'Homepage', 'Join page', 'Submitted', 'Reached Stripe', 'Errors', 'Completed'].forEach(function (h, i) {
       hr.appendChild(el('th', i ? 'num' : '', h));
     });
     thead.appendChild(hr);
@@ -672,7 +818,8 @@ details.tableview summary { cursor: pointer; color: var(--text-secondary); font-
     daily.forEach(function (r) {
       var tr = el('tr');
       tr.appendChild(el('td', '', r.date));
-      [r.visits, r.checkout_attempts, r.confirmations].forEach(function (v) { tr.appendChild(el('td', 'num', fmt(v))); });
+      [r.home_views, r.join_views, r.checkout_attempts, r.checkout_departed, r.join_errors, r.confirmations]
+        .forEach(function (v) { tr.appendChild(el('td', 'num', fmt(v))); });
       tbody.appendChild(tr);
     });
     table.appendChild(tbody);

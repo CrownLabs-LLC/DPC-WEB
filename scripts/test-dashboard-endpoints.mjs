@@ -257,10 +257,13 @@ function mockDashboardFetch({ hangResendDomains = false, failSubscriptionOvervie
         { ts: new Date(now - 2790e3).toISOString(), event: 'join_checkout_ready', flow_id: '00000000-0000-4000-8000-000000000002' },
         { ts: new Date(now - 2780e3).toISOString(), event: 'join_checkout_stalled', flow_id: '00000000-0000-4000-8000-000000000002' },
         { ts: new Date(now - 2770e3).toISOString(), event: 'join_checkout_fallback_clicked', flow_id: '00000000-0000-4000-8000-000000000002' },
+        // Own hour, two attempts, no departure: the blocked-checkout shape.
+        { ts: new Date(now - 5 * 3600e3).toISOString(), event: 'join_submit', flow_id: '00000000-0000-4000-8000-000000000003' },
+        { ts: new Date(now - 5 * 3600e3 + 30e3).toISOString(), event: 'join_submit', flow_id: '00000000-0000-4000-8000-000000000004' },
       ];
       const rows = [
-        { ts: new Date(now - 3600e3).toISOString(), event: 'page_view' },
-        { ts: new Date(now - 3600e3).toISOString(), event: 'page_view' },
+        { ts: new Date(now - 3600e3).toISOString(), event: 'page_view', page: 'member', referrer: 'instagram.com' },
+        { ts: new Date(now - 3600e3).toISOString(), event: 'page_view', page: 'join', referrer: 'www.downtownpourcollective.com' },
         { ts: new Date(now - 3500e3).toISOString(), event: 'membership_checkout_complete' },
         { ts: new Date(now - 3400e3).toISOString(), event: 'join_error', error_code: 'turnstile_unavailable' },
         { ts: new Date(now - 3300e3).toISOString(), event: 'join_error', error_code: 'turnstile_unavailable' },
@@ -268,7 +271,7 @@ function mockDashboardFetch({ hangResendDomains = false, failSubscriptionOvervie
         { ts: new Date(now - 3150e3).toISOString(), event: 'join_error', error_code: 'CHECKOUT_IN_PROGRESS' },
         { ts: new Date(now - 3100e3).toISOString(), event: 'join_error', error_code: 'constructor' },
         { ts: new Date(now - 3000e3).toISOString(), event: 'join_error', error_code: '__proto__' },
-        { ts: new Date(now - 40 * 86400e3).toISOString(), event: 'page_view' },
+        { ts: new Date(now - 40 * 86400e3).toISOString(), event: 'page_view', page: 'member', referrer: null },
         { ts: new Date(now - 40 * 86400e3).toISOString(), event: 'join_error', error_code: 'network' },
       ];
       const filtered = u.includes('join_checkout_ready')
@@ -329,7 +332,7 @@ process.env.SUPABASE_SERVICE_ROLE_KEY = 'service_test_key';
   const f = out.body?.funnel;
   check('funnel counts current period only', f?.totals?.visits === 2 && f?.totals?.confirmations === 1, f?.totals);
   check('daily acquisition counts checkout attempts', (
-    f?.daily?.reduce((sum, row) => sum + row.checkout_attempts, 0) === 2
+    f?.daily?.reduce((sum, row) => sum + row.checkout_attempts, 0) === 4
   ), f?.daily);
   check('funnel previous period counted', f?.prev?.visits === 1, f?.prev);
   check('join errors counted by code', (
@@ -342,12 +345,34 @@ process.env.SUPABASE_SERVICE_ROLE_KEY = 'service_test_key';
   ), f?.totals);
   check('previous join errors counted', f?.prev?.join_errors === 1, f?.prev);
   check('checkout handoff attempts are correlated and counted', (
-    f?.totals?.join_submits === 2
+    f?.totals?.join_submits === 4
     && f?.totals?.checkout_ready === 2
     && f?.totals?.checkout_departed === 1
     && f?.totals?.checkout_stalled === 1
     && f?.totals?.checkout_fallback_clicks === 1
   ), f?.totals);
+  check('funnel splits page views by page', (
+    f?.totals?.home_views === 1 && f?.totals?.join_views === 1 && f?.totals?.visits === 2
+  ), f?.totals);
+  check('join entrances separate homepage click-through from cold arrivals', (
+    f?.join_entries?.from_site === 1
+    && f?.join_entries?.direct === 0
+    && f?.cold_join_entries === 0
+  ), f?.join_entries);
+  check('landing-page traffic grouped by source', (
+    f?.sources?.meta === 1 && f?.sources?.internal === 1 && f?.sources?.direct === 0
+  ), f?.sources);
+  check('funnel steps expose the homepage-to-join rate', (
+    Array.isArray(f?.steps)
+    && f.steps.find((s) => s.key === 'join_from_home')?.count === 1
+    && f.steps.find((s) => s.key === 'join_from_home')?.of === 'home'
+    && f.steps.find((s) => s.key === 'complete')?.count === 1
+  ), f?.steps);
+  check('blocked checkout window detected', (
+    f?.blocked_windows?.length === 1
+    && f.blocked_windows[0].submits === 2
+    && f.blocked_windows[0].departed === undefined
+  ), f?.blocked_windows);
   check('funnel and join-error events use separate query budgets', (
     f?.truncated === false
   ), f);
