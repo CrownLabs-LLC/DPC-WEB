@@ -142,14 +142,29 @@ for (const recoveryPage of RECOVERY_PAGES) {
     expect(state.checkoutPayloads[0].legalVersions).toEqual(CURRENT);
   });
 
-  test(`${recoveryPage.name}: non-429 failures keep the unavailable state`, async ({ page }) => {
-    const state = await setup(page, { serveLegalVersions: () => ({ status: 503 }) });
+  test(`${recoveryPage.name}: a transient non-429 failure can be retried safely`, async ({ page }) => {
+    const state = await setup(page, {
+      serveLegalVersions: (_url, index) => (index === 0
+        ? { status: 503 }
+        : { status: 200, body: CURRENT }),
+    });
     await page.goto(recoveryPage.url);
+    if (recoveryPage.configure) await recoveryPage.configure(page);
 
+    const retry = page.locator('#legal-versions-retry');
     await expect(page.locator('#submit-btn')).toBeDisabled();
     await expect(page.locator('#form-error')).toContainText('could not confirm the current terms');
-    await expect(page.locator('#legal-versions-retry')).toBeHidden();
+    await expect(retry).toBeVisible();
+    await expect(retry).toBeEnabled();
     expect(state.legalVersionUrls).toHaveLength(1);
+    expect(state.checkoutPayloads).toHaveLength(0);
+
+    await retry.click();
+
+    await expect(retry).toBeHidden();
+    await expect(page.locator('#submit-btn')).toBeEnabled();
+    expect(state.legalVersionUrls).toHaveLength(2);
+    expect(state.legalVersionUrls[1]).toContain('fresh=1');
     expect(state.checkoutPayloads).toHaveLength(0);
   });
 
@@ -241,7 +256,8 @@ for (const recoveryPage of RECOVERY_PAGES) {
 
     await expect(page.locator('#submit-btn')).toBeDisabled();
     await expect(page.locator('#form-error')).toContainText('could not confirm the current terms');
-    await expect(retry).toBeHidden();
+    await expect(retry).toBeVisible();
+    await expect(retry).toBeEnabled();
     expect(state.legalVersionUrls).toHaveLength(2);
     expect(state.legalVersionUrls[1]).toContain('fresh=1');
     expect(state.checkoutPayloads).toHaveLength(0);
@@ -323,16 +339,29 @@ test('a tuple that changes between load and submit clears consent and blocks the
   expect(state.checkoutPayloads[0].legalVersions).toEqual(BUMPED);
 });
 
-test('a failed submit-time read never falls back to the load-time tuple', async ({ page }) => {
+test('a failed submit-time read retries fresh and never auto-submits', async ({ page }) => {
   const state = await setup(page, {
-    serveLegalVersions: (_url, index) => (index === 0 ? { status: 200, body: CURRENT } : null),
+    serveLegalVersions: (_url, index) => (index === 1
+      ? null
+      : { status: 200, body: CURRENT }),
   });
   await page.goto('/join');
   await fillForm(page);
   await page.locator('#submit-btn').click();
 
+  const retry = page.locator('#legal-versions-retry');
   await expect(page.locator('#form-error')).toContainText('could not confirm the current terms');
   await expect(page.locator('#submit-btn')).toBeDisabled();
+  await expect(retry).toBeVisible();
+  await expect(retry).toBeEnabled();
+  expect(state.checkoutPayloads).toHaveLength(0);
+
+  await retry.click();
+
+  await expect(retry).toBeHidden();
+  await expect(page.locator('#submit-btn')).toBeEnabled();
+  expect(state.legalVersionUrls).toHaveLength(3);
+  expect(state.legalVersionUrls[2]).toContain('fresh=1');
   expect(state.checkoutPayloads).toHaveLength(0);
 });
 
@@ -377,5 +406,6 @@ test('a rejection whose re-read also fails ends in the fail-closed state', async
 
   await expect(page.locator('#form-error')).toContainText('could not confirm the current terms');
   await expect(page.locator('#submit-btn')).toBeDisabled();
+  await expect(page.locator('#legal-versions-retry')).toBeVisible();
   expect(state.checkoutPayloads).toHaveLength(1);
 });

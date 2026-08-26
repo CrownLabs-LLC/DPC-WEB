@@ -1106,15 +1106,17 @@ window.DPC_JOIN = {
     updateLegalRetryCountdown();
   }
 
-  function legalVersionsUnavailable() {
-    /* No submit path. An honest unavailable state beats a submit that is
-       certain to be rejected, and beats reusing a tuple we cannot confirm. */
-    acceptedVersions = null;
+  function legalVersionsUnavailable(recovery) {
+    /* No submit path. Keep any prior tuple only as comparison context, then
+       require a fresh successful read before checkout can be enabled again. */
     submitting = false;
     resetLegalRetryUi();
     submitBtn.disabled = true;
     submitBtn.textContent = 'Continue to Checkout';
-    setError('We could not confirm the current terms. Refresh the page to try again, or email hello@downtownpourcollective.com for help.', true);
+    legalRetryRecovery = recovery;
+    legalRetryBtn.hidden = false;
+    legalRetryBtn.disabled = false;
+    setError('We could not confirm the current terms. Select Try again below, or email hello@downtownpourcollective.com for help.', true);
     track('join_error', { error_code: 'legal_versions_unavailable' });
   }
 
@@ -1123,7 +1125,7 @@ window.DPC_JOIN = {
       legalVersionsRateLimited(error, recovery);
       return;
     }
-    legalVersionsUnavailable();
+    legalVersionsUnavailable(recovery);
   }
 
   function legalVersionsLoaded(versions) {
