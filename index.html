@@ -292,15 +292,31 @@ img, svg { display: block; max-width: 100%; }
   color: rgba(196, 163, 90, 0.7);
   margin: 0;
 }
-.hero__note {
+.partners__intro {
+  font-family: var(--body);
+  font-size: 17px;
+  line-height: 1.7;
+  color: rgba(245, 240, 232, 0.82);
+  text-align: center;
+  max-width: 640px;
+  margin: 0 auto 34px;
+  text-wrap: pretty;
+}
+.hero__deadline {
   font-family: var(--body);
   font-weight: 400;
-  font-size: 14px;
-  line-height: 1.55;
-  color: rgba(245, 240, 232, 0.65);
+  font-size: 16px;
+  line-height: 1.6;
+  color: rgba(245, 240, 232, 0.88);
   margin: 0;
-  max-width: 420px;
+  max-width: 520px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(196, 163, 90, 0.32);
   text-wrap: pretty;
+}
+.hero__deadline strong {
+  font-weight: 600;
+  color: var(--gold);
 }
 
 /* ============ SECTION 2 · WHY THIS EXISTS ============ */
@@ -1244,13 +1260,13 @@ img, svg { display: block; max-width: 100%; }
 
     <p class="hero__eyebrow">LIVERMORE  ·  AUGUST 2026</p>
     <h1 class="hero__headline">Five drinks a month at five of downtown Livermore's best spots.</h1>
-    <p class="hero__sub">Downtown Pour Collective is a members-only community for people who love going out in downtown Livermore. Each month your membership covers five Pours (your drinks), one at each of five local spots. Feel like a regular where they know your order, or try somewhere you have never been.</p>
+    <p class="hero__sub">Downtown Pour Collective is a members-only community for people who love going out in downtown Livermore. Each month your membership covers five Pours (your drinks) — three spots we assign, and two you pick yourself. Feel like a regular where they know your order, or try somewhere you have never been.</p>
 
     <div class="hero__cta-wrap">
       <!-- TODO Aug 1: wire href to create-circle-checkout join form (W1) — not the $49 Payment Link -->
       <a class="btn" href="/join" data-join-cta>Join The Collective</a>
       <p class="hero__micro">THE FOUNDING 200  ·  FIVE YEARS OF LOCKED-IN PRICING</p>
-      <p class="hero__note">Already paid a $49 Founding Slot Deposit? Please don’t use the public Join checkout. We’ll email your private membership-confirmation link shortly. Your deposit is already recorded, and you won’t be charged it again.</p>
+      <p class="hero__deadline"><strong>Founding pricing closes Monday, August 31 at 11:59 PM.</strong> Join by then and you’re at the Kickoff Party on September 15 — the night the founding class meets for the first time.</p>
     </div>
   </div>
 </header>
@@ -1259,14 +1275,14 @@ img, svg { display: block; max-width: 100%; }
 <section class="why" data-screen-label="02 Why This Exists">
   <div class="why__inner">
     <div class="section__head">
-      <span class="eyebrow eyebrow--center">WHY THIS EXISTS</span>
-      <h2 class="section-title why__title">Downtown only stays great when the people who love it show up.</h2>
+      <span class="eyebrow eyebrow--center">WHY JOIN</span>
+      <h2 class="section-title why__title">Walk in as a regular.</h2>
       <hr class="rule-gold">
     </div>
     <div class="why__body">
-      <p>The restaurants, alehouses, wine bars, breweries, and wineries in downtown Livermore are run by people who chose this town. They live here. They hire locals. They sponsor little league teams and donate to school auctions. They are the reason downtown feels like downtown.</p>
-      <p>They also operate on margins that get tighter every year. Rent goes up. Suppliers raise prices. Staffing is harder than it has ever been. A slow Tuesday hurts. A slow month is a problem.</p>
-      <p>Downtown Pour Collective exists to send a steady flow of locals to these places during the quieter hours that need it most. A community of people who show up on purpose. Members get a curated experience. Venues get a guest worth keeping. Downtown gets the regulars it has always deserved.</p>
+      <p>Downtown Livermore has a dozen places worth knowing well. Most of us rotate through the same two or three, order the same thing, and never quite become a regular anywhere.</p>
+      <p>A membership changes that math. Your Pours land at the start of every month — a standing reason to go on a Tuesday, after work, before the weekend crowd. You walk in, open the app, and the drink is already handled. Enough visits to the same bar and they start pouring before you ask.</p>
+      <p>You end up with a place for a first drink, a place for a long dinner, and a place to take a friend from out of town. Downtown stops being where you occasionally eat and starts being your neighborhood.</p>
     </div>
   </div>
 </section>
@@ -1436,8 +1452,8 @@ img, svg { display: block; max-width: 100%; }
       </div>
       <div class="offer-card">
         <p class="offer-card__num">04</p>
-        <h3 class="offer-card__title">$49 FOUNDING SLOT DEPOSIT</h3>
-        <p class="offer-card__body">When you join, your first payment is billed — the full year if you chose annual, or your first month if you chose monthly — plus a one-time $49 Founding Slot Deposit. Your subscription begins when payment is confirmed, and your paid deposit includes one Welcome Kit (see below for Welcome Kit contents).</p>
+        <h3 class="offer-card__title">YOUR FOUNDING NUMBER + WELCOME KIT</h3>
+        <p class="offer-card__body">A one-time $49 Founding Slot Deposit secures your founding number and includes your Founding Welcome Kit (contents below). It is billed once at signup, alongside your first payment — the full year if you chose annual, or your first month if you chose monthly. Your subscription begins when payment is confirmed.</p>
       </div>
     </div>
 
@@ -1518,7 +1534,7 @@ img, svg { display: block; max-width: 100%; }
       </div>
     </div>
 
-    <p class="circle__fineprint">Choose monthly or annual, plus a one-time $49 Founding Slot Deposit at signup. A paid deposit includes one Welcome Kit. Founding pricing is live through the end of August — after that, new members pay the standard rate. Cancel anytime.</p>
+    <p class="circle__fineprint">Choose monthly or annual. A one-time $49 Founding Slot Deposit at signup secures your founding number and includes your Welcome Kit. Founding pricing is live through August 31 — after that, new members pay the standard rate. Cancel anytime.</p>
 
     <p class="circle__sub">Every Circle follows the same membership structure — the differences are what you drink and the subscription price. Each includes up to five Pours per membership month, a birthday Pour during your birthday month, founding recognition, and five years of founding pricing.</p>
   </div>
@@ -1531,6 +1547,7 @@ img, svg { display: block; max-width: 100%; }
       <span class="eyebrow eyebrow--center">PARTICIPATING PARTNERS</span>
       <h2 class="section-title partners__title">The spots that started it all.</h2>
     </div>
+    <p class="partners__intro">Each month you get five Pours — three spots we assign from this roster, and two you pick yourself.</p>
     <div class="partners__grid">
       <div class="partner-tile">
         <img class="partner-tile__logo" src="assets/partners/demitris-taverna.png" alt="Demitri&#8217;s Taverna logo" width="120" height="120" loading="lazy">
@@ -1582,7 +1599,7 @@ img, svg { display: block; max-width: 100%; }
         <div class="tl-step__num">1</div>
         <div>
           <h3 class="tl-step__title">JOIN</h3>
-          <p class="tl-step__body">Choose one Circle, monthly or annual, plus your one-time $49 Founding Slot Deposit.</p>
+          <p class="tl-step__body">Choose one Circle, monthly or annual. Your one-time $49 Founding Slot Deposit secures your founding number and includes your Welcome Kit.</p>
         </div>
       </div>
       <div class="tl-step">

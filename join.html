@@ -137,6 +137,26 @@ a:focus-visible, button:focus-visible, input:focus-visible, [tabindex]:focus-vis
   margin: 0 0 28px;
 }
 .depositor-note strong { color: var(--cream); }
+.depositor-note--foot {
+  margin: 26px auto 0;
+  max-width: 560px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(196, 163, 90, 0.22);
+}
+.panel__note {
+  font-family: var(--body);
+  font-size: 13px;
+  line-height: 1.55;
+  color: rgba(245, 240, 232, 0.72);
+  margin: 14px 0 0;
+}
+.deposit-explainer {
+  font-family: var(--body);
+  font-size: 13px;
+  line-height: 1.55;
+  color: rgba(245, 240, 232, 0.72);
+  margin: 0 0 14px;
+}
 
 .panel {
   background: rgba(30, 58, 90, 0.35);
@@ -695,8 +715,6 @@ body:has(.cookie:not([hidden])) .page {
     <p class="join__lede">Subscriptions opened August 1. Choose the Circle that matches what you like to drink—beer, wine, or cocktails. Start with one Circle today, pick monthly or annual, then continue to secure checkout.</p>
     <hr class="join__rule">
 
-    <p class="depositor-note"><strong>Already paid a $49 Founding Slot Deposit?</strong> Please don’t use this public checkout. We’ll email your private membership-confirmation link shortly. Your deposit is already recorded, and you won’t be charged it again.</p>
-
     <form id="join-form" novalidate>
       <div class="panel">
         <p class="panel__label">1 · Choose your Circle</p>
@@ -754,6 +772,7 @@ body:has(.cookie:not([hidden])) .page {
             </span>
           </label>
         </div>
+        <p class="panel__note">Both paths include every founding benefit and the five-year rate lock.</p>
       </div>
 
       <div class="panel">
@@ -785,6 +804,7 @@ body:has(.cookie:not([hidden])) .page {
         <div class="turnstile-wrap" id="turnstile-slot"></div>
         <div class="actions">
           <p class="summary" id="order-summary" aria-live="polite"></p>
+          <p class="deposit-explainer">The one-time $49 Founding Slot Deposit secures your founding number and includes your Founding Welcome Kit.</p>
           <button class="btn" type="submit" id="submit-btn">Continue to Checkout</button>
           <p class="checkout-handoff" id="checkout-handoff" role="status" hidden>Secure checkout is ready. If it does not open automatically, tap below.</p>
           <a class="btn checkout-fallback" id="checkout-fallback" hidden>Open Secure Checkout</a>
@@ -794,6 +814,8 @@ body:has(.cookie:not([hidden])) .page {
         </div>
       </div>
     </form>
+
+    <p class="depositor-note depositor-note--foot"><strong>Already paid a $49 Founding Slot Deposit?</strong> Please don’t use this public checkout. We’ll email your private membership-confirmation link shortly. Your deposit is already recorded, and you won’t be charged it again.</p>
   </div>
 </main>
 

@@ -48,7 +48,15 @@ for (const [page, markup] of [
 
 assert.match(home, /Join The Collective/);
 assert.match(home, /one-time \$49 Founding Slot Deposit/);
-assert.match(home, /Already paid a \$49 Founding Slot Deposit/);
+// The deposit-holder notice is a /join footnote, not homepage hero copy: it told
+// every cold visitor not to buy, citing a charge they had never heard of, above
+// the fold. Guard the removal so it cannot drift back onto the homepage.
+assert.doesNotMatch(home, /Already paid a \$49 Founding Slot Deposit/);
+// Decision #37: up to five Pours across three assigned venues plus two the member
+// picks. The site must never promise five *assigned* venues — Reserve sits on the
+// five-eligible-venue floor, so that phrasing puts the page in conflict with the app.
+assert.match(home, /three spots we assign from this roster, and two you pick yourself/);
+assert.doesNotMatch(home, /five venues assigned|land at five venues/);
 assert.match(home, /Wingen Bakery &amp; Restaurant[\s\S]*Coming Soon/);
 assert.match(home, /Start with one Circle today/);
 assert.doesNotMatch(home, /Pause feature|add (?:another|more) anytime|Welcome Kit fee|A \$50 value|THE COASTER PASSPORT|THE INTRODUCTION/);
