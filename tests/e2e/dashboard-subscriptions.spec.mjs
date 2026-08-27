@@ -36,11 +36,24 @@ function dashboardPayload() {
     funnel: {
       configured: true,
       daily: [
-        { date: '2048-08-21', visits: 12, checkout_attempts: 3, confirmations: 2 },
-        { date: '2048-08-22', visits: 18, checkout_attempts: 5, confirmations: 3 },
+        { date: '2048-08-21', visits: 12, home_views: 10, join_views: 2, checkout_attempts: 3, checkout_departed: 2, join_errors: 0, confirmations: 2 },
+        { date: '2048-08-22', visits: 18, home_views: 15, join_views: 3, checkout_attempts: 5, checkout_departed: 4, join_errors: 1, confirmations: 3 },
       ],
+      steps: [
+        { key: 'home', label: 'Homepage', short: 'homepage views', count: 25, of: null },
+        { key: 'join', label: 'Reached the Join page', short: 'join-page views', count: 5, of: 'home', bound: 'upper', overflow: 'entrances' },
+        { key: 'submit', label: 'Form submitted', short: 'submissions', count: 8, of: 'join', overflow: 'attempts' },
+        { key: 'stripe', label: 'Reached Stripe', short: 'Stripe handoffs', count: 6, of: 'submit' },
+        { key: 'complete', label: 'Completed', short: 'completions', count: 5, of: 'stripe' },
+      ],
+      join_entries: { from_site: 4, direct: 1, meta: 0, search: 0, other: 0, return: 0 },
+      cold_join_entries: 1,
+      sources: { meta: 20, direct: 6, search: 2, other: 1, internal: 1 },
+      blocked_windows: [],
       totals: {
         visits: 30,
+        home_views: 25,
+        join_views: 5,
         confirmations: 5,
         join_errors: 1,
         join_error_codes: { network: 1 },
@@ -52,6 +65,8 @@ function dashboardPayload() {
       },
       prev: {
         visits: 20,
+        home_views: 17,
+        join_views: 3,
         confirmations: 3,
         join_errors: 2,
         join_submits: 5,
@@ -106,6 +121,101 @@ test('subscription operations lead the dashboard without deposit or member PII v
   await expect(page.getByText('Recent deposits')).toHaveCount(0);
   await expect(page.getByText('Collected', { exact: true })).toHaveCount(0);
   await expect(page.locator('body')).not.toContainText('buyer@example.com');
+});
+
+test('acquisition shows where visitors are lost and how they reached Join', async ({ page }) => {
+  await page.goto('/dashboard');
+
+  await expect(page.getByRole('heading', { name: 'Where visitors are lost' })).toBeVisible();
+  const steps = page.locator('#funnel-steps');
+  // 4 of 25 homepage visitors clicked through: the drop-off the old blended
+  // "Visits" tile could not show.
+  // 5 of 25 reached /join, but some arrived cold, so the rate is an upper
+  // bound on click-through and the loss a lower bound.
+  await expect(steps).toContainText('at most 20% of homepage views');
+  await expect(steps).toContainText('20 lost here, at least');
+  await expect(steps).toContainText('1 arrived without a link from our own pages');
+  // A hostname-only referrer cannot isolate the homepage, so no step claims to.
+  await expect(steps).not.toContainText('Clicked through to Join');
+  // 8 submissions across 5 join-page views: attempts, not a 160% rate.
+  await expect(steps).toContainText('8 attempts across 5 join-page views');
+  await expect(steps).not.toContainText('160%');
+
+  const entrances = page.locator('#join-entrances');
+  await expect(entrances).toContainText('From elsewhere on this site');
+  await expect(entrances).toContainText('Direct / unknown');
+  await expect(page.locator('#traffic-sources')).toContainText('Meta');
+
+  await expect(page.locator('#daily-table').locator('..')).toBeVisible();
+  await expect(page.locator('#acquisition-kpis')).toContainText('Homepage 25 · Join 5');
+});
+
+test('join views exceeding homepage views are entrances, never retries', async ({ page }) => {
+  await page.unroute('**/api/dashboard-data?**');
+  await page.route('**/api/dashboard-data?**', async (route) => {
+    const payload = dashboardPayload();
+    // A market day: flyer QR scans drive more /join views than the homepage saw.
+    payload.funnel.steps.find((s) => s.key === 'home').count = 4;
+    payload.funnel.cold_join_entries = 3;
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(payload),
+    });
+  });
+  await page.goto('/dashboard');
+
+  const steps = page.locator('#funnel-steps');
+  await expect(steps).toContainText('more join-page views than homepage views');
+  await expect(steps).toContainText('arrivals that skipped the homepage outnumber it');
+  // Page views are people, not attempts: the retry wording belongs to the
+  // submissions step alone.
+  await expect(steps).not.toContainText('5 attempts across 4 homepage views');
+  await expect(steps).toContainText('3 arrived without a link from our own pages');
+});
+
+test('a later stage exceeding its parent gets a neutral explanation', async ({ page }) => {
+  await page.unroute('**/api/dashboard-data?**');
+  await page.route('**/api/dashboard-data?**', async (route) => {
+    const payload = dashboardPayload();
+    // Real shape: completions reached through the depositor confirmation link
+    // never pass /join, so they can outnumber the Stripe handoffs recorded there.
+    payload.funnel.steps.find((s) => s.key === 'stripe').count = 3;
+    payload.funnel.steps.find((s) => s.key === 'complete').count = 5;
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(payload),
+    });
+  });
+  await page.goto('/dashboard');
+
+  const steps = page.locator('#funnel-steps');
+  await expect(steps).toContainText('more completions than Stripe handoffs');
+  await expect(steps).toContainText('some did not pass through the previous step');
+  // Neither the retry nor the entrance explanation belongs to this stage.
+  await expect(steps).not.toContainText('skipped the homepage outnumber it');
+  await expect(steps).not.toContainText('5 attempts across 3 Stripe handoffs');
+});
+
+test('an hour where no attempt reached Stripe raises the banner', async ({ page }) => {
+  await page.unroute('**/api/dashboard-data?**');
+  await page.route('**/api/dashboard-data?**', async (route) => {
+    const payload = dashboardPayload();
+    payload.funnel.blocked_windows = [
+      { hour: '2048-08-22T18', submits: 21, errors: 21, top_error_code: 'RATE_LIMITED' },
+    ];
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(payload),
+    });
+  });
+  await page.goto('/dashboard');
+
+  await expect(page.locator('#banner')).toContainText('Checkout blocked in 1 hour(s)');
+  await expect(page.locator('#banner')).toContainText('21 attempt(s) and none reached Stripe');
+  await expect(page.locator('#banner')).toContainText('RATE_LIMITED');
 });
 
 test('partial subscription payload uses placeholders while independent sections keep rendering', async ({ page }) => {
