@@ -18,6 +18,9 @@ import {
 } from './lib/ops-checks.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+// Departure beacons land within seconds of a submit; wait this long before
+// judging an hour so an attempt still in flight cannot read as an outage.
+const BLOCKED_GRACE_MS = 10 * 60 * 1000;
 const CIRCLES = new Set(['tap', 'cellar', 'reserve']);
 const BILLING_INTERVALS = new Set(['monthly', 'annual']);
 const OFFER_TYPES = new Set(['standard', 'founding', 'unknown']);
@@ -91,9 +94,15 @@ function sourceGroup(referrer) {
 }
 
 // /join has two unrelated front doors and they must not share a conversion
-// rate: visitors who clicked through from the homepage have already read the
-// pitch, while flyer QR scans land on /join cold with no context at all. A
-// blended join-page number averages a warm audience with a cold one.
+// rate: visitors arriving by a link from our own pages have read the pitch,
+// while flyer QR scans land on /join cold with no context at all. A blended
+// join-page number averages a warm audience with a cold one.
+//
+// /api/track deliberately reduces every referrer to a bare hostname, so a link
+// from the homepage is indistinguishable from one from /support or
+// /subscription-cancelled. This bucket is therefore "somewhere on our own
+// site", NOT "the homepage", and the funnel must not present it as a homepage
+// conversion rate.
 const OWN_SITE_HOSTS = new Set([
   'downtownpourcollective.com', 'www.downtownpourcollective.com',
 ]);
@@ -182,11 +191,13 @@ async function funnelSection(days, now) {
   // checkout rejected every attempt. A daily roll-up hides those: a two-hour
   // total outage inside an otherwise normal day averages away to nothing.
   const hourly = new Map();
+  const flows = new Map();
+  const legacyHourRows = [];
   const hourBucket = (ts) => {
     const key = hourKey(ts);
     let bucket = hourly.get(key);
     if (!bucket) {
-      bucket = { hour: key, submits: 0, departed: 0, errors: 0, codes: Object.create(null) };
+      bucket = { hour: key, submits: 0, departed: 0, errors: 0, latestSubmit: 0, codes: Object.create(null) };
       hourly.set(key, bucket);
     }
     return bucket;
@@ -257,18 +268,52 @@ async function funnelSection(days, now) {
     const bucket = daily.get(dayKey(ts));
     if (row.event === 'join_submit') {
       if (bucket) bucket.checkout_attempts += 1;
-      hourBucket(ts).submits += 1;
     } else if (row.event === 'join_checkout_departed') {
       if (bucket) bucket.checkout_departed += 1;
-      hourBucket(ts).departed += 1;
+    }
+    if (row.flow_id) {
+      let flow = flows.get(row.flow_id);
+      if (!flow) {
+        flow = { submitTs: null, departed: false };
+        flows.set(row.flow_id, flow);
+      }
+      if (row.event === 'join_submit') flow.submitTs = ts;
+      else if (row.event === 'join_checkout_departed') flow.departed = true;
+    } else if (row.event === 'join_submit') {
+      legacyHourRows.push({ ts, departed: false });
+    } else if (row.event === 'join_checkout_departed') {
+      legacyHourRows.push({ ts, departed: true });
+    }
+  }
+
+  // Outcomes belong to the hour the attempt STARTED, not the hour its beacon
+  // happened to land in. Bucketing submits and departures independently makes
+  // a 6:59 submit whose departure arrives at 7:00 look like a blocked 6 PM.
+  for (const flow of flows.values()) {
+    if (flow.submitTs === null) continue;
+    const bucket = hourBucket(flow.submitTs);
+    bucket.submits += 1;
+    if (flow.departed) bucket.departed += 1;
+    bucket.latestSubmit = Math.max(bucket.latestSubmit, flow.submitTs);
+  }
+  // Events predating flow_id cannot be correlated; bucket them by their own
+  // hour so historical outages stay visible.
+  for (const row of legacyHourRows) {
+    const bucket = hourBucket(row.ts);
+    if (row.departed) bucket.departed += 1;
+    else {
+      bucket.submits += 1;
+      bucket.latestSubmit = Math.max(bucket.latestSubmit, row.ts);
     }
   }
 
   // A blocked window is an hour in which people tried to check out and not one
   // of them reached Stripe. Two attempts is the floor so a single abandoned
-  // form does not read as an outage.
+  // form does not read as an outage, and an hour is only judged once its
+  // in-flight beacons have had time to arrive — departures land within seconds,
+  // so a short grace keeps the current hour from flagging itself.
   const blocked_windows = [...hourly.values()]
-    .filter((h) => h.submits >= 2 && h.departed === 0)
+    .filter((h) => h.submits >= 2 && h.departed === 0 && now - h.latestSubmit >= BLOCKED_GRACE_MS)
     .sort((a, b) => (a.hour < b.hour ? 1 : -1))
     .slice(0, 12)
     .map((h) => {
@@ -281,17 +326,22 @@ async function funnelSection(days, now) {
       };
     });
 
-  // Only the homepage lane has a meaningful click-through rate. Cold arrivals
-  // (flyer QR scans, typed URLs, ads pointed straight at /join) never saw the
-  // homepage, so they are reported as an entrance rather than a drop-off.
+  // Arrivals carrying no link from our own pages: flyer QR scans, typed URLs,
+  // ads pointed straight at /join, and anything whose referrer was stripped.
   const cold_join_entries = totals.join_views - join_entries.from_site - join_entries.return;
+  // The homepage step counts EVERY join-page view, including arrivals that
+  // never saw the homepage, so its rate is an upper bound on click-through —
+  // the true figure is lower and the loss correspondingly larger. Deriving it
+  // from the same-site referrer bucket instead would be worse: a hostname
+  // cannot tell the homepage apart from /support or /subscription-cancelled.
+  // `short` is the noun the next step's rate reads against ("17% of
+  // join-page views"), which the display label cannot supply grammatically.
   const steps = [
-    { key: 'home', label: 'Homepage', count: totals.home_views, of: null },
-    { key: 'join_from_home', label: 'Clicked through to Join', count: join_entries.from_site, of: 'home' },
-    { key: 'join', label: 'Join page (all entrances)', count: totals.join_views, of: null },
-    { key: 'submit', label: 'Form submitted', count: totals.join_submits, of: 'join' },
-    { key: 'stripe', label: 'Reached Stripe', count: totals.checkout_departed, of: 'submit' },
-    { key: 'complete', label: 'Completed', count: totals.confirmations, of: 'stripe' },
+    { key: 'home', label: 'Homepage', short: 'homepage views', count: totals.home_views, of: null },
+    { key: 'join', label: 'Reached the Join page', short: 'join-page views', count: totals.join_views, of: 'home', bound: 'upper' },
+    { key: 'submit', label: 'Form submitted', short: 'submissions', count: totals.join_submits, of: 'join' },
+    { key: 'stripe', label: 'Reached Stripe', short: 'Stripe handoffs', count: totals.checkout_departed, of: 'submit' },
+    { key: 'complete', label: 'Completed', short: 'completions', count: totals.confirmations, of: 'stripe' },
   ];
 
   return {

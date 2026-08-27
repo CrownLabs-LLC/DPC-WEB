@@ -249,6 +249,7 @@ function mockDashboardFetch({ hangResendDomains = false, failSubscriptionOvervie
     }
     if (u.includes('/rest/v1/site_events')) {
       const now = Date.now();
+      const hourStart = (ms, hoursBack) => Math.floor(ms / 3600e3) * 3600e3 - hoursBack * 3600e3;
       const checkoutRows = [
         { ts: new Date(now - 2900e3).toISOString(), event: 'join_submit', flow_id: '00000000-0000-4000-8000-000000000001' },
         { ts: new Date(now - 2890e3).toISOString(), event: 'join_checkout_ready', flow_id: '00000000-0000-4000-8000-000000000001' },
@@ -260,6 +261,17 @@ function mockDashboardFetch({ hangResendDomains = false, failSubscriptionOvervie
         // Own hour, two attempts, no departure: the blocked-checkout shape.
         { ts: new Date(now - 5 * 3600e3).toISOString(), event: 'join_submit', flow_id: '00000000-0000-4000-8000-000000000003' },
         { ts: new Date(now - 5 * 3600e3 + 30e3).toISOString(), event: 'join_submit', flow_id: '00000000-0000-4000-8000-000000000004' },
+        // Two attempts in the last second of an hour whose departures land in
+        // the next one. Bucketing each event by its own clock hour would report
+        // the earlier hour as a total outage.
+        { ts: new Date(hourStart(now, 3) + 3599e3).toISOString(), event: 'join_submit', flow_id: '00000000-0000-4000-8000-000000000005' },
+        { ts: new Date(hourStart(now, 3) + 3600e3 + 2e3).toISOString(), event: 'join_checkout_departed', flow_id: '00000000-0000-4000-8000-000000000005' },
+        { ts: new Date(hourStart(now, 3) + 3599.5e3).toISOString(), event: 'join_submit', flow_id: '00000000-0000-4000-8000-000000000006' },
+        { ts: new Date(hourStart(now, 3) + 3600e3 + 3e3).toISOString(), event: 'join_checkout_departed', flow_id: '00000000-0000-4000-8000-000000000006' },
+        // Two attempts moments ago, departures still in flight: the open hour
+        // must not accuse itself of being an outage.
+        { ts: new Date(now - 120e3).toISOString(), event: 'join_submit', flow_id: '00000000-0000-4000-8000-000000000007' },
+        { ts: new Date(now - 110e3).toISOString(), event: 'join_submit', flow_id: '00000000-0000-4000-8000-000000000008' },
       ];
       const rows = [
         { ts: new Date(now - 3600e3).toISOString(), event: 'page_view', page: 'member', referrer: 'instagram.com' },
@@ -332,7 +344,7 @@ process.env.SUPABASE_SERVICE_ROLE_KEY = 'service_test_key';
   const f = out.body?.funnel;
   check('funnel counts current period only', f?.totals?.visits === 2 && f?.totals?.confirmations === 1, f?.totals);
   check('daily acquisition counts checkout attempts', (
-    f?.daily?.reduce((sum, row) => sum + row.checkout_attempts, 0) === 4
+    f?.daily?.reduce((sum, row) => sum + row.checkout_attempts, 0) === 8
   ), f?.daily);
   check('funnel previous period counted', f?.prev?.visits === 1, f?.prev);
   check('join errors counted by code', (
@@ -345,16 +357,16 @@ process.env.SUPABASE_SERVICE_ROLE_KEY = 'service_test_key';
   ), f?.totals);
   check('previous join errors counted', f?.prev?.join_errors === 1, f?.prev);
   check('checkout handoff attempts are correlated and counted', (
-    f?.totals?.join_submits === 4
+    f?.totals?.join_submits === 8
     && f?.totals?.checkout_ready === 2
-    && f?.totals?.checkout_departed === 1
+    && f?.totals?.checkout_departed === 3
     && f?.totals?.checkout_stalled === 1
     && f?.totals?.checkout_fallback_clicks === 1
   ), f?.totals);
   check('funnel splits page views by page', (
     f?.totals?.home_views === 1 && f?.totals?.join_views === 1 && f?.totals?.visits === 2
   ), f?.totals);
-  check('join entrances separate homepage click-through from cold arrivals', (
+  check('join entrances separate same-site referrals from cold arrivals', (
     f?.join_entries?.from_site === 1
     && f?.join_entries?.direct === 0
     && f?.cold_join_entries === 0
@@ -362,17 +374,39 @@ process.env.SUPABASE_SERVICE_ROLE_KEY = 'service_test_key';
   check('landing-page traffic grouped by source', (
     f?.sources?.meta === 1 && f?.sources?.internal === 1 && f?.sources?.direct === 0
   ), f?.sources);
-  check('funnel steps expose the homepage-to-join rate', (
+  // A hostname-only referrer cannot separate the homepage from /support, so
+  // the same-site bucket must never be published as a homepage conversion.
+  check('no funnel step claims same-site referrals are homepage click-through', (
     Array.isArray(f?.steps)
-    && f.steps.find((s) => s.key === 'join_from_home')?.count === 1
-    && f.steps.find((s) => s.key === 'join_from_home')?.of === 'home'
+    && !f.steps.some((s) => s.key === 'join_from_home')
+    && f.steps.find((s) => s.key === 'join')?.of === 'home'
+    && f.steps.find((s) => s.key === 'join')?.bound === 'upper'
+    && f.steps.find((s) => s.key === 'join')?.count === f?.totals?.join_views
     && f.steps.find((s) => s.key === 'complete')?.count === 1
   ), f?.steps);
   check('blocked checkout window detected', (
     f?.blocked_windows?.length === 1
     && f.blocked_windows[0].submits === 2
-    && f.blocked_windows[0].departed === undefined
   ), f?.blocked_windows);
+  // Mirror the endpoint's Pacific hour key so the assertions name real hours.
+  const PT_DAY = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Los_Angeles' });
+  const PT_HOUR = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'America/Los_Angeles', hour: '2-digit', hourCycle: 'h23',
+  });
+  const ptHour = (ms) => `${PT_DAY.format(new Date(ms))}T${PT_HOUR.format(new Date(ms))}`;
+  const nowMs = Date.now();
+  const straddleHour = ptHour(Math.floor(nowMs / 3600e3) * 3600e3 - 3 * 3600e3);
+  const flagged = (f?.blocked_windows || []).map((w) => w.hour);
+  check('an hour whose departures land in the next one is not an outage', (
+    !flagged.includes(straddleHour)
+    && f?.totals?.checkout_departed === 3
+  ), { flagged, straddleHour });
+  check('the still-open hour is never flagged as blocked', (
+    !flagged.includes(ptHour(nowMs))
+  ), { flagged, openHour: ptHour(nowMs) });
+  check('only the genuinely blocked hour is reported', (
+    flagged.length === 1 && flagged[0] === ptHour(nowMs - 5 * 3600e3)
+  ), { flagged, expected: ptHour(nowMs - 5 * 3600e3) });
   check('funnel and join-error events use separate query budgets', (
     f?.truncated === false
   ), f);

@@ -217,7 +217,7 @@ details.tableview summary { cursor: pointer; color: var(--text-secondary); font-
         </div>
         <div class="card">
           <h2>How they arrive at Join</h2>
-          <p class="empty" style="margin:0 0 10px">Homepage click-throughs read the pitch first. Cold arrivals — flyer QR scans, typed links, ads pointed straight at /join — did not.</p>
+          <p class="empty" style="margin:0 0 10px">Visitors who followed a link from our own pages read the pitch first. Cold arrivals — flyer QR scans, typed links, ads pointed straight at /join — did not. Referrers are stored as a hostname only, so the homepage cannot be separated from other DPC pages.</p>
           <div class="entrances" id="join-entrances"></div>
           <h2 style="margin-top:16px">Landing-page traffic by source</h2>
           <div class="entrances" id="traffic-sources" style="margin-top:8px"></div>
@@ -522,17 +522,21 @@ details.tableview summary { cursor: pointer; color: var(--text-secondary); font-
     box.appendChild(scroll);
   }
 
+  // Referrers are stored as a bare hostname, so a link from the homepage cannot
+  // be told apart from one from /support. These labels say "our own site", not
+  // "the homepage", and a missing referrer is unknown rather than a QR scan:
+  // privacy settings, email clients and messaging apps all strip it.
   var JOIN_ENTRY_LABELS = {
-    from_site: ['From the homepage', 'clicked through'],
-    direct: ['Direct / QR scan', 'flyers, typed links'],
-    meta: ['Meta, straight to Join', 'ad skipped the homepage'],
+    from_site: ['From elsewhere on this site', 'any DPC page, not only home'],
+    direct: ['Direct / unknown', 'QR scans, typed links, stripped referrers'],
+    meta: ['Meta, straight to Join', 'skipped the homepage'],
     search: ['Search', ''],
     other: ['Other referrer', ''],
     return: ['Back from Stripe', 'not a new arrival']
   };
   var SOURCE_LABELS = {
     meta: ['Meta', 'Instagram + Facebook'],
-    direct: ['Direct', 'QR scans, typed links'],
+    direct: ['Direct / unknown', 'QR scans, typed links, stripped referrers'],
     search: ['Search', ''],
     other: ['Other', ''],
     internal: ['On-site', 'not a new arrival']
@@ -576,15 +580,20 @@ details.tableview summary { cursor: pointer; color: var(--text-secondary); font-
         // Form submissions are attempts, not people: one visitor retrying a
         // failing checkout logs several. Reporting that as a conversion rate
         // would print a share above 100% and a drop-off of zero.
-        note.textContent = fmt(step.count) + ' attempts from ' + fmt(parent.count) + ' '
-          + parent.label + ' — repeat tries inflate this';
+        note.textContent = fmt(step.count) + ' attempts across ' + fmt(parent.count) + ' '
+          + (parent.short || 'views') + ' — repeat tries inflate this';
       } else if (parent) {
         var rate = pct(step.count, parent.count);
-        note.appendChild(document.createTextNode(fmtPct(rate) + ' of ' + parent.label + ' · '));
-        var lost = el('span', 'fs-drop', fmt(Math.max(0, parent.count - step.count)) + ' lost here');
-        note.appendChild(lost);
-      } else if (step.key === 'join') {
-        note.textContent = fmt(f.cold_join_entries || 0) + ' of these arrived cold, without seeing the homepage';
+        // An upper-bound step counts arrivals that never saw the parent page,
+        // so its rate overstates click-through and its loss understates it.
+        var prefix = step.bound === 'upper' ? 'at most ' : '';
+        var suffix = step.bound === 'upper' ? ' lost here, at least' : ' lost here';
+        note.appendChild(document.createTextNode(prefix + fmtPct(rate) + ' of ' + (parent.short || parent.label) + ' · '));
+        note.appendChild(el('span', 'fs-drop', fmt(Math.max(0, parent.count - step.count)) + suffix));
+        if (step.key === 'join') {
+          note.appendChild(el('div', null,
+            fmt(f.cold_join_entries || 0) + ' arrived without a link from our own pages'));
+        }
       } else {
         note.textContent = 'Top of funnel';
       }

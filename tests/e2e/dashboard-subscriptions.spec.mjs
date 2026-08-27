@@ -40,12 +40,11 @@ function dashboardPayload() {
         { date: '2048-08-22', visits: 18, home_views: 15, join_views: 3, checkout_attempts: 5, checkout_departed: 4, join_errors: 1, confirmations: 3 },
       ],
       steps: [
-        { key: 'home', label: 'Homepage', count: 25, of: null },
-        { key: 'join_from_home', label: 'Clicked through to Join', count: 4, of: 'home' },
-        { key: 'join', label: 'Join page (all entrances)', count: 5, of: null },
-        { key: 'submit', label: 'Form submitted', count: 8, of: 'join' },
-        { key: 'stripe', label: 'Reached Stripe', count: 6, of: 'submit' },
-        { key: 'complete', label: 'Completed', count: 5, of: 'stripe' },
+        { key: 'home', label: 'Homepage', short: 'homepage views', count: 25, of: null },
+        { key: 'join', label: 'Reached the Join page', short: 'join-page views', count: 5, of: 'home', bound: 'upper' },
+        { key: 'submit', label: 'Form submitted', short: 'submissions', count: 8, of: 'join' },
+        { key: 'stripe', label: 'Reached Stripe', short: 'Stripe handoffs', count: 6, of: 'submit' },
+        { key: 'complete', label: 'Completed', short: 'completions', count: 5, of: 'stripe' },
       ],
       join_entries: { from_site: 4, direct: 1, meta: 0, search: 0, other: 0, return: 0 },
       cold_join_entries: 1,
@@ -131,16 +130,20 @@ test('acquisition shows where visitors are lost and how they reached Join', asyn
   const steps = page.locator('#funnel-steps');
   // 4 of 25 homepage visitors clicked through: the drop-off the old blended
   // "Visits" tile could not show.
-  await expect(steps).toContainText('Clicked through to Join');
-  await expect(steps).toContainText('16% of Homepage');
-  await expect(steps).toContainText('21 lost here');
-  // 8 submissions from 5 join-page views: attempts, not a 160% conversion rate.
-  await expect(steps).toContainText('8 attempts from 5 Join page (all entrances)');
+  // 5 of 25 reached /join, but some arrived cold, so the rate is an upper
+  // bound on click-through and the loss a lower bound.
+  await expect(steps).toContainText('at most 20% of homepage views');
+  await expect(steps).toContainText('20 lost here, at least');
+  await expect(steps).toContainText('1 arrived without a link from our own pages');
+  // A hostname-only referrer cannot isolate the homepage, so no step claims to.
+  await expect(steps).not.toContainText('Clicked through to Join');
+  // 8 submissions across 5 join-page views: attempts, not a 160% rate.
+  await expect(steps).toContainText('8 attempts across 5 join-page views');
   await expect(steps).not.toContainText('160%');
 
   const entrances = page.locator('#join-entrances');
-  await expect(entrances).toContainText('From the homepage');
-  await expect(entrances).toContainText('Direct / QR scan');
+  await expect(entrances).toContainText('From elsewhere on this site');
+  await expect(entrances).toContainText('Direct / unknown');
   await expect(page.locator('#traffic-sources')).toContainText('Meta');
 
   await expect(page.locator('#daily-table').locator('..')).toBeVisible();
