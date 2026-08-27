@@ -8,6 +8,13 @@
 import https from 'node:https';
 import { PassThrough } from 'node:stream';
 
+// One clock for the fixtures and the assertions. Reading Date.now() in both
+// places lets a run that crosses an hour boundary compute a different expected
+// hour key than the one the fixture produced.
+const FIXED_NOW = Date.now();
+const HOUR_MS = 3600e3;
+const hourStart = (hoursBack) => Math.floor(FIXED_NOW / HOUR_MS) * HOUR_MS - hoursBack * HOUR_MS;
+
 function mockRes() {
   const out = { status: null, body: null, headers: {} };
   const res = {
@@ -248,8 +255,7 @@ function mockDashboardFetch({ hangResendDomains = false, failSubscriptionOvervie
       });
     }
     if (u.includes('/rest/v1/site_events')) {
-      const now = Date.now();
-      const hourStart = (ms, hoursBack) => Math.floor(ms / 3600e3) * 3600e3 - hoursBack * 3600e3;
+      const now = FIXED_NOW;
       const checkoutRows = [
         { ts: new Date(now - 2900e3).toISOString(), event: 'join_submit', flow_id: '00000000-0000-4000-8000-000000000001' },
         { ts: new Date(now - 2890e3).toISOString(), event: 'join_checkout_ready', flow_id: '00000000-0000-4000-8000-000000000001' },
@@ -258,16 +264,18 @@ function mockDashboardFetch({ hangResendDomains = false, failSubscriptionOvervie
         { ts: new Date(now - 2790e3).toISOString(), event: 'join_checkout_ready', flow_id: '00000000-0000-4000-8000-000000000002' },
         { ts: new Date(now - 2780e3).toISOString(), event: 'join_checkout_stalled', flow_id: '00000000-0000-4000-8000-000000000002' },
         { ts: new Date(now - 2770e3).toISOString(), event: 'join_checkout_fallback_clicked', flow_id: '00000000-0000-4000-8000-000000000002' },
-        // Own hour, two attempts, no departure: the blocked-checkout shape.
-        { ts: new Date(now - 5 * 3600e3).toISOString(), event: 'join_submit', flow_id: '00000000-0000-4000-8000-000000000003' },
-        { ts: new Date(now - 5 * 3600e3 + 30e3).toISOString(), event: 'join_submit', flow_id: '00000000-0000-4000-8000-000000000004' },
+        // Two attempts in an hour's last second that fail in the next one.
+        // The outage belongs to the hour the attempts were made, and it has to
+        // carry their error code rather than reporting no known cause.
+        { ts: new Date(hourStart(5) + 3599e3).toISOString(), event: 'join_submit', flow_id: '00000000-0000-4000-8000-000000000003' },
+        { ts: new Date(hourStart(5) + 3599.5e3).toISOString(), event: 'join_submit', flow_id: '00000000-0000-4000-8000-000000000004' },
         // Two attempts in the last second of an hour whose departures land in
         // the next one. Bucketing each event by its own clock hour would report
         // the earlier hour as a total outage.
-        { ts: new Date(hourStart(now, 3) + 3599e3).toISOString(), event: 'join_submit', flow_id: '00000000-0000-4000-8000-000000000005' },
-        { ts: new Date(hourStart(now, 3) + 3600e3 + 2e3).toISOString(), event: 'join_checkout_departed', flow_id: '00000000-0000-4000-8000-000000000005' },
-        { ts: new Date(hourStart(now, 3) + 3599.5e3).toISOString(), event: 'join_submit', flow_id: '00000000-0000-4000-8000-000000000006' },
-        { ts: new Date(hourStart(now, 3) + 3600e3 + 3e3).toISOString(), event: 'join_checkout_departed', flow_id: '00000000-0000-4000-8000-000000000006' },
+        { ts: new Date(hourStart(3) + 3599e3).toISOString(), event: 'join_submit', flow_id: '00000000-0000-4000-8000-000000000005' },
+        { ts: new Date(hourStart(3) + 3600e3 + 2e3).toISOString(), event: 'join_checkout_departed', flow_id: '00000000-0000-4000-8000-000000000005' },
+        { ts: new Date(hourStart(3) + 3599.5e3).toISOString(), event: 'join_submit', flow_id: '00000000-0000-4000-8000-000000000006' },
+        { ts: new Date(hourStart(3) + 3600e3 + 3e3).toISOString(), event: 'join_checkout_departed', flow_id: '00000000-0000-4000-8000-000000000006' },
         // Two attempts moments ago, departures still in flight: the open hour
         // must not accuse itself of being an outage.
         { ts: new Date(now - 120e3).toISOString(), event: 'join_submit', flow_id: '00000000-0000-4000-8000-000000000007' },
@@ -283,6 +291,8 @@ function mockDashboardFetch({ hangResendDomains = false, failSubscriptionOvervie
         { ts: new Date(now - 3150e3).toISOString(), event: 'join_error', error_code: 'CHECKOUT_IN_PROGRESS' },
         { ts: new Date(now - 3100e3).toISOString(), event: 'join_error', error_code: 'constructor' },
         { ts: new Date(now - 3000e3).toISOString(), event: 'join_error', error_code: '__proto__' },
+        { ts: new Date(hourStart(5) + 3600e3 + 2e3).toISOString(), event: 'join_error', error_code: 'CHALLENGE_FAILED', flow_id: '00000000-0000-4000-8000-000000000003' },
+        { ts: new Date(hourStart(5) + 3600e3 + 3e3).toISOString(), event: 'join_error', error_code: 'CHALLENGE_FAILED', flow_id: '00000000-0000-4000-8000-000000000004' },
         { ts: new Date(now - 40 * 86400e3).toISOString(), event: 'page_view', page: 'member', referrer: null },
         { ts: new Date(now - 40 * 86400e3).toISOString(), event: 'join_error', error_code: 'network' },
       ];
@@ -348,12 +358,13 @@ process.env.SUPABASE_SERVICE_ROLE_KEY = 'service_test_key';
   ), f?.daily);
   check('funnel previous period counted', f?.prev?.visits === 1, f?.prev);
   check('join errors counted by code', (
-    f?.totals?.join_errors === 6
+    f?.totals?.join_errors === 8
     && f?.totals?.join_error_codes?.turnstile_unavailable === 2
     && f?.totals?.join_error_codes?.CHECKOUT_NOT_ENABLED === 1
     && f?.totals?.join_error_codes?.CHECKOUT_IN_PROGRESS === 1
     && f?.totals?.join_error_codes?.unknown === 2
-    && Object.values(f?.totals?.join_error_codes || {}).reduce((sum, count) => sum + count, 0) === 6
+    && f?.totals?.join_error_codes?.CHALLENGE_FAILED === 2
+    && Object.values(f?.totals?.join_error_codes || {}).reduce((sum, count) => sum + count, 0) === 8
   ), f?.totals);
   check('previous join errors counted', f?.prev?.join_errors === 1, f?.prev);
   check('checkout handoff attempts are correlated and counted', (
@@ -394,8 +405,8 @@ process.env.SUPABASE_SERVICE_ROLE_KEY = 'service_test_key';
     timeZone: 'America/Los_Angeles', hour: '2-digit', hourCycle: 'h23',
   });
   const ptHour = (ms) => `${PT_DAY.format(new Date(ms))}T${PT_HOUR.format(new Date(ms))}`;
-  const nowMs = Date.now();
-  const straddleHour = ptHour(Math.floor(nowMs / 3600e3) * 3600e3 - 3 * 3600e3);
+  const nowMs = FIXED_NOW;
+  const straddleHour = ptHour(hourStart(3));
   const flagged = (f?.blocked_windows || []).map((w) => w.hour);
   check('an hour whose departures land in the next one is not an outage', (
     !flagged.includes(straddleHour)
@@ -405,8 +416,14 @@ process.env.SUPABASE_SERVICE_ROLE_KEY = 'service_test_key';
     !flagged.includes(ptHour(nowMs))
   ), { flagged, openHour: ptHour(nowMs) });
   check('only the genuinely blocked hour is reported', (
-    flagged.length === 1 && flagged[0] === ptHour(nowMs - 5 * 3600e3)
-  ), { flagged, expected: ptHour(nowMs - 5 * 3600e3) });
+    flagged.length === 1 && flagged[0] === ptHour(hourStart(5))
+  ), { flagged, expected: ptHour(hourStart(5)) });
+  // The failures fired in the following hour. Bucketing them by their own
+  // timestamp would leave the outage with no cause, or borrow an unrelated one.
+  check('a blocked hour names the error its own attempts hit', (
+    f?.blocked_windows?.[0]?.top_error_code === 'CHALLENGE_FAILED'
+    && f.blocked_windows[0].errors === 2
+  ), f?.blocked_windows);
   check('funnel and join-error events use separate query budgets', (
     f?.truncated === false
   ), f);

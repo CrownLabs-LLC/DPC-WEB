@@ -164,7 +164,7 @@ async function funnelSection(days, now) {
       `site_events?select=ts,event,page,referrer&event=in.(page_view,membership_checkout_complete)&ts=gte.${since}&order=ts.desc&limit=20000`
     ),
     supabaseSelect(
-      `site_events?select=ts,event,error_code&event=eq.join_error&ts=gte.${since}&order=ts.desc&limit=20000`
+      `site_events?select=ts,event,error_code,flow_id&event=eq.join_error&ts=gte.${since}&order=ts.desc&limit=20000`
     ),
     supabaseSelect(
       `site_events?select=ts,event,flow_id&event=in.(join_submit,join_checkout_ready,join_checkout_departed,join_checkout_fallback_clicked,join_checkout_stalled)&ts=gte.${since}&order=ts.desc&limit=20000`
@@ -193,6 +193,15 @@ async function funnelSection(days, now) {
   const hourly = new Map();
   const flows = new Map();
   const legacyHourRows = [];
+  const legacyErrorRows = [];
+  const flowFor = (id) => {
+    let flow = flows.get(id);
+    if (!flow) {
+      flow = { submitTs: null, departed: false, errors: [] };
+      flows.set(id, flow);
+    }
+    return flow;
+  };
   const hourBucket = (ts) => {
     const key = hourKey(ts);
     let bucket = hourly.get(key);
@@ -211,9 +220,15 @@ async function funnelSection(days, now) {
       totals.join_error_codes[code] = (totals.join_error_codes[code] || 0) + 1;
       const bucket = daily.get(dayKey(ts));
       if (bucket) bucket.join_errors += 1;
-      const hour = hourBucket(ts);
-      hour.errors += 1;
-      hour.codes[code] = (hour.codes[code] || 0) + 1;
+      // Which hour a failure belongs to is decided by the attempt it ended,
+      // not by when the beacon fired: a 6:59 submit failing at 7:00 is a 6 PM
+      // failure. Bucketing by the error's own timestamp leaves the blocked
+      // hour with no error code, or names an unrelated one as the cause.
+      if (row.flow_id) {
+        flowFor(row.flow_id).errors.push({ code, ts });
+      } else {
+        legacyErrorRows.push({ code, ts });
+      }
     } else {
       prev.join_errors += 1;
     }
@@ -272,11 +287,7 @@ async function funnelSection(days, now) {
       if (bucket) bucket.checkout_departed += 1;
     }
     if (row.flow_id) {
-      let flow = flows.get(row.flow_id);
-      if (!flow) {
-        flow = { submitTs: null, departed: false };
-        flows.set(row.flow_id, flow);
-      }
+      const flow = flowFor(row.flow_id);
       if (row.event === 'join_submit') flow.submitTs = ts;
       else if (row.event === 'join_checkout_departed') flow.departed = true;
     } else if (row.event === 'join_submit') {
@@ -289,13 +300,24 @@ async function funnelSection(days, now) {
   // Outcomes belong to the hour the attempt STARTED, not the hour its beacon
   // happened to land in. Bucketing submits and departures independently makes
   // a 6:59 submit whose departure arrives at 7:00 look like a blocked 6 PM.
+  const addError = (bucket, code) => {
+    bucket.errors += 1;
+    bucket.codes[code] = (bucket.codes[code] || 0) + 1;
+  };
   for (const flow of flows.values()) {
-    if (flow.submitTs === null) continue;
+    if (flow.submitTs === null) {
+      // A failure with no submit in range cannot be attributed to an attempt;
+      // keep it in its own hour rather than dropping it.
+      for (const err of flow.errors) addError(hourBucket(err.ts), err.code);
+      continue;
+    }
     const bucket = hourBucket(flow.submitTs);
     bucket.submits += 1;
     if (flow.departed) bucket.departed += 1;
     bucket.latestSubmit = Math.max(bucket.latestSubmit, flow.submitTs);
+    for (const err of flow.errors) addError(bucket, err.code);
   }
+  for (const err of legacyErrorRows) addError(hourBucket(err.ts), err.code);
   // Events predating flow_id cannot be correlated; bucket them by their own
   // hour so historical outages stay visible.
   for (const row of legacyHourRows) {
@@ -338,8 +360,8 @@ async function funnelSection(days, now) {
   // join-page views"), which the display label cannot supply grammatically.
   const steps = [
     { key: 'home', label: 'Homepage', short: 'homepage views', count: totals.home_views, of: null },
-    { key: 'join', label: 'Reached the Join page', short: 'join-page views', count: totals.join_views, of: 'home', bound: 'upper' },
-    { key: 'submit', label: 'Form submitted', short: 'submissions', count: totals.join_submits, of: 'join' },
+    { key: 'join', label: 'Reached the Join page', short: 'join-page views', count: totals.join_views, of: 'home', bound: 'upper', overflow: 'entrances' },
+    { key: 'submit', label: 'Form submitted', short: 'submissions', count: totals.join_submits, of: 'join', overflow: 'attempts' },
     { key: 'stripe', label: 'Reached Stripe', short: 'Stripe handoffs', count: totals.checkout_departed, of: 'submit' },
     { key: 'complete', label: 'Completed', short: 'completions', count: totals.confirmations, of: 'stripe' },
   ];

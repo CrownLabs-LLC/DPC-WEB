@@ -41,8 +41,8 @@ function dashboardPayload() {
       ],
       steps: [
         { key: 'home', label: 'Homepage', short: 'homepage views', count: 25, of: null },
-        { key: 'join', label: 'Reached the Join page', short: 'join-page views', count: 5, of: 'home', bound: 'upper' },
-        { key: 'submit', label: 'Form submitted', short: 'submissions', count: 8, of: 'join' },
+        { key: 'join', label: 'Reached the Join page', short: 'join-page views', count: 5, of: 'home', bound: 'upper', overflow: 'entrances' },
+        { key: 'submit', label: 'Form submitted', short: 'submissions', count: 8, of: 'join', overflow: 'attempts' },
         { key: 'stripe', label: 'Reached Stripe', short: 'Stripe handoffs', count: 6, of: 'submit' },
         { key: 'complete', label: 'Completed', short: 'completions', count: 5, of: 'stripe' },
       ],
@@ -148,6 +148,30 @@ test('acquisition shows where visitors are lost and how they reached Join', asyn
 
   await expect(page.locator('#daily-table').locator('..')).toBeVisible();
   await expect(page.locator('#acquisition-kpis')).toContainText('Homepage 25 · Join 5');
+});
+
+test('join views exceeding homepage views are entrances, never retries', async ({ page }) => {
+  await page.unroute('**/api/dashboard-data?**');
+  await page.route('**/api/dashboard-data?**', async (route) => {
+    const payload = dashboardPayload();
+    // A market day: flyer QR scans drive more /join views than the homepage saw.
+    payload.funnel.steps.find((s) => s.key === 'home').count = 4;
+    payload.funnel.cold_join_entries = 3;
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(payload),
+    });
+  });
+  await page.goto('/dashboard');
+
+  const steps = page.locator('#funnel-steps');
+  await expect(steps).toContainText('more join-page views than homepage views');
+  await expect(steps).toContainText('arrivals that skipped the homepage outnumber it');
+  // Page views are people, not attempts: the retry wording belongs to the
+  // submissions step alone.
+  await expect(steps).not.toContainText('5 attempts across 4 homepage views');
+  await expect(steps).toContainText('3 arrived without a link from our own pages');
 });
 
 test('an hour where no attempt reached Stripe raises the banner', async ({ page }) => {

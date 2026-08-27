@@ -576,26 +576,31 @@ details.tableview summary { cursor: pointer; color: var(--text-secondary); font-
 
       var note = el('div', 'fs-note');
       var parent = step.of ? byKey[step.of] : null;
+      var parentNoun = parent ? (parent.short || parent.label) : '';
       if (parent && step.count > parent.count) {
-        // Form submissions are attempts, not people: one visitor retrying a
-        // failing checkout logs several. Reporting that as a conversion rate
-        // would print a share above 100% and a drop-off of zero.
-        note.textContent = fmt(step.count) + ' attempts across ' + fmt(parent.count) + ' '
-          + (parent.short || 'views') + ' — repeat tries inflate this';
+        // A step can exceed its parent for two unrelated reasons, and the
+        // wrong explanation is worse than none. Submissions are attempts, so
+        // one visitor retrying a failing checkout inflates them. Join views
+        // are people, and exceed the homepage only when arrivals skipped it.
+        note.textContent = step.overflow === 'attempts'
+          ? fmt(step.count) + ' attempts across ' + fmt(parent.count) + ' ' + parentNoun
+            + ' — repeat tries inflate this'
+          : 'more ' + (step.short || 'views') + ' than ' + parentNoun
+            + ' — arrivals that skipped the homepage outnumber it';
       } else if (parent) {
         var rate = pct(step.count, parent.count);
         // An upper-bound step counts arrivals that never saw the parent page,
         // so its rate overstates click-through and its loss understates it.
         var prefix = step.bound === 'upper' ? 'at most ' : '';
         var suffix = step.bound === 'upper' ? ' lost here, at least' : ' lost here';
-        note.appendChild(document.createTextNode(prefix + fmtPct(rate) + ' of ' + (parent.short || parent.label) + ' · '));
+        note.appendChild(document.createTextNode(prefix + fmtPct(rate) + ' of ' + parentNoun + ' · '));
         note.appendChild(el('span', 'fs-drop', fmt(Math.max(0, parent.count - step.count)) + suffix));
-        if (step.key === 'join') {
-          note.appendChild(el('div', null,
-            fmt(f.cold_join_entries || 0) + ' arrived without a link from our own pages'));
-        }
       } else {
         note.textContent = 'Top of funnel';
+      }
+      if (step.key === 'join') {
+        note.appendChild(el('div', null,
+          fmt(f.cold_join_entries || 0) + ' arrived without a link from our own pages'));
       }
       row.appendChild(note);
       box.appendChild(row);
