@@ -226,7 +226,7 @@ details.tableview summary { cursor: pointer; color: var(--text-secondary); font-
         </div>
       </div>
       <div class="card" id="blocked-history-card" style="margin-bottom:16px" hidden>
-        <h2>Hours when no attempt reached Stripe</h2>
+        <h2 id="blocked-history-title">Hours when no attempt reached Stripe</h2>
         <p class="empty" style="margin:0 0 4px" id="blocked-history-note"></p>
         <div id="blocked-history"></div>
       </div>
@@ -663,10 +663,16 @@ details.tableview summary { cursor: pointer; color: var(--text-secondary); font-
     if (!all.length) { card.hidden = true; return; }
     card.hidden = false;
     var hours = (d.funnel && d.funnel.blocked_alert_hours) || 24;
+    $('blocked-history-title').textContent = (d.funnel && d.funnel.blocked_omitted)
+      ? 'Latest blocked hours'
+      : 'Hours when no attempt reached Stripe';
     var live = all.filter(function (w) { return w.recent; }).length;
-    note.textContent = live
+    // Never let a capped list read as a complete one.
+    var omitted = (d.funnel && d.funnel.blocked_omitted) || 0;
+    note.textContent = (live
       ? live + ' in the last ' + hours + ' hours — see the banner above.'
-      : 'None in the last ' + hours + ' hours. Listed for the record.';
+      : 'None in the last ' + hours + ' hours. Listed for the record.')
+      + (omitted ? ' Showing the latest ' + all.length + '; ' + omitted + ' older not listed.' : '');
     var table = el('table');
     var thead = el('thead');
     var hr = el('tr');

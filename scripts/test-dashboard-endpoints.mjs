@@ -237,7 +237,7 @@ function mockStripeHttps() {
   };
 }
 
-function mockDashboardFetch({ hangResendDomains = false, failSubscriptionOverview = false, partialSubscriptionOverview = false } = {}) {
+function mockDashboardFetch({ hangResendDomains = false, failSubscriptionOverview = false, partialSubscriptionOverview = false, extraCheckoutRows = [] } = {}) {
   return async (url, opts = {}) => {
     const u = String(url);
     if (u.includes('/rest/v1/rpc/ops_subscription_overview')) {
@@ -301,7 +301,7 @@ function mockDashboardFetch({ hangResendDomains = false, failSubscriptionOvervie
         { ts: new Date(now - 40 * 86400e3).toISOString(), event: 'join_error', error_code: 'network' },
       ];
       const filtered = u.includes('join_checkout_ready')
-        ? checkoutRows
+        ? checkoutRows.concat(extraCheckoutRows)
         : u.includes('event=eq.join_error')
         ? rows.filter((row) => row.event === 'join_error')
         : rows.filter((row) => ['page_view', 'membership_checkout_complete'].includes(row.event));
@@ -521,6 +521,52 @@ process.env.SUPABASE_SERVICE_ROLE_KEY = 'service_test_key';
     && byName['Resend key accepted by Resend']?.page === false
     && byName['Resend key accepted by Resend']?.detail.includes('timed out')
   ), byName);
+}
+
+// Case: a long live outage must not be truncated by the history cap, and a
+// capped history must say how much it left out.
+{
+  const blocked = [];
+  // 13 consecutive blocked hours inside the 24-hour alert horizon. Offsets
+  // start at 6 to clear the hours the shared fixture already occupies: the
+  // open hour, the straddle hour at 3 (which has departures, so it is not
+  // blocked) and the blocked hour at 5.
+  for (let h = 6; h <= 18; h++) {
+    blocked.push(
+      { ts: new Date(hourStart(h) + 60e3).toISOString(), event: 'join_submit', flow_id: `00000000-0000-4000-9000-${String(h).padStart(12, '0')}` },
+      { ts: new Date(hourStart(h) + 120e3).toISOString(), event: 'join_submit', flow_id: `00000000-0000-4000-9001-${String(h).padStart(12, '0')}` },
+    );
+  }
+  // 15 more from well outside it, which the cap should trim to 12.
+  for (let h = 1; h <= 15; h++) {
+    blocked.push(
+      { ts: new Date(hourStart(200 + h) + 60e3).toISOString(), event: 'join_submit', flow_id: `00000000-0000-4000-9002-${String(h).padStart(12, '0')}` },
+      { ts: new Date(hourStart(200 + h) + 120e3).toISOString(), event: 'join_submit', flow_id: `00000000-0000-4000-9003-${String(h).padStart(12, '0')}` },
+    );
+  }
+  process.env.DASHBOARD_TOKEN = 'tok';
+  process.env.STRIPE_SECRET_KEY = 'sk_test_x';
+  process.env.RESEND_API_KEY = 're_x';
+  process.env.SUPABASE_URL = 'https://example.supabase.co';
+  process.env.SUPABASE_SERVICE_ROLE_KEY = 'service-role';
+  globalThis.fetch = mockDashboardFetch({ extraCheckoutRows: blocked });
+  https.request = mockStripeHttps();
+  const handler = await fresh('../api/dashboard-data.js');
+  const { res, out } = mockRes();
+  await handler({ method: 'GET', headers: { authorization: 'Bearer tok' }, query: { days: 30 } }, res);
+  const f = out.body?.funnel;
+  const recent = (f?.blocked_windows || []).filter((w) => w.recent);
+  const older = (f?.blocked_windows || []).filter((w) => !w.recent);
+  // 13 injected hours plus the shared fixture's own blocked hour at offset 5.
+  check('a live outage longer than the history cap is reported in full', (
+    recent.length === 14 && recent.every((w) => w.submits === 2)
+  ), { recent: recent.length, hours: recent.map((w) => w.hour) });
+  check('the alert total counts every live hour, not the first twelve', (
+    recent.reduce((sum, w) => sum + w.submits, 0) === 28
+  ), recent.map((w) => w.submits));
+  check('historical blocked hours are capped and the remainder counted', (
+    older.length === 12 && f?.blocked_omitted === 4
+  ), { older: older.length, omitted: f?.blocked_omitted });
 }
 
 process.exit(failures ? 1 : 0);

@@ -268,6 +268,31 @@ test('a recent outage appears in both the banner and the record', async ({ page 
   await expect(page.locator('#blocked-history-card')).toContainText('2048-08-08 18:00');
 });
 
+test('a capped history says how much it left out', async ({ page }) => {
+  await page.unroute('**/api/dashboard-data?**');
+  await page.route('**/api/dashboard-data?**', async (route) => {
+    const payload = dashboardPayload();
+    payload.funnel.blocked_windows = [
+      { hour: '2048-08-22T18', submits: 4, errors: 4, top_error_code: 'CHALLENGE_FAILED', recent: true },
+      { hour: '2048-08-08T18', submits: 21, errors: 21, top_error_code: 'RATE_LIMITED', recent: false },
+    ];
+    payload.funnel.blocked_omitted = 5;
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(payload),
+    });
+  });
+  await page.goto('/dashboard');
+
+  const card = page.locator('#blocked-history-card');
+  // A truncated list must never read as the complete record.
+  await expect(card).toContainText('Latest blocked hours');
+  await expect(card).toContainText('Showing the latest 2; 5 older not listed');
+  // The banner still counts only what is live, regardless of what was trimmed.
+  await expect(page.locator('#banner')).toContainText('Checkout blocked in 1 hour(s): 4 attempt(s)');
+});
+
 test('partial subscription payload uses placeholders while independent sections keep rendering', async ({ page }) => {
   await page.unroute('**/api/dashboard-data?**');
   await page.route('**/api/dashboard-data?**', async (route) => {
