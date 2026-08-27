@@ -276,6 +276,10 @@ function mockDashboardFetch({ hangResendDomains = false, failSubscriptionOvervie
         { ts: new Date(hourStart(3) + 3600e3 + 2e3).toISOString(), event: 'join_checkout_departed', flow_id: '00000000-0000-4000-8000-000000000005' },
         { ts: new Date(hourStart(3) + 3599.5e3).toISOString(), event: 'join_submit', flow_id: '00000000-0000-4000-8000-000000000006' },
         { ts: new Date(hourStart(3) + 3600e3 + 3e3).toISOString(), event: 'join_checkout_departed', flow_id: '00000000-0000-4000-8000-000000000006' },
+        // A blocked hour from days ago. It stays in the record but must not
+        // keep the "needs attention" banner permanently lit.
+        { ts: new Date(hourStart(120)).toISOString(), event: 'join_submit', flow_id: '00000000-0000-4000-8000-000000000009' },
+        { ts: new Date(hourStart(120) + 40e3).toISOString(), event: 'join_submit', flow_id: '00000000-0000-4000-8000-00000000000a' },
         // Two attempts moments ago, departures still in flight: the open hour
         // must not accuse itself of being an outage.
         { ts: new Date(now - 120e3).toISOString(), event: 'join_submit', flow_id: '00000000-0000-4000-8000-000000000007' },
@@ -354,7 +358,7 @@ process.env.SUPABASE_SERVICE_ROLE_KEY = 'service_test_key';
   const f = out.body?.funnel;
   check('funnel counts current period only', f?.totals?.visits === 2 && f?.totals?.confirmations === 1, f?.totals);
   check('daily acquisition counts checkout attempts', (
-    f?.daily?.reduce((sum, row) => sum + row.checkout_attempts, 0) === 8
+    f?.daily?.reduce((sum, row) => sum + row.checkout_attempts, 0) === 10
   ), f?.daily);
   check('funnel previous period counted', f?.prev?.visits === 1, f?.prev);
   check('join errors counted by code', (
@@ -368,7 +372,7 @@ process.env.SUPABASE_SERVICE_ROLE_KEY = 'service_test_key';
   ), f?.totals);
   check('previous join errors counted', f?.prev?.join_errors === 1, f?.prev);
   check('checkout handoff attempts are correlated and counted', (
-    f?.totals?.join_submits === 8
+    f?.totals?.join_submits === 10
     && f?.totals?.checkout_ready === 2
     && f?.totals?.checkout_departed === 3
     && f?.totals?.checkout_stalled === 1
@@ -396,7 +400,7 @@ process.env.SUPABASE_SERVICE_ROLE_KEY = 'service_test_key';
     && f.steps.find((s) => s.key === 'complete')?.count === 1
   ), f?.steps);
   check('blocked checkout window detected', (
-    f?.blocked_windows?.length === 1
+    f?.blocked_windows?.length === 2
     && f.blocked_windows[0].submits === 2
   ), f?.blocked_windows);
   // Mirror the endpoint's Pacific hour key so the assertions name real hours.
@@ -415,9 +419,17 @@ process.env.SUPABASE_SERVICE_ROLE_KEY = 'service_test_key';
   check('the still-open hour is never flagged as blocked', (
     !flagged.includes(ptHour(nowMs))
   ), { flagged, openHour: ptHour(nowMs) });
-  check('only the genuinely blocked hour is reported', (
-    flagged.length === 1 && flagged[0] === ptHour(hourStart(5))
-  ), { flagged, expected: ptHour(hourStart(5)) });
+  check('only genuinely blocked hours are reported', (
+    flagged.length === 2
+    && flagged[0] === ptHour(hourStart(5))
+    && flagged[1] === ptHour(hourStart(120))
+  ), { flagged, expected: [ptHour(hourStart(5)), ptHour(hourStart(120))] });
+  // The banner is driven by `recent`; the rest stay as record only.
+  check('only a recent outage is marked for the alert banner', (
+    f.blocked_windows[0].recent === true
+    && f.blocked_windows[1].recent === false
+    && f?.blocked_alert_hours === 24
+  ), f?.blocked_windows);
   // The failures fired in the following hour. Bucketing them by their own
   // timestamp would leave the outage with no cause, or borrow an unrelated one.
   check('a blocked hour names the error its own attempts hit', (

@@ -117,6 +117,8 @@ button.primary { background: var(--accent); border-color: var(--accent); color: 
 .entrance .en-label { font-size: 12px; color: var(--text-muted); }
 .entrance .en-value { font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .entrance .en-note { font-size: 11px; color: var(--text-muted); }
+.scroller { overflow-x: auto; }
+tr.blocked-live td { background: color-mix(in srgb, var(--status-critical) 10%, transparent); font-weight: 600; }
 .chart-wrap { position: relative; }
 .chart-wrap svg { display: block; width: 100%; height: auto; }
 .legend { display: flex; gap: 16px; font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; }
@@ -222,6 +224,11 @@ details.tableview summary { cursor: pointer; color: var(--text-secondary); font-
           <h2 style="margin-top:16px">Landing-page traffic by source</h2>
           <div class="entrances" id="traffic-sources" style="margin-top:8px"></div>
         </div>
+      </div>
+      <div class="card" id="blocked-history-card" style="margin-bottom:16px" hidden>
+        <h2>Hours when no attempt reached Stripe</h2>
+        <p class="empty" style="margin:0 0 4px" id="blocked-history-note"></p>
+        <div id="blocked-history"></div>
       </div>
       <div class="kpis" id="acquisition-kpis"></div>
       <div class="card">
@@ -335,6 +342,7 @@ details.tableview summary { cursor: pointer; color: var(--text-secondary); font-
     renderSubscriptions(d);
     renderFunnelSteps(d);
     renderEntrances(d);
+    renderBlockedHistory(d);
     renderAcquisitionKpis(d);
     renderCharts(d);
     renderDailyTable(d);
@@ -354,7 +362,11 @@ details.tableview summary { cursor: pointer; color: var(--text-secondary); font-
     if (d.funnel && d.funnel.totals && d.funnel.totals.checkout_stalled) {
       problems.push(d.funnel.totals.checkout_stalled + ' checkout handoff(s) stalled');
     }
-    var blocked = (d.funnel && d.funnel.blocked_windows) || [];
+    // Only a recent blocked hour is actionable. Older ones stay in the
+    // acquisition section as record; putting them here would keep the banner
+    // permanently lit and hide the next real outage inside a number nobody
+    // reads any more.
+    var blocked = ((d.funnel && d.funnel.blocked_windows) || []).filter(function (w) { return w.recent; });
     if (blocked.length) {
       var attempts = blocked.reduce(function (sum, w) { return sum + w.submits; }, 0);
       problems.push(
@@ -640,6 +652,42 @@ details.tableview summary { cursor: pointer; color: var(--text-secondary); font-
       box.appendChild(entranceTile(meta[0], meta[1], value, pct(value, total)));
     });
     if (!shown) box.appendChild(el('p', 'empty', 'No data yet.'));
+  }
+
+  function renderBlockedHistory(d) {
+    var card = $('blocked-history-card');
+    var box = $('blocked-history');
+    var note = $('blocked-history-note');
+    box.textContent = '';
+    var all = (d.funnel && d.funnel.blocked_windows) || [];
+    if (!all.length) { card.hidden = true; return; }
+    card.hidden = false;
+    var hours = (d.funnel && d.funnel.blocked_alert_hours) || 24;
+    var live = all.filter(function (w) { return w.recent; }).length;
+    note.textContent = live
+      ? live + ' in the last ' + hours + ' hours — see the banner above.'
+      : 'None in the last ' + hours + ' hours. Listed for the record.';
+    var table = el('table');
+    var thead = el('thead');
+    var hr = el('tr');
+    ['Hour (PT)', 'Attempts', 'Reached Stripe', 'Cause'].forEach(function (h, i) {
+      hr.appendChild(el('th', i ? 'num' : '', h));
+    });
+    thead.appendChild(hr);
+    table.appendChild(thead);
+    var tbody = el('tbody');
+    all.forEach(function (w) {
+      var tr = el('tr', w.recent ? 'blocked-live' : '');
+      tr.appendChild(el('td', '', w.hour.replace('T', ' ') + ':00'));
+      tr.appendChild(el('td', 'num', fmt(w.submits)));
+      tr.appendChild(el('td', 'num', '0'));
+      tr.appendChild(el('td', 'num', w.top_error_code || 'no error recorded'));
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    var scroll = el('div', 'scroller');
+    scroll.appendChild(table);
+    box.appendChild(scroll);
   }
 
   function renderEntrances(d) {

@@ -21,6 +21,11 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 // Departure beacons land within seconds of a submit; wait this long before
 // judging an hour so an attempt still in flight cannot read as an outage.
 const BLOCKED_GRACE_MS = 10 * 60 * 1000;
+// "Needs attention" has to mean now. A blocked hour stays in the record for as
+// long as the selected range, but only a recent one is worth interrupting
+// someone over — an alert pinned on by a fortnight-old outage is one people
+// learn to read past, which is the failure it exists to prevent.
+const BLOCKED_ALERT_MS = 24 * 60 * 60 * 1000;
 const CIRCLES = new Set(['tap', 'cellar', 'reserve']);
 const BILLING_INTERVALS = new Set(['monthly', 'annual']);
 const OFFER_TYPES = new Set(['standard', 'founding', 'unknown']);
@@ -346,6 +351,7 @@ async function funnelSection(days, now) {
         submits: h.submits,
         errors: h.errors,
         top_error_code: top ? top[0] : null,
+        recent: now - h.latestSubmit <= BLOCKED_ALERT_MS,
       };
     });
 
@@ -374,6 +380,7 @@ async function funnelSection(days, now) {
     prev,
     steps,
     sources,
+    blocked_alert_hours: BLOCKED_ALERT_MS / (60 * 60 * 1000),
     join_entries,
     cold_join_entries,
     blocked_windows,

@@ -203,7 +203,7 @@ test('an hour where no attempt reached Stripe raises the banner', async ({ page 
   await page.route('**/api/dashboard-data?**', async (route) => {
     const payload = dashboardPayload();
     payload.funnel.blocked_windows = [
-      { hour: '2048-08-22T18', submits: 21, errors: 21, top_error_code: 'RATE_LIMITED' },
+      { hour: '2048-08-22T18', submits: 21, errors: 21, top_error_code: 'RATE_LIMITED', recent: true },
     ];
     await route.fulfill({
       status: 200,
@@ -216,6 +216,56 @@ test('an hour where no attempt reached Stripe raises the banner', async ({ page 
   await expect(page.locator('#banner')).toContainText('Checkout blocked in 1 hour(s)');
   await expect(page.locator('#banner')).toContainText('21 attempt(s) and none reached Stripe');
   await expect(page.locator('#banner')).toContainText('RATE_LIMITED');
+});
+
+test('a resolved outage is kept as record without lighting the banner', async ({ page }) => {
+  await page.unroute('**/api/dashboard-data?**');
+  await page.route('**/api/dashboard-data?**', async (route) => {
+    const payload = dashboardPayload();
+    // Two weeks old and long since fixed. An alert that stays lit for this is
+    // one people stop reading, which hides the next real one.
+    payload.funnel.blocked_windows = [
+      { hour: '2048-08-08T18', submits: 21, errors: 21, top_error_code: 'RATE_LIMITED', recent: false },
+      { hour: '2048-08-08T19', submits: 19, errors: 19, top_error_code: null, recent: false },
+    ];
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(payload),
+    });
+  });
+  await page.goto('/dashboard');
+
+  await expect(page.locator('#banner')).not.toContainText('Checkout blocked');
+  const history = page.locator('#blocked-history-card');
+  await expect(history).toContainText('None in the last 24 hours');
+  await expect(history).toContainText('2048-08-08 18:00');
+  await expect(history).toContainText('RATE_LIMITED');
+  await expect(history).toContainText('no error recorded');
+});
+
+test('a recent outage appears in both the banner and the record', async ({ page }) => {
+  await page.unroute('**/api/dashboard-data?**');
+  await page.route('**/api/dashboard-data?**', async (route) => {
+    const payload = dashboardPayload();
+    payload.funnel.blocked_windows = [
+      { hour: '2048-08-22T18', submits: 4, errors: 4, top_error_code: 'CHALLENGE_FAILED', recent: true },
+      { hour: '2048-08-08T18', submits: 21, errors: 21, top_error_code: 'RATE_LIMITED', recent: false },
+    ];
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(payload),
+    });
+  });
+  await page.goto('/dashboard');
+
+  // The banner counts only the live one, not the fortnight-old one beneath it.
+  await expect(page.locator('#banner')).toContainText('Checkout blocked in 1 hour(s): 4 attempt(s)');
+  await expect(page.locator('#banner')).toContainText('CHALLENGE_FAILED');
+  await expect(page.locator('#banner')).not.toContainText('25 attempt(s)');
+  await expect(page.locator('#blocked-history-card')).toContainText('1 in the last 24 hours');
+  await expect(page.locator('#blocked-history-card')).toContainText('2048-08-08 18:00');
 });
 
 test('partial subscription payload uses placeholders while independent sections keep rendering', async ({ page }) => {
