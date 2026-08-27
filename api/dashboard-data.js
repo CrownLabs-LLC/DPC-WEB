@@ -329,8 +329,9 @@ async function funnelSection(days, now) {
     }
   }
 
-  // A blocked window is an hour in which people tried to check out and not one
-  // of them reached Stripe. Two attempts is the floor so a single abandoned
+  // A blocked window is an hour in which attempts were made and not one of
+  // them reached Stripe. Attempts are not visitors — a retry storm is one
+  // person — so this counts flows, not people. Two attempts is the floor so a single abandoned
   // form does not read as an outage, and an hour is only judged once its
   // in-flight beacons have had time to arrive — departures land within seconds,
   // so a short grace keeps the current hour from flagging itself.

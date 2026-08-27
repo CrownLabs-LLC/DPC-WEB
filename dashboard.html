@@ -578,15 +578,24 @@ details.tableview summary { cursor: pointer; color: var(--text-secondary); font-
       var parent = step.of ? byKey[step.of] : null;
       var parentNoun = parent ? (parent.short || parent.label) : '';
       if (parent && step.count > parent.count) {
-        // A step can exceed its parent for two unrelated reasons, and the
-        // wrong explanation is worse than none. Submissions are attempts, so
-        // one visitor retrying a failing checkout inflates them. Join views
-        // are people, and exceed the homepage only when arrivals skipped it.
-        note.textContent = step.overflow === 'attempts'
-          ? fmt(step.count) + ' attempts across ' + fmt(parent.count) + ' ' + parentNoun
-            + ' — repeat tries inflate this'
-          : 'more ' + (step.short || 'views') + ' than ' + parentNoun
-            + ' — arrivals that skipped the homepage outnumber it';
+        // A step can exceed its parent for several unrelated reasons and the
+        // wrong explanation is worse than none, so each kind states its own
+        // and anything unclassified gets a neutral one rather than borrowing
+        // the nearest. Submissions are attempts, so one visitor retrying a
+        // failing checkout inflates them. Join-page views exceed homepage
+        // views only when arrivals skipped the homepage. Later stages can
+        // overflow too — a completion reached through the depositor
+        // confirmation link never passes /join, and a rolling window can hold
+        // an outcome whose earlier step falls outside it.
+        var more = 'more ' + (step.short || 'views') + ' than ' + parentNoun;
+        if (step.overflow === 'attempts') {
+          note.textContent = fmt(step.count) + ' attempts across ' + fmt(parent.count) + ' '
+            + parentNoun + ' — repeat tries inflate this';
+        } else if (step.overflow === 'entrances') {
+          note.textContent = more + ' — arrivals that skipped the homepage outnumber it';
+        } else {
+          note.textContent = more + ' — some did not pass through the previous step in this window';
+        }
       } else if (parent) {
         var rate = pct(step.count, parent.count);
         // An upper-bound step counts arrivals that never saw the parent page,

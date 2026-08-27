@@ -174,6 +174,30 @@ test('join views exceeding homepage views are entrances, never retries', async (
   await expect(steps).toContainText('3 arrived without a link from our own pages');
 });
 
+test('a later stage exceeding its parent gets a neutral explanation', async ({ page }) => {
+  await page.unroute('**/api/dashboard-data?**');
+  await page.route('**/api/dashboard-data?**', async (route) => {
+    const payload = dashboardPayload();
+    // Real shape: completions reached through the depositor confirmation link
+    // never pass /join, so they can outnumber the Stripe handoffs recorded there.
+    payload.funnel.steps.find((s) => s.key === 'stripe').count = 3;
+    payload.funnel.steps.find((s) => s.key === 'complete').count = 5;
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(payload),
+    });
+  });
+  await page.goto('/dashboard');
+
+  const steps = page.locator('#funnel-steps');
+  await expect(steps).toContainText('more completions than Stripe handoffs');
+  await expect(steps).toContainText('some did not pass through the previous step');
+  // Neither the retry nor the entrance explanation belongs to this stage.
+  await expect(steps).not.toContainText('skipped the homepage outnumber it');
+  await expect(steps).not.toContainText('5 attempts across 3 Stripe handoffs');
+});
+
 test('an hour where no attempt reached Stripe raises the banner', async ({ page }) => {
   await page.unroute('**/api/dashboard-data?**');
   await page.route('**/api/dashboard-data?**', async (route) => {
