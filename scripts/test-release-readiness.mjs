@@ -52,14 +52,24 @@ assert.match(home, /one-time \$49 Founding Slot Deposit/);
 // every cold visitor not to buy, citing a charge they had never heard of, above
 // the fold. Guard the removal so it cannot drift back onto the homepage.
 assert.doesNotMatch(home, /Already paid a \$49 Founding Slot Deposit/);
-// Decision #37: up to five Pours across three assigned venues plus two the member
-// picks. The site must never promise five *assigned* venues — Reserve sits on the
-// five-eligible-venue floor, so that phrasing puts the page in conflict with the app.
-assert.match(home, /three spots we assign from this roster, and two you pick yourself/);
-assert.doesNotMatch(home, /five venues assigned|land at five venues/);
-assert.match(home, /Wingen Bakery &amp; Restaurant[\s\S]*Coming Soon/);
+// The Pour mechanic. Member venue selection is DISABLED on all three Circles in
+// production (circle_venue_selection_policies.selection_enabled = false), so the
+// system assigns all five venues and nobody picks anything. Any copy offering the
+// member a choice of spots puts the page in conflict with the app.
+assert.match(home, /one at each of five spots we pick for you/);
+assert.doesNotMatch(
+  home,
+  /two you pick yourself|two you choose yourself|spots we assign from this roster|three spots we (?:pick|assign)|one at each of your five spots|five venues assigned|land at five venues/,
+  'homepage promises member venue selection, which is disabled in production',
+);
+// Wingen is an active partner, not a pending one.
+assert.doesNotMatch(home, /Coming Soon/);
 assert.match(home, /Start with one Circle today/);
-assert.doesNotMatch(home, /Pause feature|add (?:another|more) anytime|Welcome Kit fee|A \$50 value|THE COASTER PASSPORT|THE INTRODUCTION/);
+assert.doesNotMatch(home, /Pause feature|add (?:another|more) anytime|Welcome Kit fee|A \$50 value|THE INTRODUCTION/);
+// The Coaster Passport section is on the page; its CSS sat orphaned from
+// 2026-08-13 until it was reinstated. Guard the markup, not just the styles.
+assert.match(home, /THE COASTER PASSPORT/);
+assert.match(home, /data-screen-label="05 Coaster Passport"/);
 assert.doesNotMatch(home, /public launch checkout supports one Circle|between now and launch|Full launch August 1/);
 assert.match(join, /one-time \$49 FOUNDING SLOT DEPOSIT/i);
 assert.match(join, /Please don’t use this public checkout/);
