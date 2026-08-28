@@ -21,6 +21,14 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 // Departure beacons land within seconds of a submit; wait this long before
 // judging an hour so an attempt still in flight cannot read as an outage.
 const BLOCKED_GRACE_MS = 10 * 60 * 1000;
+// "Needs attention" has to mean now. A blocked hour stays in the record for as
+// long as the selected range, but only a recent one is worth interrupting
+// someone over — an alert pinned on by a fortnight-old outage is one people
+// learn to read past, which is the failure it exists to prevent.
+const BLOCKED_ALERT_MS = 24 * 60 * 60 * 1000;
+// Historical blocked hours are context, not an alert; keep the list readable
+// and report how many were left off rather than silently truncating.
+const BLOCKED_HISTORY_CAP = 12;
 const CIRCLES = new Set(['tap', 'cellar', 'reserve']);
 const BILLING_INTERVALS = new Set(['monthly', 'annual']);
 const OFFER_TYPES = new Set(['standard', 'founding', 'unknown']);
@@ -335,10 +343,9 @@ async function funnelSection(days, now) {
   // form does not read as an outage, and an hour is only judged once its
   // in-flight beacons have had time to arrive — departures land within seconds,
   // so a short grace keeps the current hour from flagging itself.
-  const blocked_windows = [...hourly.values()]
+  const allBlocked = [...hourly.values()]
     .filter((h) => h.submits >= 2 && h.departed === 0 && now - h.latestSubmit >= BLOCKED_GRACE_MS)
     .sort((a, b) => (a.hour < b.hour ? 1 : -1))
-    .slice(0, 12)
     .map((h) => {
       const top = Object.entries(h.codes).sort((a, b) => b[1] - a[1])[0];
       return {
@@ -346,8 +353,19 @@ async function funnelSection(days, now) {
         submits: h.submits,
         errors: h.errors,
         top_error_code: top ? top[0] : null,
+        recent: now - h.latestSubmit <= BLOCKED_ALERT_MS,
       };
     });
+  // Every recent hour is reported, uncapped: these drive the alert, and a
+  // truncated set would understate a live outage — a 13-hour one would be
+  // announced as 12 hours with an attempt total to match. The horizon bounds
+  // the count on its own, since only so many hours fit in a day. Older hours
+  // are record rather than alert, so they are capped and the remainder counted
+  // so the list never implies it is complete when it is not.
+  const recentBlocked = allBlocked.filter((w) => w.recent);
+  const olderBlocked = allBlocked.filter((w) => !w.recent);
+  const blocked_windows = recentBlocked.concat(olderBlocked.slice(0, BLOCKED_HISTORY_CAP));
+  const blocked_omitted = Math.max(0, olderBlocked.length - BLOCKED_HISTORY_CAP);
 
   // Arrivals carrying no link from our own pages: flyer QR scans, typed URLs,
   // ads pointed straight at /join, and anything whose referrer was stripped.
@@ -374,6 +392,8 @@ async function funnelSection(days, now) {
     prev,
     steps,
     sources,
+    blocked_alert_hours: BLOCKED_ALERT_MS / (60 * 60 * 1000),
+    blocked_omitted,
     join_entries,
     cold_join_entries,
     blocked_windows,
