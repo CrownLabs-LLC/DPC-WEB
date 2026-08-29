@@ -245,7 +245,7 @@ img, svg { display: block; max-width: 100%; }
   z-index: 1;
 }
 .hero__lockup {
-  width: 320px;
+  width: 190px;
   height: auto;
   margin: 0 auto 24px;
   padding-bottom: 30px;
@@ -1138,7 +1138,7 @@ img, svg { display: block; max-width: 100%; }
 
 @media (max-width: 767px) {
   .hero { padding: 40px 24px; min-height: 700px; }
-  .hero__lockup { width: 280px; }
+  .hero__lockup { width: 170px; }
   .hero__headline { font-size: 36px; }
   .hero__sub { font-size: 16px; }
   .hero__strip { font-size: 13px; padding: 9px 14px; margin-bottom: 22px; }
@@ -1221,7 +1221,7 @@ img, svg { display: block; max-width: 100%; }
    claws back chrome so the branch is no worse than main was. */
 @media (max-width: 480px) {
   .hero { padding: 28px 20px; }
-  .hero__lockup { width: 240px; margin-bottom: 18px; padding-bottom: 22px; }
+  .hero__lockup { width: 150px; margin-bottom: 18px; padding-bottom: 22px; }
   .hero__strip { margin-bottom: 18px; }
   .hero__sub { margin-bottom: 26px; }
 }
@@ -1249,38 +1249,44 @@ img, svg { display: block; max-width: 100%; }
   </div>
 
   <div class="hero__inner">
-    <!-- DPC_Mark3_Horizontal_Lockup.svg, official artwork. The source carries a
-         #0A1520 background rect and a #0D1B2A card rect; both are dropped here so
-         the mark sits transparent on the hero. viewBox is tightened to the art. -->
-    <svg class="hero__lockup" viewBox="72 42 365 144" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Downtown Pour Collective">
+    <!-- DPC_Mark1_Primary_Lockup.svg, official stacked artwork. The source
+         carries a #0A1520 backdrop rect, a #0D1B2A card rect, and the card's gold
+         border; all three are dropped so the mark sits transparent on the hero.
+         This is the layout prod ships, but with the splash arcs and the fourth
+         bubble that prod's traced stand-in is missing. viewBox cropped to the art. -->
+    <svg class="hero__lockup" viewBox="200 66 283 345" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Downtown Pour Collective">
       <defs>
-        <clipPath id="hl-glass-clip"><path d="M -16,-46 L 16,-46 L 22,37 L -22,37 Z"/></clipPath>
+        <clipPath id="pl-glass-clip"><path d="M -23,-62 L 23,-62 L 30,50 L -30,50 Z"/></clipPath>
       </defs>
-      <g transform="translate(136,120) rotate(38)">
-        <path d="M -22,-54 L 22,-54 L 28,44 L -28,44 Z" fill="#C4A35A"/>
-        <path d="M -16,-46 L 16,-46 L 22,37 L -22,37 Z" fill="#0D1B2A"/>
-        <g clip-path="url(#hl-glass-clip)">
-          <path d="M -21,23 L 19,-9 L 22,37 L -22,37 Z" fill="#1E3A5A"/>
-          <line x1="-24" y1="23" x2="22" y2="-10" stroke="#C4A35A" stroke-width="1.4" stroke-linecap="round" opacity="0.75"/>
-          <circle cx="8" cy="20" r="2.5" fill="#C4A35A" opacity="0.22"/>
-          <circle cx="-4" cy="28" r="1.8" fill="#C4A35A" opacity="0.18"/>
-          <circle cx="14" cy="10" r="1.5" fill="#C4A35A" opacity="0.16"/>
+      <g transform="translate(326,184) rotate(38)">
+        <path d="M -30,-72 L 30,-72 L 38,58 L -38,58 Z" fill="#C4A35A"/>
+        <path d="M -23,-62 L 23,-62 L 30,50 L -30,50 Z" fill="#0D1B2A"/>
+        <g clip-path="url(#pl-glass-clip)">
+          <path d="M -28.8,30.5 L 26.1,-12.4 L 30,50 L -30,50 Z" fill="#1E3A5A"/>
+          <line x1="-32" y1="30.5" x2="30" y2="-14" stroke="#C4A35A" stroke-width="1.8" stroke-linecap="round" opacity="0.75"/>
+          <circle cx="12" cy="28" r="3.2" fill="#C4A35A" opacity="0.22"/>
+          <circle cx="-2" cy="38" r="2.2" fill="#C4A35A" opacity="0.18"/>
+          <circle cx="20" cy="14" r="2" fill="#C4A35A" opacity="0.16"/>
+          <circle cx="4" cy="18" r="1.6" fill="#C4A35A" opacity="0.14"/>
         </g>
-        <rect x="-24" y="-58" width="48" height="7" rx="2" fill="#C4A35A"/>
-        <rect x="-32" y="42" width="64" height="8" rx="2" fill="#C4A35A"/>
+        <rect x="-32" y="-77" width="64" height="9" rx="3" fill="#C4A35A"/>
+        <rect x="-42" y="56" width="84" height="10" rx="3" fill="#C4A35A"/>
       </g>
-      <path d="M 164,76 C 188,58 218,52 238,64 C 250,72 246,88 230,84" fill="none" stroke="#C4A35A" stroke-width="4.5" stroke-linecap="round"/>
-      <path d="M 166,82 C 184,68 208,64 224,74 C 233,80 228,92 214,88" fill="none" stroke="#C4A35A" stroke-width="2.4" stroke-linecap="round" opacity="0.5"/>
-      <circle cx="240" cy="62" r="5.5" fill="#C4A35A"/>
-      <circle cx="252" cy="72" r="3.8" fill="#C4A35A" opacity="0.75"/>
-      <circle cx="246" cy="50" r="2.8" fill="#C4A35A" opacity="0.55"/>
-      <circle cx="258" cy="60" r="2" fill="#C4A35A" opacity="0.4"/>
-      <circle cx="216" cy="48" r="2.2" fill="#C4A35A" opacity="0.4"/>
-      <line x1="278" y1="62" x2="278" y2="176" stroke="#C4A35A" stroke-width="0.8" opacity="0.4"/>
-      <text x="298" y="76" style="font-family:'Barlow Condensed','Arial Narrow',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.44em;fill:#C4A35A">DOWNTOWN</text>
-      <text x="290" y="122" style="font-family:'Playfair Display',Georgia,serif;font-size:34px;font-weight:700;letter-spacing:0.04em;fill:#F5F0E8">POUR</text>
-      <text x="298" y="144" style="font-family:'Barlow Condensed','Arial Narrow',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.44em;fill:#C4A35A">COLLECTIVE</text>
-      <text x="300" y="160" style="font-family:'Barlow Condensed','Arial Narrow',sans-serif;font-size:8px;font-weight:600;letter-spacing:0.22em;fill:#5A6475">LIVERMORE &#183; TRI-VALLEY</text>
+      <path d="M 356,108 C 386,88 420,82 444,98 C 460,110 452,134 428,128" fill="none" stroke="#C4A35A" stroke-width="6" stroke-linecap="round"/>
+      <path d="M 358,116 C 382,100 410,96 430,108 C 442,116 436,132 418,126" fill="none" stroke="#C4A35A" stroke-width="3.2" stroke-linecap="round" opacity="0.5"/>
+      <circle cx="446" cy="96" r="7" fill="#C4A35A"/>
+      <circle cx="462" cy="108" r="5" fill="#C4A35A" opacity="0.8"/>
+      <circle cx="454" cy="82" r="3.5" fill="#C4A35A" opacity="0.6"/>
+      <circle cx="470" cy="94" r="2.8" fill="#C4A35A" opacity="0.45"/>
+      <circle cx="462" cy="76" r="2" fill="#C4A35A" opacity="0.35"/>
+      <circle cx="400" cy="78" r="3" fill="#C4A35A" opacity="0.5"/>
+      <circle cx="416" cy="72" r="2" fill="#C4A35A" opacity="0.35"/>
+      <line x1="210" y1="288" x2="470" y2="288" stroke="#C4A35A" stroke-width="0.45" opacity="0.32"/>
+      <text x="340" y="306" text-anchor="middle" style="font-family:'Barlow Condensed','Arial Narrow',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.46em;fill:#C4A35A">DOWNTOWN</text>
+      <text x="340" y="354" text-anchor="middle" style="font-family:'Playfair Display',Georgia,serif;font-size:44px;font-weight:700;letter-spacing:0.04em;fill:#F5F0E8">POUR</text>
+      <text x="340" y="374" text-anchor="middle" style="font-family:'Barlow Condensed','Arial Narrow',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.46em;fill:#C4A35A">COLLECTIVE</text>
+      <line x1="210" y1="383" x2="470" y2="383" stroke="#C4A35A" stroke-width="0.45" opacity="0.32"/>
+      <text x="340" y="400" text-anchor="middle" style="font-family:'Barlow Condensed','Arial Narrow',sans-serif;font-size:9px;font-weight:600;letter-spacing:0.28em;fill:#5A6475">LIVERMORE &#183; TRI-VALLEY</text>
     </svg>
 
     <p class="hero__strip"><strong>Kickoff Party, September 15.</strong> Founding pricing closes Monday, August 31 at 11:59 PM. Join by then and you’re there.</p>
