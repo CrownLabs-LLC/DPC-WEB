@@ -61,6 +61,12 @@ assert.match(home, /one at each of five spots we pick for you/);
 // a hard number there reads as the size of the whole roster.
 assert.match(home, /<h1 class="hero__headline">Five drinks a month at downtown Livermore's best spots\.<\/h1>/);
 assert.doesNotMatch(home, /five of downtown Livermore/);
+// No dashes in visible copy. The body font renders a double hyphen as a dash
+// glyph, so `--` is caught here too, not just the em and en dash characters.
+for (const [page, markup] of [['index.html', home], ['join.html', join]]) {
+  const visible = markup.replace(/<!--[\s\S]*?-->/g, '').replace(/<(script|style)[\s\S]*?<\/\1>/g, '');
+  assert.doesNotMatch(visible, /\u2014|\u2013|\s--\s/, `${page} still has a dash in visible copy`);
+}
 assert.doesNotMatch(
   home,
   /two you pick yourself|two you choose yourself|spots we assign from this roster|three spots we (?:pick|assign)|one at each of your five spots|five venues assigned|land at five venues/,
