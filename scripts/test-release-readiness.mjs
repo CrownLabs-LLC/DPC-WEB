@@ -48,16 +48,61 @@ for (const [page, markup] of [
 
 assert.match(home, /Join The Collective/);
 assert.match(home, /one-time \$49 Founding Slot Deposit/);
-assert.match(home, /Already paid a \$49 Founding Slot Deposit/);
-assert.match(home, /Wingen Bakery &amp; Restaurant[\s\S]*Coming Soon/);
+// The deposit-holder notice is a /join footnote, not homepage hero copy: it told
+// every cold visitor not to buy, citing a charge they had never heard of, above
+// the fold. Guard the removal so it cannot drift back onto the homepage.
+assert.doesNotMatch(home, /Already paid a \$49 Founding Slot Deposit/);
+// The Pour mechanic. Member venue selection is DISABLED on all three Circles in
+// production (circle_venue_selection_policies.selection_enabled = false), so the
+// system assigns all five venues and nobody picks anything. Any copy offering the
+// member a choice of spots puts the page in conflict with the app.
+assert.match(home, /one at each of five spots we pick for you/);
+// The hero headline carries no venue count. Eight partners today, more later;
+// a hard number there reads as the size of the whole roster.
+assert.match(home, /<h1 class="hero__headline">Five drinks a month at downtown Livermore's best spots\.<\/h1>/);
+assert.doesNotMatch(home, /five of downtown Livermore/);
+// No dashes in visible copy. The body font renders a double hyphen as a dash
+// glyph, so `--` is caught here too, not just the em and en dash characters.
+for (const [page, markup] of [['index.html', home], ['join.html', join]]) {
+  const visible = markup.replace(/<!--[\s\S]*?-->/g, '').replace(/<(script|style)[\s\S]*?<\/\1>/g, '');
+  assert.doesNotMatch(visible, /\u2014|\u2013|\s--\s/, `${page} still has a dash in visible copy`);
+}
+assert.doesNotMatch(
+  home,
+  /two you pick yourself|two you choose yourself|spots we assign from this roster|three spots we (?:pick|assign)|one at each of your five spots|five venues assigned|land at five venues/,
+  'homepage promises member venue selection, which is disabled in production',
+);
+// Wingen is an active partner, not a pending one.
+assert.doesNotMatch(home, /Coming Soon/);
 assert.match(home, /Start with one Circle today/);
-assert.doesNotMatch(home, /Pause feature|add (?:another|more) anytime|Welcome Kit fee|A \$50 value|THE COASTER PASSPORT|THE INTRODUCTION/);
+assert.doesNotMatch(home, /Pause feature|add (?:another|more) anytime|Welcome Kit fee|A \$50 value|THE INTRODUCTION/);
+// The Coaster Passport section is on the page; its CSS sat orphaned from
+// 2026-08-13 until it was reinstated. Guard the markup, not just the styles.
+assert.match(home, /THE COASTER PASSPORT/);
+assert.match(home, /data-screen-label="05 Coaster Passport"/);
 assert.doesNotMatch(home, /public launch checkout supports one Circle|between now and launch|Full launch August 1/);
 assert.match(join, /one-time \$49 FOUNDING SLOT DEPOSIT/i);
 assert.match(join, /Please don’t use this public checkout/);
 assert.match(join, /Membership checkout is temporarily unavailable/);
 assert.doesNotMatch(join, /add more anytime|Welcome Kit fee|ONE-TIME \$49 WELCOME KIT/);
 assert.doesNotMatch(join, /Membership checkout opens August 1/);
+// Launch-day framing goes stale the moment the founding window closes, and the
+// roster is eight spots, not five. Guard both the page copy and the JSON-LD,
+// which is what Google and the AI assistants actually quote.
+assert.doesNotMatch(join, /Subscriptions opened August 1\./);
+assert.doesNotMatch(home, /five participating spots/);
+// No member/founding-number field exists in the schema, and the member-number
+// work is deferred, so the site must not promise one.
+assert.doesNotMatch(home, /founding number/i);
+// The deadline and the Kickoff Party belong above the headline, not below the
+// CTA where they fell past the fold on both desktop and mobile.
+assert.match(home, /class="hero__strip"/);
+assert.ok(
+  home.indexOf('hero__strip') < home.indexOf('hero__headline'),
+  'the hero deadline strip must precede the headline',
+);
+assert.match(home, /Kickoff Party, September 15\./);
+assert.match(home, /Founding pricing closes Monday, August 31 at 11:59 PM\./);
 for (const [page, markup] of [
   ['join.html', join],
   ['depositor-confirmation.html', depositorConfirmation],
