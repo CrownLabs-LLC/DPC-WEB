@@ -1077,17 +1077,17 @@ img, svg { display: block; max-width: 100%; }
   position: fixed;
   left: 16px;
   right: 16px;
-  bottom: 16px;
+  bottom: 12px;
   z-index: 100;
   max-width: 720px;
   margin: 0 auto;
   background: rgba(13, 27, 42, 0.96);
   border: 1px solid rgba(196, 163, 90, 0.4);
   border-radius: 6px;
-  padding: 18px 22px;
+  padding: 12px 18px;
   display: flex;
   align-items: center;
-  gap: 18px;
+  gap: 14px;
   -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
   box-shadow: 0 12px 40px rgba(0,0,0,0.4);
@@ -1206,8 +1206,11 @@ img, svg { display: block; max-width: 100%; }
   .footer__lockup { margin: 0 auto 16px; }
   .footer__social { align-items: center; }
 
-  .cookie { flex-direction: column; align-items: stretch; gap: 14px; text-align: center; }
-  .cookie__accept { width: 100%; }
+  /* Stay a row on small screens. Stacked, this banner ran ~138px tall and
+     covered the hero CTA on a 390x844 phone. */
+  .cookie { gap: 12px; padding: 10px 14px; }
+  .cookie__text { font-size: 12px; line-height: 1.5; }
+  .cookie__accept { padding: 10px 16px; font-size: 12px; letter-spacing: 0.1em; }
 }
 
 @media (min-width: 1400px) {
@@ -1282,7 +1285,7 @@ img, svg { display: block; max-width: 100%; }
     <div class="why__body">
       <p>There is a version of going out downtown where the bartender sees you and starts your pour before you sit down. Where the room feels like yours because you have a seat in it. That is the version we sell.</p>
       <p>Five Pours a month gives you a standing reason to show up at your spots. The app handles the redemption. The venue handles the welcome. Within a few weeks the places on your list start treating you like one of theirs.</p>
-      <p>Your membership carries a founding number, a Welcome Kit made only for the founding class, a rate locked for five years, and recognition at every DPC event after. The venues get regulars they can count on, which is worth more to an independent operator than any promotion, and that part takes care of itself.</p>
+      <p>Your membership carries Founding Member status, a Welcome Kit made only for the founding class, a rate locked for five years, and recognition at every DPC event after. The venues get regulars they can count on, which is worth more to an independent operator than any promotion, and that part takes care of itself.</p>
     </div>
   </div>
 </section>
@@ -1468,8 +1471,8 @@ img, svg { display: block; max-width: 100%; }
       </div>
       <div class="offer-card">
         <p class="offer-card__num">04</p>
-        <h3 class="offer-card__title">YOUR FOUNDING NUMBER + WELCOME KIT</h3>
-        <p class="offer-card__body">A one-time $49 Founding Slot Deposit secures your founding number and includes your Founding Welcome Kit (contents below). It is billed once at signup, alongside your first payment (the full year if you chose annual, or your first month if you chose monthly). Your subscription begins when payment is confirmed.</p>
+        <h3 class="offer-card__title">YOUR PLACE IN THE FOUNDING CLASS + WELCOME KIT</h3>
+        <p class="offer-card__body">A one-time $49 Founding Slot Deposit secures your place in the founding class and includes your Founding Welcome Kit (contents below). It is billed once at signup, alongside your first payment (the full year if you chose annual, or your first month if you chose monthly). Your subscription begins when payment is confirmed.</p>
       </div>
     </div>
 
@@ -1550,7 +1553,7 @@ img, svg { display: block; max-width: 100%; }
       </div>
     </div>
 
-    <p class="circle__fineprint">Choose monthly or annual. Your one-time $49 Founding Slot Deposit secures your founding number and includes your Founding Welcome Kit, the etched map glasses in the keepsake box shown above. It is billed once at signup alongside your first payment. Founding pricing is live through August 31. After that, new members pay the standard rate. Cancel anytime.</p>
+    <p class="circle__fineprint">Choose monthly or annual. Your one-time $49 Founding Slot Deposit secures your place in the founding class and includes your Founding Welcome Kit, the etched map glasses in the keepsake box shown above. It is billed once at signup alongside your first payment. Founding pricing is live through August 31. After that, new members pay the standard rate. Cancel anytime.</p>
 
     <p class="circle__sub">Every Circle follows the same membership structure. The differences are what you drink and the subscription price. Each includes up to five Pours per membership month, a birthday Pour during your birthday month, founding recognition, and five years of founding pricing.</p>
   </div>
@@ -1614,7 +1617,7 @@ img, svg { display: block; max-width: 100%; }
         <div class="tl-step__num">1</div>
         <div>
           <h3 class="tl-step__title">JOIN</h3>
-          <p class="tl-step__body">Choose one Circle, monthly or annual. Your one-time $49 Founding Slot Deposit secures your founding number and includes your Welcome Kit.</p>
+          <p class="tl-step__body">Choose one Circle, monthly or annual. Your one-time $49 Founding Slot Deposit secures your place in the founding class and includes your Welcome Kit.</p>
         </div>
       </div>
       <div class="tl-step">

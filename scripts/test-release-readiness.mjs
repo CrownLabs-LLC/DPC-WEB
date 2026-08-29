@@ -91,6 +91,9 @@ assert.doesNotMatch(join, /Membership checkout opens August 1/);
 // which is what Google and the AI assistants actually quote.
 assert.doesNotMatch(join, /Subscriptions opened August 1\./);
 assert.doesNotMatch(home, /five participating spots/);
+// No member/founding-number field exists in the schema, and the member-number
+// work is deferred, so the site must not promise one.
+assert.doesNotMatch(home, /founding number/i);
 for (const [page, markup] of [
   ['join.html', join],
   ['depositor-confirmation.html', depositorConfirmation],

@@ -729,17 +729,17 @@ img, svg { display: block; max-width: 100%; }
 /* cookie banner */
 .cookie {
   position: fixed;
-  left: 16px; right: 16px; bottom: 16px;
+  left: 16px; right: 16px; bottom: 12px;
   z-index: 100;
   max-width: 720px;
   margin: 0 auto;
   background: rgba(13, 27, 42, 0.96);
   border: 1px solid rgba(196, 163, 90, 0.4);
   border-radius: 6px;
-  padding: 18px 22px;
+  padding: 12px 18px;
   display: flex;
   align-items: center;
-  gap: 18px;
+  gap: 14px;
   -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
   box-shadow: 0 12px 40px rgba(0,0,0,0.4);
@@ -827,8 +827,11 @@ img, svg { display: block; max-width: 100%; }
   .footer__lockup { margin: 0 auto 16px; }
   .footer__social { align-items: center; }
 
-  .cookie { flex-direction: column; align-items: stretch; gap: 14px; text-align: center; }
-  .cookie__accept { width: 100%; }
+  /* Stay a row on small screens. Stacked, this banner ran ~138px tall and
+     covered the hero CTA on a 390x844 phone. */
+  .cookie { gap: 12px; padding: 10px 14px; }
+  .cookie__text { font-size: 12px; line-height: 1.5; }
+  .cookie__accept { padding: 10px 16px; font-size: 12px; letter-spacing: 0.1em; }
 }
 @media (min-width: 1400px) {
   .hero__headline { font-size: 60px; }
