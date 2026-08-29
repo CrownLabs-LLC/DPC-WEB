@@ -223,6 +223,10 @@ img, svg { display: block; max-width: 100%; }
   padding: 28px 32px;
   overflow: hidden;
 }
+/* The cookie banner is fixed to the bottom and overlays the hero. Reserve its
+   height while it is up so the CTA is never underneath it, instead of trimming
+   the hero to dodge it. join.html already uses the same :has() hook. */
+body:has(.cookie:not([hidden])) .hero { padding-bottom: 170px; }
 .hero__border {
   position: absolute;
   inset: 24px;
