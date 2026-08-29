@@ -245,7 +245,7 @@ img, svg { display: block; max-width: 100%; }
   z-index: 1;
 }
 .hero__lockup {
-  width: 220px;
+  width: 240px;
   height: auto;
   margin: 0 auto 24px;
 }
@@ -1137,7 +1137,7 @@ img, svg { display: block; max-width: 100%; }
 
 @media (max-width: 767px) {
   .hero { padding: 40px 24px; min-height: 700px; }
-  .hero__lockup { width: 200px; }
+  .hero__lockup { width: 215px; }
   .hero__headline { font-size: 36px; }
   .hero__sub { font-size: 16px; }
   .hero__strip { font-size: 13px; padding: 9px 14px; margin-bottom: 22px; }
@@ -1220,7 +1220,7 @@ img, svg { display: block; max-width: 100%; }
    claws back chrome so the branch is no worse than main was. */
 @media (max-width: 480px) {
   .hero { padding: 28px 20px; }
-  .hero__lockup { width: 180px; margin-bottom: 18px; }
+  .hero__lockup { width: 190px; margin-bottom: 18px; }
   .hero__strip { margin-bottom: 18px; }
   .hero__sub { margin-bottom: 26px; }
 }
@@ -1248,26 +1248,7 @@ img, svg { display: block; max-width: 100%; }
   </div>
 
   <div class="hero__inner">
-    <svg class="hero__lockup" viewBox="0 0 540 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Downtown Pour Collective horizontal lockup logo">
-      <defs>
-        <clipPath id="hero-glass-clip"><path d="M -16,-46 L 16,-46 L 22,37 L -22,37 Z"></path></clipPath>
-      </defs>
-      <g transform="translate(80,100) rotate(38)">
-        <path d="M -22,-54 L 22,-54 L 28,44 L -28,44 Z" fill="#C4A35A"></path>
-        <path d="M -16,-46 L 16,-46 L 22,37 L -22,37 Z" fill="#0D1B2A"></path>
-        <g clip-path="url(#hero-glass-clip)">
-          <path d="M -21,23 L 19,-9 L 22,37 L -22,37 Z" fill="#1E3A5A"></path>
-          <line x1="-24" y1="23" x2="22" y2="-10" stroke="#C4A35A" stroke-width="1.4" stroke-linecap="round" opacity="0.75"></line>
-        </g>
-        <rect x="-24" y="-58" width="48" height="7" rx="2" fill="#C4A35A"></rect>
-        <rect x="-32" y="42" width="64" height="8" rx="2" fill="#C4A35A"></rect>
-      </g>
-      <line x1="170" y1="36" x2="170" y2="164" stroke="#C4A35A" stroke-width="0.8" opacity="0.4"></line>
-      <text x="190" y="72" font-family="'Barlow Condensed',sans-serif" font-weight="700" font-size="18" letter-spacing="8" fill="#C4A35A">DOWNTOWN</text>
-      <text x="185" y="122" font-family="'Playfair Display',serif" font-weight="700" font-size="56" letter-spacing="2" fill="#F5F0E8">POUR</text>
-      <text x="190" y="148" font-family="'Barlow Condensed',sans-serif" font-weight="700" font-size="18" letter-spacing="8" fill="#C4A35A">COLLECTIVE</text>
-      <text x="190" y="170" font-family="'Barlow Condensed',sans-serif" font-weight="600" font-size="11" letter-spacing="3" fill="#5A6475">LIVERMORE · TRI-VALLEY</text>
-    </svg>
+    <img class="hero__lockup" src="assets/dpc-horizontal-lockup.png" alt="Downtown Pour Collective" width="900" height="400" fetchpriority="high" decoding="async">
 
     <p class="hero__strip"><strong>Kickoff Party, September 15.</strong> Founding pricing closes Monday, August 31 at 11:59 PM. Join by then and you’re there.</p>
     <h1 class="hero__headline">Five drinks a month at downtown Livermore's best spots.</h1>
