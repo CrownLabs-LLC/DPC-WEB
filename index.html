@@ -220,7 +220,7 @@ img, svg { display: block; max-width: 100%; }
   min-height: 100vh;
   display: grid;
   place-items: center;
-  padding: 88px 32px;
+  padding: 60px 32px;
   overflow: hidden;
 }
 .hero__border {
@@ -247,16 +247,28 @@ img, svg { display: block; max-width: 100%; }
 .hero__lockup {
   width: 240px;
   height: auto;
-  margin: 0 auto 34px;
+  margin: 0 auto 24px;
 }
-.hero__eyebrow {
+.hero__strip {
+  font-family: var(--body);
+  font-weight: 400;
+  font-size: 15px;
+  line-height: 1.5;
+  color: rgba(245, 240, 232, 0.88);
+  margin: 0 auto 26px;
+  max-width: 660px;
+  padding: 10px 20px;
+  border: 1px solid rgba(196, 163, 90, 0.34);
+  border-radius: 4px;
+  background: rgba(196, 163, 90, 0.07);
+  text-wrap: pretty;
+}
+.hero__strip strong {
   font-family: var(--support);
   font-weight: 700;
-  font-size: 14px;
-  letter-spacing: 0.4em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--gold);
-  margin: 0 0 26px;
 }
 .hero__headline {
   font-family: var(--display);
@@ -273,7 +285,7 @@ img, svg { display: block; max-width: 100%; }
   font-size: 20px;
   line-height: 1.65;
   color: rgba(245, 240, 232, 0.85);
-  margin: 0 auto 44px;
+  margin: 0 auto 32px;
   max-width: 640px;
   text-wrap: pretty;
 }
@@ -301,22 +313,6 @@ img, svg { display: block; max-width: 100%; }
   max-width: 640px;
   margin: 0 auto 34px;
   text-wrap: pretty;
-}
-.hero__deadline {
-  font-family: var(--body);
-  font-weight: 400;
-  font-size: 16px;
-  line-height: 1.6;
-  color: rgba(245, 240, 232, 0.88);
-  margin: 0;
-  max-width: 520px;
-  padding-top: 20px;
-  border-top: 1px solid rgba(196, 163, 90, 0.32);
-  text-wrap: pretty;
-}
-.hero__deadline strong {
-  font-weight: 600;
-  color: var(--gold);
 }
 
 /* ============ SECTION 2 · WHY THIS EXISTS ============ */
@@ -1134,11 +1130,11 @@ img, svg { display: block; max-width: 100%; }
 }
 
 @media (max-width: 767px) {
-  .hero { padding: 56px 24px; min-height: 700px; }
+  .hero { padding: 40px 24px; min-height: 700px; }
   .hero__lockup { width: 180px; }
   .hero__headline { font-size: 36px; }
   .hero__sub { font-size: 16px; }
-  .hero__eyebrow { font-size: 12px; letter-spacing: 0.32em; }
+  .hero__strip { font-size: 13px; padding: 9px 14px; margin-bottom: 22px; }
   .hero__border { inset: 14px; }
   .hero__accent { width: 220px; height: 220px; }
 
@@ -1261,7 +1257,7 @@ img, svg { display: block; max-width: 100%; }
       <text x="340" y="402" text-anchor="middle" font-family="'Barlow Condensed',sans-serif" font-weight="600" font-size="13" letter-spacing="4" fill="#5A6475">LIVERMORE  ·  TRI-VALLEY</text>
     </svg>
 
-    <p class="hero__eyebrow">LIVERMORE  ·  AUGUST 2026</p>
+    <p class="hero__strip"><strong>Kickoff Party, September 15.</strong> Founding pricing closes Monday, August 31 at 11:59 PM. Join by then and you’re there.</p>
     <h1 class="hero__headline">Five drinks a month at downtown Livermore's best spots.</h1>
     <p class="hero__sub">Downtown Pour Collective is a members-only community for people who love going out in downtown Livermore. Each month your membership covers five Pours (your drinks), one at each of five spots we pick for you. Feel like a regular where they know your order, or try somewhere you have never been.</p>
 
@@ -1269,7 +1265,6 @@ img, svg { display: block; max-width: 100%; }
       <!-- TODO Aug 1: wire href to create-circle-checkout join form (W1) — not the $49 Payment Link -->
       <a class="btn" href="/join" data-join-cta>Join The Collective</a>
       <p class="hero__micro">THE FOUNDING 200  ·  FIVE YEARS OF LOCKED-IN PRICING</p>
-      <p class="hero__deadline"><strong>Founding pricing closes Monday, August 31 at 11:59 PM.</strong> Join by then and you’re at the Kickoff Party on September 15, the night the founding class meets for the first time.</p>
     </div>
   </div>
 </header>

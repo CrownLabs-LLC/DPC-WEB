@@ -94,6 +94,15 @@ assert.doesNotMatch(home, /five participating spots/);
 // No member/founding-number field exists in the schema, and the member-number
 // work is deferred, so the site must not promise one.
 assert.doesNotMatch(home, /founding number/i);
+// The deadline and the Kickoff Party belong above the headline, not below the
+// CTA where they fell past the fold on both desktop and mobile.
+assert.match(home, /class="hero__strip"/);
+assert.ok(
+  home.indexOf('hero__strip') < home.indexOf('hero__headline'),
+  'the hero deadline strip must precede the headline',
+);
+assert.match(home, /Kickoff Party, September 15\./);
+assert.match(home, /Founding pricing closes Monday, August 31 at 11:59 PM\./);
 for (const [page, markup] of [
   ['join.html', join],
   ['depositor-confirmation.html', depositorConfirmation],
