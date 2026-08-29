@@ -1209,6 +1209,16 @@ img, svg { display: block; max-width: 100%; }
   .cookie__accept { padding: 10px 16px; font-size: 12px; letter-spacing: 0.1em; }
 }
 
+/* Very small phones (320x568 and similar). The hero cannot fit its CTA above
+   the fold at this height without gutting the headline and sub, so this only
+   claws back chrome so the branch is no worse than main was. */
+@media (max-width: 480px) {
+  .hero { padding: 28px 20px; }
+  .hero__lockup { width: 140px; margin-bottom: 18px; }
+  .hero__strip { margin-bottom: 18px; }
+  .hero__sub { margin-bottom: 26px; }
+}
+
 @media (min-width: 1400px) {
   .hero__headline { font-size: 60px; }
 }
