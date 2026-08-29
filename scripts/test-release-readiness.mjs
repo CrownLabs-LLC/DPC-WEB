@@ -86,6 +86,11 @@ assert.match(join, /Please don’t use this public checkout/);
 assert.match(join, /Membership checkout is temporarily unavailable/);
 assert.doesNotMatch(join, /add more anytime|Welcome Kit fee|ONE-TIME \$49 WELCOME KIT/);
 assert.doesNotMatch(join, /Membership checkout opens August 1/);
+// Launch-day framing goes stale the moment the founding window closes, and the
+// roster is eight spots, not five. Guard both the page copy and the JSON-LD,
+// which is what Google and the AI assistants actually quote.
+assert.doesNotMatch(join, /Subscriptions opened August 1\./);
+assert.doesNotMatch(home, /five participating spots/);
 for (const [page, markup] of [
   ['join.html', join],
   ['depositor-confirmation.html', depositorConfirmation],
