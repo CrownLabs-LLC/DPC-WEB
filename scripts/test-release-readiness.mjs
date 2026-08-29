@@ -57,6 +57,10 @@ assert.doesNotMatch(home, /Already paid a \$49 Founding Slot Deposit/);
 // system assigns all five venues and nobody picks anything. Any copy offering the
 // member a choice of spots puts the page in conflict with the app.
 assert.match(home, /one at each of five spots we pick for you/);
+// The hero headline carries no venue count. Eight partners today, more later;
+// a hard number there reads as the size of the whole roster.
+assert.match(home, /<h1 class="hero__headline">Five drinks a month at downtown Livermore's best spots\.<\/h1>/);
+assert.doesNotMatch(home, /five of downtown Livermore/);
 assert.doesNotMatch(
   home,
   /two you pick yourself|two you choose yourself|spots we assign from this roster|three spots we (?:pick|assign)|one at each of your five spots|five venues assigned|land at five venues/,
