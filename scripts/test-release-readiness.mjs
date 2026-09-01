@@ -123,7 +123,9 @@ for (const [circle, monthly, annual] of [['tap', 59, 590], ['cellar', 69, 690], 
     `standard ${circle} pricing must be $${monthly}/mo and $${annual}/yr`,
   );
 }
-assert.match(join, /Please don’t use this public checkout/);
+// Case-insensitive: the instruction now follows the founding-window clause, so
+// "please" sits mid-sentence. What matters is that the instruction is present.
+assert.match(join, /please don’t use this public checkout/i);
 assert.match(join, /Membership checkout is temporarily unavailable/);
 // Retired launch-era phrasings. "ONE-TIME $49 WELCOME KIT" stays blocked: the
 // live charge is the Member Welcome Kit, and the approved label carries
@@ -154,6 +156,20 @@ for (const [page, markup] of [['index.html', home], ['join.html', join]]) {
 }
 // The charge is per account, not per membership term or per Circle.
 assert.match(join, /charged once per member account/i);
+// The depositor footnote sits on a page that now also discloses a $49 Member
+// Welcome Kit charge. Without the founding-window qualifier a reader meets two
+// different $49 charges with nothing separating them.
+assert.match(join, /If you paid a \$49 Founding Slot Deposit during the founding window/);
+
+// Five Pours is the promise, not a ceiling. "Up to five" and supply caveats
+// qualify it, and the structured data is what search and the assistants quote.
+for (const [page, markup] of [['index.html', home], ['join.html', join]]) {
+  assert.doesNotMatch(
+    markup,
+    /up to (?:five|5) Pours|when eligible venue supply allows|Five is the norm/i,
+    `${page} qualifies the five Pour promise`,
+  );
+}
 assert.doesNotMatch(join, /Membership checkout opens August 1/);
 // Launch-day framing goes stale the moment the founding window closes, and the
 // roster is eight spots, not five. Guard both the page copy and the JSON-LD,
