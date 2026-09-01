@@ -21,6 +21,7 @@ const [join, support, deploy, packageSource, serve, analytics, trackApi, dashboa
   ...['index.html', 'join.html', 'partners.html', 'privacy.html', 'terms.html'].map(read),
 ]);
 const home = linkedPages[0];
+const partners = linkedPages[2];
 const privacy = linkedPages[3];
 const terms = linkedPages[4];
 const [success, cancelled, depositorConfirmation] = await Promise.all([
@@ -123,6 +124,42 @@ assert.doesNotMatch(home, /five participating spots/);
 // No member/founding-number field exists in the schema, and the member-number
 // work is deferred, so the site must not promise one.
 assert.doesNotMatch(home, /founding number/i);
+
+// STANDING POLICY: the size of the membership is never published. Not the
+// active count, not a remaining-spots figure, not "join N others". This is a
+// permanent business rule, not a founding-window artifact, so it is enforced
+// across every public page rather than left to whoever writes the next draft.
+// A low number reads as low demand and a high one invites a claim we then have
+// to keep accurate forever; either way the count is an internal figure.
+// The digit patterns exclude a decimal-prefixed match so numbered legal clauses
+// ("20.2 Members are granted...") do not trip them.
+const MEMBER_COUNT_DISCLOSURE = [
+  /(?<![\d.])\d{1,5}\s+(?:active\s+)?members\b/i,
+  /(?<![\d.])\d{1,5}\s+(?:active\s+)?memberships\b/i,
+  /(?:first|only|just)\s+(?:\d{1,5}|one|two|three|four|five|ten|twenty|fifty|one hundred|two hundred)\s+members(?:hips)?\b/i,
+  /\bjoin\s+(?:\d{1,5}|hundreds|dozens)\s+of\s+(?:your\s+)?(?:neighbors|locals|members|others)\b/i,
+  /(?<![\d.])\d{1,5}\s+(?:people|locals|neighbors)\s+(?:have\s+)?(?:already\s+)?joined\b/i,
+  /\b(?:only|just)\s+(?:\d{1,5}|a few)\s+(?:spots?|memberships?|slots?)\s+(?:left|remain|remaining)\b/i,
+  /\bmember(?:ship)?\s+count\b/i,
+  /\bwe\s+(?:now\s+)?have\s+(?:\d{1,5}|hundreds|dozens)\s+members\b/i,
+];
+for (const [page, markup] of [
+  ['index.html', home],
+  ['join.html', join],
+  ['partners.html', partners],
+  ['terms.html', terms],
+  ['privacy.html', privacy],
+  ['support.html', support],
+]) {
+  const visible = markup.replace(/<!--[\s\S]*?-->/g, '').replace(/<(script|style)[\s\S]*?<\/\1>/g, '');
+  for (const pattern of MEMBER_COUNT_DISCLOSURE) {
+    assert.doesNotMatch(
+      visible,
+      pattern,
+      `${page} discloses the size of the membership, which is never published`,
+    );
+  }
+}
 // The deadline and the Kickoff Party belong above the headline, not below the
 // CTA where they fell past the fold on both desktop and mobile.
 assert.match(home, /class="hero__strip"/);
