@@ -47,7 +47,10 @@ for (const [page, markup] of [
 }
 
 assert.match(home, /Join The Collective/);
-assert.match(home, /one-time \$49 Founding Slot Deposit/);
+// The $49 Founding Slot Deposit is not sold to new members after the window
+// closed, and join.html already stops disclosing it on the standard offer. The
+// homepage must not advertise a charge the checkout no longer discloses.
+assert.doesNotMatch(home, /Founding Slot Deposit/);
 // The deposit-holder notice is a /join footnote, not homepage hero copy: it told
 // every cold visitor not to buy, citing a charge they had never heard of, above
 // the fold. Guard the removal so it cannot drift back onto the homepage.
@@ -56,7 +59,11 @@ assert.doesNotMatch(home, /Already paid a \$49 Founding Slot Deposit/);
 // production (circle_venue_selection_policies.selection_enabled = false), so the
 // system assigns all five venues and nobody picks anything. Any copy offering the
 // member a choice of spots puts the page in conflict with the app.
-assert.match(home, /one at each of five spots we pick for you/);
+assert.match(home, /at spots we pick for you/);
+// The entitlement is five Pours. The old line also hard-promised five distinct
+// spots, which was already wrong at eight partners and is wronger at ten, so the
+// count comes off while the assignment mechanic stays.
+assert.doesNotMatch(home, /one at each of five spots|five of downtown Livermore's best/);
 // The hero headline carries no venue count. Eight partners today, more later;
 // a hard number there reads as the size of the whole roster.
 assert.match(home, /<h1 class="hero__headline">Five drinks a month at downtown Livermore's best spots\.<\/h1>/);
@@ -81,7 +88,29 @@ assert.doesNotMatch(home, /Pause feature|add (?:another|more) anytime|Welcome Ki
 assert.match(home, /THE COASTER PASSPORT/);
 assert.match(home, /data-screen-label="05 Coaster Passport"/);
 assert.doesNotMatch(home, /public launch checkout supports one Circle|between now and launch|Full launch August 1/);
-assert.match(join, /one-time \$49 FOUNDING SLOT DEPOSIT/i);
+// Standard members pay membership only. The founding branch stays in the price
+// table as dead-but-documented history, so this checks the fine print the page
+// actually renders rather than the whole file.
+const joinFineprint = join.match(/<p class="fine" id="offer-fineprint">([\s\S]*?)<\/p>/);
+assert.ok(joinFineprint, 'join.html must keep the offer fine print element');
+assert.doesNotMatch(joinFineprint[1], /FOUNDING SLOT DEPOSIT/i);
+// The standard annual prices were null from the day the window closed, so the
+// annual option (which is checked by default) rendered "$— / year" and sent an
+// unpriced interval to checkout. Guard every Circle against that regression.
+const standardPrices = join.match(/standard: \{([\s\S]*?)\}\s*\}/);
+assert.ok(standardPrices, 'join.html must keep the standard price table');
+assert.doesNotMatch(
+  standardPrices[1],
+  /annual:\s*null/,
+  'standard annual prices must be set, or /join renders an unpriced annual option',
+);
+for (const [circle, monthly, annual] of [['tap', 59, 590], ['cellar', 69, 690], ['reserve', 79, 790]]) {
+  assert.match(
+    standardPrices[1],
+    new RegExp(`${circle}:\\s*\\{\\s*monthly:\\s*${monthly},\\s*annual:\\s*${annual}\\b`),
+    `standard ${circle} pricing must be $${monthly}/mo and $${annual}/yr`,
+  );
+}
 assert.match(join, /Please don’t use this public checkout/);
 assert.match(join, /Membership checkout is temporarily unavailable/);
 assert.doesNotMatch(join, /add more anytime|Welcome Kit fee|ONE-TIME \$49 WELCOME KIT/);
@@ -101,8 +130,24 @@ assert.ok(
   home.indexOf('hero__strip') < home.indexOf('hero__headline'),
   'the hero deadline strip must precede the headline',
 );
-assert.match(home, /Kickoff Party, September 15\./);
-assert.match(home, /Founding pricing closes Monday, August 31 at 11:59 PM\./);
+// Founding urgency is retired rather than inverted: no countdown, no loss
+// framing, and no selling of benefits that only the founding class holds.
+// Founding Member status itself stays permanent for those who earned it, so
+// this guards the sales copy, not the status.
+assert.doesNotMatch(
+  home,
+  /Founding 200|founding class|founding pricing|Founding Member status|August 31|through August|locked[- ]in pricing|price protection|rate is locked/i,
+  'homepage still sells the closed founding window',
+);
+// September 15 is the founding class's invitation-only night, so it cannot sit
+// in the join path as an incentive a new standard member would never receive.
+assert.doesNotMatch(home, /Kickoff Party|September 15/);
+// Standard pricing, and the annual figures that carry the "two months free"
+// arithmetic. $59 x 10 = $590, and so on for the other two Circles.
+for (const price of ['$590 / year', '$59 / month', '$690 / year', '$69 / month', '$790 / year', '$79 / month']) {
+  assert.ok(home.includes(price), `homepage is missing standard price ${price}`);
+}
+assert.doesNotMatch(home, /\$5(?:5|50) \/|\$6(?:5|50) \/|\$7(?:5|50) \//);
 for (const [page, markup] of [
   ['join.html', join],
   ['depositor-confirmation.html', depositorConfirmation],
