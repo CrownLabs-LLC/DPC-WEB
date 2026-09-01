@@ -127,6 +127,17 @@ for (const [circle, monthly, annual] of [['tap', 59, 590], ['cellar', 69, 690], 
 // "please" sits mid-sentence. What matters is that the instruction is present.
 assert.match(join, /please don’t use this public checkout/i);
 assert.match(join, /Membership checkout is temporarily unavailable/);
+// From #44: the server-side founding cutoff returns FOUNDING_OFFER_ENDED, which
+// must reach the visitor as an explanation rather than an unknown-error fallback.
+assert.match(
+  join,
+  /FOUNDING_OFFER_ENDED:\s*'Founding enrollment has ended\. Check your device date and time, then refresh to continue with standard membership, or email hello@downtownpourcollective\.com for help\.'/,
+  'join.html must explain the server-side founding cutoff instead of exposing an unknown error',
+);
+// #44 also added a standard-price loop here. It is not repeated: this branch
+// already carries the same loop plus an explicit annual:null guard further down,
+// and a second `const standardPrices` in module scope is a SyntaxError.
+
 // Retired launch-era phrasings. "ONE-TIME $49 WELCOME KIT" stays blocked: the
 // live charge is the Member Welcome Kit, and the approved label carries
 // "MEMBER", so the older bare wording is still a regression. "fee" likewise is
