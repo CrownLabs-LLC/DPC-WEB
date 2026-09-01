@@ -84,6 +84,11 @@ assert.doesNotMatch(home, /public launch checkout supports one Circle|between no
 assert.match(join, /one-time \$49 FOUNDING SLOT DEPOSIT/i);
 assert.match(join, /Please don’t use this public checkout/);
 assert.match(join, /Membership checkout is temporarily unavailable/);
+assert.match(
+  join,
+  /FOUNDING_OFFER_ENDED:\s*'Founding enrollment has ended\. Refresh this page to continue with standard membership\.'/,
+  'join.html must explain the server-side founding cutoff instead of exposing an unknown error',
+);
 assert.doesNotMatch(join, /add more anytime|Welcome Kit fee|ONE-TIME \$49 WELCOME KIT/);
 assert.doesNotMatch(join, /Membership checkout opens August 1/);
 // Launch-day framing goes stale the moment the founding window closes, and the
