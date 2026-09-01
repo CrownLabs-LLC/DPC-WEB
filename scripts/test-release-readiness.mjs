@@ -86,9 +86,18 @@ assert.match(join, /Please don’t use this public checkout/);
 assert.match(join, /Membership checkout is temporarily unavailable/);
 assert.match(
   join,
-  /FOUNDING_OFFER_ENDED:\s*'Founding enrollment has ended\. Refresh this page to continue with standard membership\.'/,
+  /FOUNDING_OFFER_ENDED:\s*'Founding enrollment has ended\. Check your device date and time, then refresh to continue with standard membership, or email hello@downtownpourcollective\.com for help\.'/,
   'join.html must explain the server-side founding cutoff instead of exposing an unknown error',
 );
+const standardPrices = join.match(/standard: \{([\s\S]*?)\}\s*\}/);
+assert.ok(standardPrices, 'join.html must keep the standard price table');
+for (const [circle, monthly, annual] of [['tap', 59, 590], ['cellar', 69, 690], ['reserve', 79, 790]]) {
+  assert.match(
+    standardPrices[1],
+    new RegExp(`${circle}:\\s*\\{\\s*monthly:\\s*${monthly},\\s*annual:\\s*${annual}\\b`),
+    `standard ${circle} pricing must be $${monthly}/mo and $${annual}/yr`,
+  );
+}
 assert.doesNotMatch(join, /add more anytime|Welcome Kit fee|ONE-TIME \$49 WELCOME KIT/);
 assert.doesNotMatch(join, /Membership checkout opens August 1/);
 // Launch-day framing goes stale the moment the founding window closes, and the
