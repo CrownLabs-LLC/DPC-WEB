@@ -768,11 +768,11 @@ body:has(.cookie:not([hidden])) .page {
             <span class="interval-opt__card">
               <p class="interval-opt__title">Monthly</p>
               <p class="interval-opt__body">Billed each month.</p>
-              <span class="interval-opt__note">Cancel anytime</span>
+              <span class="interval-opt__note">Turn off renewal anytime</span>
             </span>
           </label>
         </div>
-        <p class="panel__note">Both paths include the same membership. Annual is twelve months for the price of ten.</p>
+        <p class="panel__note">Both paths include the same membership. Annual is twelve months for the price of ten, prepaid for the year.</p>
       </div>
 
       <div class="panel">
@@ -810,7 +810,7 @@ body:has(.cookie:not([hidden])) .page {
           <a class="btn checkout-fallback" id="checkout-fallback" hidden>Open Secure Checkout</a>
           <p class="form__error" id="form-error" role="alert"></p>
           <button class="legal-retry" type="button" id="legal-versions-retry" hidden disabled>Try again</button>
-          <p class="fine" id="offer-fineprint">MONTHLY OR ANNUAL · ANNUAL IS TWELVE MONTHS FOR THE PRICE OF TEN · CANCEL ANYTIME · 21+</p>
+          <p class="fine" id="offer-fineprint">MONTHLY OR ANNUAL · ANNUAL IS TWELVE MONTHS FOR THE PRICE OF TEN, PREPAID · TURN OFF RENEWAL ANYTIME · 21+</p>
         </div>
       </div>
     </form>
@@ -970,7 +970,7 @@ window.DPC_JOIN = {
     if (fineEl) {
       fineEl.textContent = offer === 'founding'
         ? 'MONTHLY OR ANNUAL · ONE-TIME $49 FOUNDING SLOT DEPOSIT · FOUNDING PRICING THROUGH AUGUST · 21+'
-        : 'MONTHLY OR ANNUAL · ANNUAL IS TWELVE MONTHS FOR THE PRICE OF TEN · CANCEL ANYTIME · 21+';
+        : 'MONTHLY OR ANNUAL · ANNUAL IS TWELVE MONTHS FOR THE PRICE OF TEN, PREPAID · TURN OFF RENEWAL ANYTIME · 21+';
     }
     refreshSummary();
   }

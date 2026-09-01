@@ -82,6 +82,16 @@ assert.doesNotMatch(
 );
 // Wingen is an active partner, not a pending one.
 assert.doesNotMatch(home, /Coming Soon/);
+// Annual memberships are prepaid for twelve months, so a blanket "cancel
+// anytime" on a page that sells one can imply a prorated refund we do not
+// offer. The membership stops renewing; it is not refunded mid-term.
+for (const [page, markup] of [['index.html', home], ['join.html', join]]) {
+  assert.doesNotMatch(
+    markup.replace(/<!--[\s\S]*?-->/g, ''),
+    /cancel anytime/i,
+    `${page} says "cancel anytime", which implies a prorated annual refund`,
+  );
+}
 assert.match(home, /Start with one Circle today/);
 assert.doesNotMatch(home, /Pause feature|add (?:another|more) anytime|Welcome Kit fee|A \$50 value|THE INTRODUCTION/);
 // The Coaster Passport section is on the page; its CSS sat orphaned from
@@ -96,8 +106,9 @@ const joinFineprint = join.match(/<p class="fine" id="offer-fineprint">([\s\S]*?
 assert.ok(joinFineprint, 'join.html must keep the offer fine print element');
 assert.doesNotMatch(joinFineprint[1], /FOUNDING SLOT DEPOSIT/i);
 // The standard annual prices were null from the day the window closed, so the
-// annual option (which is checked by default) rendered "$— / year" and sent an
-// unpriced interval to checkout. Guard every Circle against that regression.
+// annual option (which is checked by default) rendered "$— / year" in the order
+// summary. Display only: the server created annual standard sessions at the
+// correct price throughout. Guard every Circle against that regression.
 const standardPrices = join.match(/standard: \{([\s\S]*?)\}\s*\}/);
 assert.ok(standardPrices, 'join.html must keep the standard price table');
 assert.doesNotMatch(
