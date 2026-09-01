@@ -125,7 +125,35 @@ for (const [circle, monthly, annual] of [['tap', 59, 590], ['cellar', 69, 690], 
 }
 assert.match(join, /Please don’t use this public checkout/);
 assert.match(join, /Membership checkout is temporarily unavailable/);
+// Retired launch-era phrasings. "ONE-TIME $49 WELCOME KIT" stays blocked: the
+// live charge is the Member Welcome Kit, and the approved label carries
+// "MEMBER", so the older bare wording is still a regression. "fee" likewise is
+// not the approved noun; it is a charge.
 assert.doesNotMatch(join, /add more anytime|Welcome Kit fee|ONE-TIME \$49 WELCOME KIT/);
+
+// The Member Welcome Kit is a real one-time $49 line on standard checkout, so
+// it has to be disclosed before payment, in the approved words. It is NOT the
+// Founding Slot Deposit (a different, retired product), and it is NOT optional
+// or a future add-on. Guard the disclosure, the naming, and the framing.
+for (const [page, markup] of [['index.html', home], ['join.html', join]]) {
+  assert.match(
+    markup,
+    /one-time \$49 Member Welcome Kit charge/i,
+    `${page} must disclose the one-time $49 Member Welcome Kit charge`,
+  );
+  assert.doesNotMatch(
+    markup,
+    /Member Welcome Kit[^.]{0,60}(?:optional|add-on|add on|coming soon|later this year)/i,
+    `${page} frames the Member Welcome Kit as optional or deferred; it is neither`,
+  );
+  assert.doesNotMatch(
+    markup,
+    /Member Welcome Kit[^.]{0,40}Founding Slot Deposit|Founding Slot Deposit[^.]{0,40}Member Welcome Kit/i,
+    `${page} conflates the Member Welcome Kit with the Founding Slot Deposit`,
+  );
+}
+// The charge is per account, not per membership term or per Circle.
+assert.match(join, /charged once per member account/i);
 assert.doesNotMatch(join, /Membership checkout opens August 1/);
 // Launch-day framing goes stale the moment the founding window closes, and the
 // roster is eight spots, not five. Guard both the page copy and the JSON-LD,

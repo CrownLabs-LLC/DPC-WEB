@@ -804,13 +804,13 @@ body:has(.cookie:not([hidden])) .page {
         <div class="turnstile-wrap" id="turnstile-slot"></div>
         <div class="actions">
           <p class="summary" id="order-summary" aria-live="polite"></p>
-          <p class="deposit-explainer">At checkout you will see your first payment, the full year if you chose annual, or your first month if you chose monthly.</p>
+          <p class="deposit-explainer">At checkout you will see your first payment, the full year if you chose annual, or your first month if you chose monthly, plus a one-time $49 Member Welcome Kit charge. The Welcome Kit is charged once per member account.</p>
           <button class="btn" type="submit" id="submit-btn">Continue to Checkout</button>
           <p class="checkout-handoff" id="checkout-handoff" role="status" hidden>Secure checkout is ready. If it does not open automatically, tap below.</p>
           <a class="btn checkout-fallback" id="checkout-fallback" hidden>Open Secure Checkout</a>
           <p class="form__error" id="form-error" role="alert"></p>
           <button class="legal-retry" type="button" id="legal-versions-retry" hidden disabled>Try again</button>
-          <p class="fine" id="offer-fineprint">MONTHLY OR ANNUAL · ANNUAL IS TWELVE MONTHS FOR THE PRICE OF TEN, PREPAID · TURN OFF RENEWAL ANYTIME · 21+</p>
+          <p class="fine" id="offer-fineprint">MONTHLY OR ANNUAL · ONE-TIME $49 MEMBER WELCOME KIT CHARGE · TURN OFF RENEWAL ANYTIME · 21+</p>
         </div>
       </div>
     </form>
@@ -970,7 +970,7 @@ window.DPC_JOIN = {
     if (fineEl) {
       fineEl.textContent = offer === 'founding'
         ? 'MONTHLY OR ANNUAL · ONE-TIME $49 FOUNDING SLOT DEPOSIT · FOUNDING PRICING THROUGH AUGUST · 21+'
-        : 'MONTHLY OR ANNUAL · ANNUAL IS TWELVE MONTHS FOR THE PRICE OF TEN, PREPAID · TURN OFF RENEWAL ANYTIME · 21+';
+        : 'MONTHLY OR ANNUAL · ONE-TIME $49 MEMBER WELCOME KIT CHARGE · TURN OFF RENEWAL ANYTIME · 21+';
     }
     refreshSummary();
   }
@@ -988,11 +988,15 @@ window.DPC_JOIN = {
     var amount = interval === 'annual' ? p.annual : p.monthly;
     var label = circle.charAt(0).toUpperCase() + circle.slice(1);
     var period = interval === 'annual' ? 'year' : 'month';
-    var deposit = offer === 'founding'
+    var oneTime = offer === 'founding'
       ? ' plus a one-time $49 Founding Slot Deposit at signup'
+      : ' plus a one-time $49 Member Welcome Kit charge at signup';
+    var dueToday = typeof amount === 'number'
+      ? ' Due today: <strong>' + money(amount + 49) + '</strong>.'
       : '';
     summaryEl.innerHTML = 'You selected <strong>' + label + ' · ' + interval + '</strong> at <strong>' +
-      money(amount) + ' / ' + period + '</strong>' + deposit + '.';
+      money(amount) + ' / ' + period + '</strong>' + oneTime + '.' + dueToday +
+      ' The Welcome Kit is charged once per member account.';
   }
 
   var errorIsSticky = false;
