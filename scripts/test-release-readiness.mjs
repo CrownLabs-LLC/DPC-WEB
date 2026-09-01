@@ -156,6 +156,22 @@ for (const [page, markup] of [['index.html', home], ['join.html', join]]) {
 }
 // The charge is per account, not per membership term or per Circle.
 assert.match(join, /charged once per member account/i);
+// The once-per-account note is Welcome Kit wording. If it is appended outside
+// the standard branch, the founding summary names a Founding Slot Deposit and
+// then explains the Welcome Kit. Dead code post-cutoff, still wrong.
+assert.match(
+  join,
+  /var oneTimeNote = isFounding\s*\n\s*\? ''/,
+  'the once-per-account note must be scoped to the Welcome Kit branch',
+);
+// Events are separately coordinated, not membership entitlements. They may be
+// described; they may not be sold as included or promised as invitations.
+assert.doesNotMatch(home, /MEMBER EVENTS INCLUDED/i);
+assert.doesNotMatch(
+  home,
+  /invitation to every member event|Your invitations arrive by email|Members are also invited to/i,
+  'homepage sells separately coordinated events as a membership entitlement',
+);
 // The depositor footnote sits on a page that now also discloses a $49 Member
 // Welcome Kit charge. Without the founding-window qualifier a reader meets two
 // different $49 charges with nothing separating them.

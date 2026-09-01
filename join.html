@@ -988,15 +988,23 @@ window.DPC_JOIN = {
     var amount = interval === 'annual' ? p.annual : p.monthly;
     var label = circle.charAt(0).toUpperCase() + circle.slice(1);
     var period = interval === 'annual' ? 'year' : 'month';
-    var oneTime = offer === 'founding'
+    /* The once-per-account note belongs to the Welcome Kit, so it has to travel
+       with that branch. Appended unconditionally it made the founding summary
+       name a Founding Slot Deposit and then explain the Welcome Kit. Dead code
+       after the cutoff, but the two one-time charges are different products and
+       must never be described in each other's terms. */
+    var isFounding = offer === 'founding';
+    var oneTime = isFounding
       ? ' plus a one-time $49 Founding Slot Deposit at signup'
       : ' plus a one-time $49 Member Welcome Kit charge at signup';
+    var oneTimeNote = isFounding
+      ? ''
+      : ' The Welcome Kit is charged once per member account.';
     var dueToday = typeof amount === 'number'
       ? ' Due today: <strong>' + money(amount + 49) + '</strong>.'
       : '';
     summaryEl.innerHTML = 'You selected <strong>' + label + ' · ' + interval + '</strong> at <strong>' +
-      money(amount) + ' / ' + period + '</strong>' + oneTime + '.' + dueToday +
-      ' The Welcome Kit is charged once per member account.';
+      money(amount) + ' / ' + period + '</strong>' + oneTime + '.' + dueToday + oneTimeNote;
   }
 
   var errorIsSticky = false;
