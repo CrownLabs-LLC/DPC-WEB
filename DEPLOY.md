@@ -135,7 +135,8 @@ Copy the printed `whsec_…` into a local `.env` for `vercel dev`.
 ### 2c. Ops dashboard — /dashboard
 
 A token-protected operations view at `https://www.downtownpourcollective.com/dashboard`:
-subscriber health, action-needed billing states, membership mix, anonymous
+subscriber health, action-needed billing states, Member Setup Fee
+reconciliation, membership mix, anonymous
 website and checkout-handoff signals, undelivered Stripe webhook events,
 webhook errors, and health checks that verify the Stripe/Resend/Supabase keys
 actually work (not just that they're set — this is the check that catches a
@@ -148,10 +149,12 @@ Setup (one time):
    funnel beacons; anon key can only append) and `webhook_logs` (service-role
    only).
 2. **DPC database migration prerequisite** → before deploying this web change,
-   apply `20260821160000_ops_subscription_overview.sql` from the DPC app repo to
-   staging and then production. Confirm `public.ops_subscription_overview`
-   exists and execute remains granted only to `service_role`. This RPC is owned
-   by the DPC billing module and is intentionally not duplicated in
+   apply `20260821160000_ops_subscription_overview.sql` and
+   `20260902013000_ops_member_setup_fee_overview.sql` from the DPC app repo to
+   staging and then production. Confirm `public.ops_subscription_overview` and
+   `public.ops_member_setup_fee_overview` exist and execute remains granted
+   only to `service_role`. These RPCs are owned by the DPC billing module and
+   are intentionally not duplicated in
    `db/setup.sql`. If PostgREST initially returns `PGRST202`, allow its schema
    cache to reload and verify the RPC again before continuing.
 3. **Supabase** → Project Settings → API: copy the **Project URL**, the
@@ -164,8 +167,9 @@ Setup (one time):
      (e.g. run `openssl rand -hex 24`). Store it in 1Password.
 5. Configure Preview with the staging project's `SUPABASE_URL` and
    `SUPABASE_SERVICE_ROLE_KEY`, then deploy to Preview. Open `/dashboard` and
-   confirm subscriber health, action-needed, and membership-mix data populate
-   without an RPC error; a "not configured" state does not pass this check.
+   confirm subscriber health, action-needed, Member Setup Fee reconciliation,
+   and membership-mix data populate without an RPC error; a "not configured"
+   state does not pass this check.
    Then deploy to Production.
 
 Acceptance: visit `/dashboard`, enter the token → KPI tiles, charts, and every

@@ -89,6 +89,7 @@ button.primary { background: var(--accent); border-color: var(--accent); color: 
 .ops-label { font-weight: 600; }
 .ops-count { align-self: center; grid-column: 2; font-size: 19px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .ops-detail { color: var(--text-muted); font-size: 12px; }
+.setup-fee-list { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 24px; }
 .ops-count.critical { color: var(--status-critical); }
 .ops-count.warning { color: var(--delta-bad); }
 .ops-count.good { color: var(--status-good); }
@@ -99,6 +100,7 @@ button.primary { background: var(--accent); border-color: var(--accent); color: 
 .table-scroll { overflow-x: auto; }
 @media (max-width: 820px) {
   .grid2 { grid-template-columns: 1fr; }
+  .setup-fee-list { grid-template-columns: 1fr; }
   .section-head { align-items: start; flex-direction: column; gap: 10px; }
   .window-note { white-space: normal; }
   .status-breakdown { grid-template-columns: repeat(3, minmax(68px, 1fr)); }
@@ -198,6 +200,17 @@ details.tableview summary { cursor: pointer; color: var(--text-secondary); font-
         <div id="membership-mix"></div>
       </section>
     </div>
+
+    <section class="card section-block" aria-labelledby="setup-fee-title">
+      <div class="section-head">
+        <div>
+          <h2 id="setup-fee-title">Member Setup Fee reconciliation</h2>
+          <p>Paid-checkout finalization and durable evidence for the one-time $49 Member Setup Fee.</p>
+        </div>
+        <span class="window-note">Fresh pending is expected · stale after 15 minutes</span>
+      </div>
+      <div class="ops-list setup-fee-list" id="setup-fee-actions"></div>
+    </section>
 
     <section class="section-block" aria-labelledby="acquisition-signals-title">
       <div class="section-head">
@@ -382,6 +395,20 @@ details.tableview summary { cursor: pointer; color: var(--text-secondary); font-
       if (overview.dunning.retries_exhausted) problems.push(overview.dunning.retries_exhausted + ' subscription retry sequence(s) exhausted');
       if (overview.dunning.retry_overdue) problems.push(overview.dunning.retry_overdue + ' subscription retry overdue');
     }
+    var setupFee = d.member_setup_fee_overview || {};
+    if (setupFee.error) {
+      problems.push('Member Setup Fee reconciliation unavailable');
+    } else if (setupFee.intents && setupFee.evidence) {
+      if (setupFee.intents.payment_pending_stale_15m) {
+        problems.push(setupFee.intents.payment_pending_stale_15m + ' setup fee payment(s) pending over 15 minutes');
+      }
+      if (setupFee.intents.completed_missing_evidence) {
+        problems.push(setupFee.intents.completed_missing_evidence + ' completed checkout(s) missing setup fee evidence');
+      }
+      if (setupFee.evidence.conflicts) {
+        problems.push(setupFee.evidence.conflicts + ' setup fee evidence conflict(s)');
+      }
+    }
     if (problems.length) {
       banner.hidden = false;
       banner.textContent = '⚠ Needs attention: ' + problems.join(' · ');
@@ -440,6 +467,7 @@ details.tableview summary { cursor: pointer; color: var(--text-secondary); font-
     renderSubscriberKpis(overview);
     renderSubscriptionActions(overview);
     renderMembershipMix(overview);
+    renderMemberSetupFeeActions(d.member_setup_fee_overview || {});
   }
 
   function renderSubscriberKpis(overview) {
@@ -467,26 +495,43 @@ details.tableview summary { cursor: pointer; color: var(--text-secondary); font-
     box.textContent = '';
     if (!overview.totals) {
       box.appendChild(el('p', 'empty', overview.error || 'Subscription report unavailable.'));
+    } else {
+      var dunning = overview.dunning || {};
+      var attempts = dunning.attempts || {};
+      var payment = overview.payment_verification || {};
+      var access = overview.access || {};
+      var otherDunning = typeof dunning.in_dunning === 'number' ? Math.max(0,
+        dunning.in_dunning -
+        (dunning.next_retry_24h || 0) -
+        (dunning.retry_overdue || 0) -
+        (dunning.retries_exhausted || 0)
+      ) : null;
+      box.appendChild(actionRow('Retries exhausted', dunning.retries_exhausted, 'No further retry scheduled after at least one attempt.', 'critical'));
+      box.appendChild(actionRow('Retry overdue', dunning.retry_overdue, 'Scheduled retry time has passed.', 'critical'));
+      box.appendChild(actionRow('No collection attempt recorded', attempts.zero, 'Includes first attempt not scheduled by Stripe.', 'warning'));
+      box.appendChild(actionRow('Payment verification missing', payment.missing, 'Memberships without verified payment evidence.', 'warning'));
+      box.appendChild(actionRow('Founding grace ending within 7 days', dunning.grace_expiring_7d, 'Founding access that needs conversion follow-up.', 'warning'));
+      box.appendChild(actionRow('Cancellation access ending within 7 days', access.ending_7d, 'Cancelled memberships approaching access end.', 'warning'));
+      box.appendChild(actionRow('Retry scheduled within 24 hours', dunning.next_retry_24h, 'Upcoming automatic collection attempts.'));
+      box.appendChild(actionRow('Other dunning timing', otherDunning, 'Retries more than 24 hours away or outside the immediate timing buckets.'));
+    }
+
+  }
+
+  function renderMemberSetupFeeActions(setupFee) {
+    var box = $('setup-fee-actions');
+    box.textContent = '';
+    if (!setupFee.intents || !setupFee.evidence) {
+      box.appendChild(el('p', 'empty', setupFee.error || 'Setup fee report not configured.'));
       return;
     }
-    var dunning = overview.dunning || {};
-    var attempts = dunning.attempts || {};
-    var payment = overview.payment_verification || {};
-    var access = overview.access || {};
-    var otherDunning = typeof dunning.in_dunning === 'number' ? Math.max(0,
-      dunning.in_dunning -
-      (dunning.next_retry_24h || 0) -
-      (dunning.retry_overdue || 0) -
-      (dunning.retries_exhausted || 0)
-    ) : null;
-    box.appendChild(actionRow('Retries exhausted', dunning.retries_exhausted, 'No further retry scheduled after at least one attempt.', 'critical'));
-    box.appendChild(actionRow('Retry overdue', dunning.retry_overdue, 'Scheduled retry time has passed.', 'critical'));
-    box.appendChild(actionRow('No collection attempt recorded', attempts.zero, 'Includes first attempt not scheduled by Stripe.', 'warning'));
-    box.appendChild(actionRow('Payment verification missing', payment.missing, 'Memberships without verified payment evidence.', 'warning'));
-    box.appendChild(actionRow('Founding grace ending within 7 days', dunning.grace_expiring_7d, 'Founding access that needs conversion follow-up.', 'warning'));
-    box.appendChild(actionRow('Cancellation access ending within 7 days', access.ending_7d, 'Cancelled memberships approaching access end.', 'warning'));
-    box.appendChild(actionRow('Retry scheduled within 24 hours', dunning.next_retry_24h, 'Upcoming automatic collection attempts.'));
-    box.appendChild(actionRow('Other dunning timing', otherDunning, 'Retries more than 24 hours away or outside the immediate timing buckets.'));
+    var feeIntents = setupFee.intents;
+    var feeEvidence = setupFee.evidence;
+    box.appendChild(actionRow('Payment pending over 15 minutes', feeIntents.payment_pending_stale_15m, 'Paid checkout may need the original signed Stripe event retried.', 'critical'));
+    box.appendChild(actionRow('Completed without fee evidence', feeIntents.completed_missing_evidence, 'Checkout completed without its durable $49 payment record.', 'critical'));
+    box.appendChild(actionRow('Fee evidence conflicts', feeEvidence.conflicts, 'Durable evidence disagrees with its checkout intent.', 'critical'));
+    box.appendChild(actionRow('Fresh payment finalization pending', feeIntents.payment_pending, 'Expected briefly while Stripe events arrive; the stale row above is the incident signal.'));
+    box.appendChild(actionRow('Setup-fee checkouts assessed', feeIntents.assessed, fmt(feeIntents.completed_with_evidence) + ' completed with evidence · ' + fmt(feeEvidence.recorded) + ' evidence row(s) recorded.'));
   }
 
   function renderMembershipMix(overview) {
