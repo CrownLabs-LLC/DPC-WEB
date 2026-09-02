@@ -804,18 +804,18 @@ body:has(.cookie:not([hidden])) .page {
         <div class="turnstile-wrap" id="turnstile-slot"></div>
         <div class="actions">
           <p class="summary" id="order-summary" aria-live="polite"></p>
-          <p class="deposit-explainer">At checkout you will see your first payment, the full year if you chose annual, or your first month if you chose monthly, plus a one-time $49 Member Welcome Kit charge. The Welcome Kit is charged once per member account.</p>
+          <p class="deposit-explainer">At checkout you will see your first payment, the full year if you chose annual, or your first month if you chose monthly, plus a one-time $49 Member Setup Fee, including your Member Welcome Kit. The Setup Fee is charged once per member account.</p>
           <button class="btn" type="submit" id="submit-btn">Continue to Checkout</button>
           <p class="checkout-handoff" id="checkout-handoff" role="status" hidden>Secure checkout is ready. If it does not open automatically, tap below.</p>
           <a class="btn checkout-fallback" id="checkout-fallback" hidden>Open Secure Checkout</a>
           <p class="form__error" id="form-error" role="alert"></p>
           <button class="legal-retry" type="button" id="legal-versions-retry" hidden disabled>Try again</button>
-          <p class="fine" id="offer-fineprint">MONTHLY OR ANNUAL · ONE-TIME $49 MEMBER WELCOME KIT CHARGE · TURN OFF RENEWAL ANYTIME · 21+</p>
+          <p class="fine" id="offer-fineprint">MONTHLY OR ANNUAL · ONE-TIME $49 MEMBER SETUP FEE · TURN OFF RENEWAL ANYTIME · 21+</p>
         </div>
       </div>
     </form>
 
-    <p class="depositor-note depositor-note--foot"><strong>If you paid a $49 Founding Slot Deposit during the founding window</strong>, please don’t use this public checkout. We’ll email your private membership-confirmation link shortly. Your deposit is already recorded, and you won’t be charged it again.</p>
+    <p class="depositor-note depositor-note--foot"><strong>Paid a $49 Founding Slot Deposit during the founding window?</strong> Only a deposit that converted to a membership before the window closed covers the Member Setup Fee, and if yours did, you already have an account: sign in instead of joining here. If your deposit was refunded, it no longer applies to anything, and this is the right place to join. The one-time $49 Member Setup Fee is charged at signup.</p>
   </div>
 </main>
 
@@ -970,7 +970,7 @@ window.DPC_JOIN = {
     if (fineEl) {
       fineEl.textContent = offer === 'founding'
         ? 'MONTHLY OR ANNUAL · ONE-TIME $49 FOUNDING SLOT DEPOSIT · FOUNDING PRICING THROUGH AUGUST · 21+'
-        : 'MONTHLY OR ANNUAL · ONE-TIME $49 MEMBER WELCOME KIT CHARGE · TURN OFF RENEWAL ANYTIME · 21+';
+        : 'MONTHLY OR ANNUAL · ONE-TIME $49 MEMBER SETUP FEE · TURN OFF RENEWAL ANYTIME · 21+';
     }
     refreshSummary();
   }
@@ -988,18 +988,18 @@ window.DPC_JOIN = {
     var amount = interval === 'annual' ? p.annual : p.monthly;
     var label = circle.charAt(0).toUpperCase() + circle.slice(1);
     var period = interval === 'annual' ? 'year' : 'month';
-    /* The once-per-account note belongs to the Welcome Kit, so it has to travel
+    /* The once-per-account note belongs to the Setup Fee, so it has to travel
        with that branch. Appended unconditionally it made the founding summary
-       name a Founding Slot Deposit and then explain the Welcome Kit. Dead code
+       name a Founding Slot Deposit and then explain the Setup Fee. Dead code
        after the cutoff, but the two one-time charges are different products and
        must never be described in each other's terms. */
     var isFounding = offer === 'founding';
     var oneTime = isFounding
       ? ' plus a one-time $49 Founding Slot Deposit at signup'
-      : ' plus a one-time $49 Member Welcome Kit charge at signup';
+      : ' plus a one-time $49 Member Setup Fee, including your Member Welcome Kit, at signup';
     var oneTimeNote = isFounding
       ? ''
-      : ' The Welcome Kit is charged once per member account.';
+      : ' The Setup Fee is charged once per member account.';
     var dueToday = typeof amount === 'number'
       ? ' Due today: <strong>' + money(amount + 49) + '</strong>.'
       : '';

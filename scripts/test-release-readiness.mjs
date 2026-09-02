@@ -123,9 +123,6 @@ for (const [circle, monthly, annual] of [['tap', 59, 590], ['cellar', 69, 690], 
     `standard ${circle} pricing must be $${monthly}/mo and $${annual}/yr`,
   );
 }
-// Case-insensitive: the instruction now follows the founding-window clause, so
-// "please" sits mid-sentence. What matters is that the instruction is present.
-assert.match(join, /please don’t use this public checkout/i);
 assert.match(join, /Membership checkout is temporarily unavailable/);
 // From #44: the server-side founding cutoff returns FOUNDING_OFFER_ENDED, which
 // must reach the visitor as an explanation rather than an unknown-error fallback.
@@ -138,38 +135,50 @@ assert.match(
 // already carries the same loop plus an explicit annual:null guard further down,
 // and a second `const standardPrices` in module scope is a SyntaxError.
 
-// Retired launch-era phrasings. "ONE-TIME $49 WELCOME KIT" stays blocked: the
-// live charge is the Member Welcome Kit, and the approved label carries
-// "MEMBER", so the older bare wording is still a regression. "fee" likewise is
-// not the approved noun; it is a charge.
+// Retired launch-era phrasings. The live charge is the Member Setup Fee, so the
+// older bare "ONE-TIME $49 WELCOME KIT" wording stays blocked. "Welcome Kit fee"
+// stays blocked for a different reason now: the fee covers account creation, and
+// naming it after the Kit re-sells the glassware as the thing being paid for.
 assert.doesNotMatch(join, /add more anytime|Welcome Kit fee|ONE-TIME \$49 WELCOME KIT/);
 
-// The Member Welcome Kit is a real one-time $49 line on standard checkout, so
-// it has to be disclosed before payment, in the approved words. It is NOT the
-// Founding Slot Deposit (a different, retired product), and it is NOT optional
-// or a future add-on. Guard the disclosure, the naming, and the framing.
+// The Member Setup Fee is a real one-time $49 line on standard checkout, so it
+// has to be disclosed before payment, in the approved words: "one-time $49
+// Member Setup Fee, including your Member Welcome Kit". The fee covers account
+// creation. It is NOT the Founding Slot Deposit (a different, retired product),
+// it is NOT optional or a future add-on, and the Kit is included rather than
+// separately purchased. Guard the disclosure, the naming, and the framing.
 for (const [page, markup] of [['index.html', home], ['join.html', join]]) {
   assert.match(
     markup,
-    /one-time \$49 Member Welcome Kit charge/i,
-    `${page} must disclose the one-time $49 Member Welcome Kit charge`,
+    /one-time \$49 Member Setup Fee/i,
+    `${page} must disclose the one-time $49 Member Setup Fee`,
+  );
+  assert.match(
+    markup,
+    /Member Setup Fee, including your Member Welcome Kit/i,
+    `${page} must carry the approved Setup Fee disclosure naming the Kit`,
   );
   assert.doesNotMatch(
     markup,
-    /Member Welcome Kit[^.]{0,60}(?:optional|add-on|add on|coming soon|later this year)/i,
-    `${page} frames the Member Welcome Kit as optional or deferred; it is neither`,
+    /Member Welcome Kit charge|Welcome Kit is a separate|separate one-time \$49/i,
+    `${page} sells the Member Welcome Kit as its own charge; it is included in the Setup Fee`,
   );
   assert.doesNotMatch(
     markup,
-    /Member Welcome Kit[^.]{0,40}Founding Slot Deposit|Founding Slot Deposit[^.]{0,40}Member Welcome Kit/i,
-    `${page} conflates the Member Welcome Kit with the Founding Slot Deposit`,
+    /Member Setup Fee[^.]{0,60}(?:optional|add-on|add on|coming soon|later this year)/i,
+    `${page} frames the Member Setup Fee as optional or deferred; it is neither`,
+  );
+  assert.doesNotMatch(
+    markup,
+    /Member Setup Fee[^.]{0,40}Founding Slot Deposit|Founding Slot Deposit[^.]{0,40}Member Setup Fee/i,
+    `${page} conflates the Member Setup Fee with the Founding Slot Deposit`,
   );
 }
 // The charge is per account, not per membership term or per Circle.
 assert.match(join, /charged once per member account/i);
-// The once-per-account note is Welcome Kit wording. If it is appended outside
+// The once-per-account note is Setup Fee wording. If it is appended outside
 // the standard branch, the founding summary names a Founding Slot Deposit and
-// then explains the Welcome Kit. Dead code post-cutoff, still wrong.
+// then explains the Setup Fee. Dead code post-cutoff, still wrong.
 assert.match(
   join,
   /var oneTimeNote = isFounding\s*\n\s*\? ''/,
@@ -184,9 +193,28 @@ assert.doesNotMatch(
   'homepage sells separately coordinated events as a membership entitlement',
 );
 // The depositor footnote sits on a page that now also discloses a $49 Member
-// Welcome Kit charge. Without the founding-window qualifier a reader meets two
-// different $49 charges with nothing separating them.
-assert.match(join, /If you paid a \$49 Founding Slot Deposit during the founding window/);
+// Setup Fee. Without the founding-window qualifier a reader meets two different
+// $49 charges with nothing separating them.
+assert.match(join, /\$49 Founding Slot Deposit during the founding window/);
+// Only a timely converted deposit satisfies the Setup Fee. A non-converter was
+// refunded and owes the fee, so the footnote must never waive it on the strength
+// of a historical payment, and must not send a refunded depositor down the
+// private conversion path, which no longer exists.
+assert.match(
+  join,
+  /converted to a membership before the window closed/i,
+  'the depositor footnote must condition the waiver on conversion, not on payment',
+);
+assert.match(
+  join,
+  /if your deposit was refunded/i,
+  'the depositor footnote must tell a refunded depositor the fee still applies',
+);
+assert.doesNotMatch(
+  join,
+  /won.?t be charged it again|deposit is already recorded|private membership-confirmation link|don.?t use this public checkout/i,
+  'the depositor footnote waives the Setup Fee on historical payment or routes refunded depositors to a private path',
+);
 
 // Five Pours is the promise, not a ceiling. "Up to five" and supply caveats
 // qualify it, and the structured data is what search and the assistants quote.
