@@ -49,11 +49,77 @@ const CHECKOUT_ENDPOINT = 'https://ebiuspbgzggrdiaswpcc.supabase.co/functions/v1
 const THROTTLE_IO_TIMEOUT_MS = 2000;
 const ALERT_SEND_TIMEOUT_MS = 4000;
 const DASHBOARD_URL = 'https://www.downtownpourcollective.com/dashboard';
-const ALERT_TO = (process.env.ALERT_TO || process.env.NOTIFY_DEPOSIT_TO || 'nick@downtownpourcollective.com,hello@downtownpourcollective.com')
-  .split(',')
-  .map((s) => s.trim())
-  .filter(Boolean);
-const ALERT_FROM = process.env.ALERT_FROM || process.env.NOTIFY_DEPOSIT_FROM || 'Downtown Pour Collective <hello@downtownpourcollective.com>';
+const DEFAULT_ALERT_FROM =
+  'Downtown Pour Collective Operations <support@downtownpourcollective.com>';
+const PROHIBITED_OPS_ADDRESSES = new Set([
+  'hello@downtownpourcollective.com',
+  'nick@downtownpourcollective.com',
+]);
+const EMAIL_ATOM_CHARS = "a-z0-9!#$%&'*+/=?^_`{|}~-";
+const EMAIL_LOCAL_PATTERN =
+  `[${EMAIL_ATOM_CHARS}]+(?:\\.[${EMAIL_ATOM_CHARS}]+)*`;
+const DOMAIN_LABEL_PATTERN = '[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?';
+const BARE_EMAIL_PATTERN = new RegExp(
+  `^${EMAIL_LOCAL_PATTERN}@${DOMAIN_LABEL_PATTERN}` +
+    `(?:\\.${DOMAIN_LABEL_PATTERN})+\\.?$`,
+  'i',
+);
+
+function addressesIn(value) {
+  return String(value).toLowerCase().match(/[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9.-]+/g) || [];
+}
+
+function canonicalOpsAddress(address) {
+  const [localPart, domain] = String(address).toLowerCase().split('@');
+  const normalizedDomain = domain?.replace(/\.$/, '');
+  if (!localPart || normalizedDomain !== 'downtownpourcollective.com') {
+    return String(address).toLowerCase();
+  }
+  const normalizedLocal = localPart.split('+', 1)[0].replaceAll('.', '');
+  return `${normalizedLocal}@${normalizedDomain}`;
+}
+
+function isBareMailbox(value) {
+  return BARE_EMAIL_PATTERN.test(String(value).trim());
+}
+
+function isSenderIdentity(value) {
+  const sender = String(value).trim();
+  if (isBareMailbox(sender)) return true;
+  const formatted = /^[^<>\r\n]+\s<([^<>\r\n]+)>$/.exec(sender);
+  return Boolean(formatted && isBareMailbox(formatted[1]));
+}
+
+function readAlertConfiguration(env = process.env) {
+  const config = {
+    to: (env.ALERT_TO || '').split(',').map((s) => s.trim()).filter(Boolean),
+    from: String(env.ALERT_FROM || '').trim(),
+    replyTo: String(env.ALERT_REPLY_TO || '').trim(),
+  };
+  const fields = [
+    ['ALERT_TO', config.to, () => config.to.every(isBareMailbox)],
+    ['ALERT_FROM', config.from, () => isSenderIdentity(config.from)],
+    ['ALERT_REPLY_TO', config.replyTo, () => isBareMailbox(config.replyTo)],
+  ];
+  const issues = [];
+  for (const [name, value, isValid] of fields) {
+    if (!value || value.length === 0) {
+      issues.push({ name, reason: 'missing in Vercel' });
+    } else if (!isValid()) {
+      issues.push({ name, reason: 'is invalid' });
+    } else if (addressesIn(value).some((address) =>
+      PROHIBITED_OPS_ADDRESSES.has(canonicalOpsAddress(address)))) {
+      issues.push({ name, reason: 'contains a prohibited operational identity' });
+    }
+  }
+  const invalidFields = new Set(issues.map((issue) => issue.name));
+  return {
+    ...config,
+    from: invalidFields.has('ALERT_FROM') ? DEFAULT_ALERT_FROM : config.from,
+    replyTo: invalidFields.has('ALERT_REPLY_TO') ? '' : config.replyTo,
+    issues,
+  };
+}
 
 function tokenMatches(provided, expected) {
   if (!provided || !expected) return false;
@@ -241,14 +307,12 @@ async function recentlyAlerted(now, fingerprint) {
   }
 }
 
-async function sendAlert(problems, now) {
+async function sendAlert(problems, now, alertConfig) {
   const resend = new Resend(process.env.RESEND_API_KEY);
   const items = problems.map((p) => `<li>${escapeHtml(p.text)}</li>`).join('');
-  // Bounded: during a Resend outage this very request would otherwise hang
-  // past the function deadline and the handler would never report anything.
-  const result = await withTimeout(resend.emails.send({
-    from: ALERT_FROM,
-    to: ALERT_TO,
+  const email = {
+    from: alertConfig.from,
+    to: alertConfig.to,
     subject: `⚠ DPC ops alert: ${problems.length} problem${problems.length === 1 ? '' : 's'} detected`,
     html: `
       <h2>DPC five-minute health check found ${problems.length} problem${problems.length === 1 ? '' : 's'}</h2>
@@ -258,7 +322,15 @@ async function sendAlert(problems, now) {
       <p>You'll get at most one email every ${THROTTLE_HOURS} hours for this same set of problems;
       a different problem alerts immediately.</p>
     `,
-  }), ALERT_SEND_TIMEOUT_MS, 'resend.emails.send');
+  };
+  if (alertConfig.replyTo) email.replyTo = alertConfig.replyTo;
+  // Bounded: during a Resend outage this very request would otherwise hang
+  // past the function deadline and the handler would never report anything.
+  const result = await withTimeout(
+    resend.emails.send(email),
+    ALERT_SEND_TIMEOUT_MS,
+    'resend.emails.send',
+  );
   if (result?.error) {
     throw new Error(`alert email failed: ${result.error.message || result.error.name || 'resend error'}`);
   }
@@ -281,6 +353,9 @@ export default async function handler(req, res) {
   }
 
   const now = Date.now();
+  const alertSuppressed = Boolean(process.env.VERCEL_ENV && process.env.VERCEL_ENV !== 'production');
+  const alertConfig = readAlertConfiguration();
+  const alertConfigIssues = alertSuppressed ? [] : alertConfig.issues;
   // Per-phase durations, logged and returned so the real timeout margin can
   // be watched in production as provider latency drifts.
   const timings = {};
@@ -294,11 +369,20 @@ export default async function handler(req, res) {
   };
 
   const { problems, warnings } = await timed('gather_ms', () => gatherProblems(now));
+  for (const issue of alertConfigIssues) {
+    problems.push({ key: `env:${issue.name}`, text: `${issue.name} ${issue.reason}` });
+  }
+  problems.sort((a, b) => (a.key < b.key ? -1 : 1));
   const fingerprint = problems.length ? fingerprintOf(problems) : null;
   let alerted = false;
   let throttled = false;
   let alertError = '';
-  const alertSuppressed = Boolean(process.env.VERCEL_ENV && process.env.VERCEL_ENV !== 'production');
+  const alertDeliveryIssues = [
+    ...(!process.env.RESEND_API_KEY ? ['RESEND_API_KEY missing'] : []),
+    ...alertConfigIssues
+      .filter((issue) => issue.name === 'ALERT_TO')
+      .map((issue) => `${issue.name} ${issue.reason}`),
+  ];
 
   if (problems.length) {
     console.error('health-check: problems detected', problems.map((p) => p.text));
@@ -308,13 +392,16 @@ export default async function handler(req, res) {
     const supabaseDown = problems.some((p) => p.key === 'check:Supabase reachable');
     if (alertSuppressed) {
       console.info('health-check: alert email suppressed outside production');
-    } else if (!process.env.RESEND_API_KEY) {
-      alertError = 'cannot email: RESEND_API_KEY missing';
+    } else if (alertDeliveryIssues.length) {
+      alertError = `cannot email: ${alertDeliveryIssues.join('; ')}`;
     } else if (!supabaseDown && (await timed('throttle_read_ms', () => recentlyAlerted(now, fingerprint)))) {
       throttled = true;
     } else {
       try {
-        await timed('alert_send_ms', () => sendAlert(problems, now));
+        await timed(
+          'alert_send_ms',
+          () => sendAlert(problems, now, alertConfig),
+        );
         alerted = true;
         if (supabaseConfigured() && !supabaseDown) {
           try {
