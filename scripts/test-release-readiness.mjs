@@ -99,12 +99,38 @@ assert.doesNotMatch(home, /Pause feature|add (?:another|more) anytime|Welcome Ki
 assert.match(home, /THE COASTER PASSPORT/);
 assert.match(home, /data-screen-label="05 Coaster Passport"/);
 assert.doesNotMatch(home, /public launch checkout supports one Circle|between now and launch|Full launch August 1/);
-// Standard members pay membership only. The founding branch stays in the price
+// Standard signup carries the membership charge plus the one-time Member Setup
+// Fee, and no Founding Slot Deposit. The founding branch stays in the price
 // table as dead-but-documented history, so this checks the fine print the page
 // actually renders rather than the whole file.
 const joinFineprint = join.match(/<p class="fine" id="offer-fineprint">([\s\S]*?)<\/p>/);
 assert.ok(joinFineprint, 'join.html must keep the offer fine print element');
 assert.doesNotMatch(joinFineprint[1], /FOUNDING SLOT DEPOSIT/i);
+// /join server-renders the Circle cards before any JavaScript runs.
+// refreshPrices() corrects them after load, so the hydrated page settles right,
+// but the HTML response is what a no-JS visitor, a failed script, an
+// accessibility snapshot, a link preview and a source-reading crawler actually
+// see. Founding prices are deactivated, not merely overwritten client-side, so
+// the static markup is guarded alongside the JavaScript table below.
+const joinCircleCards = join.match(/<div class="circles"[\s\S]*?<\/div>/);
+assert.ok(joinCircleCards, 'join.html must keep the static Circle cards');
+for (const [circle, monthly, annual] of [['tap', 59, 590], ['cellar', 69, 690], ['reserve', 79, 790]]) {
+  assert.match(
+    joinCircleCards[0],
+    new RegExp(`data-price-for="${circle}">\\$${monthly} / mo<`),
+    `join.html must server-render $${monthly} / mo for the ${circle} Circle`,
+  );
+  assert.match(
+    joinCircleCards[0],
+    new RegExp(`data-price-note-for="${circle}">or \\$${annual} / year<`),
+    `join.html must server-render or $${annual} / year for the ${circle} Circle`,
+  );
+}
+assert.doesNotMatch(
+  joinCircleCards[0],
+  /\$(?:55|550|65|650|75|750)\b/,
+  'join.html server-renders a retired founding price in the Circle cards',
+);
 // The standard annual prices were null from the day the window closed, so the
 // annual option (which is checked by default) rendered "$— / year" in the order
 // summary. Display only: the server created annual standard sessions at the
@@ -261,7 +287,14 @@ for (const [page, markup] of [
   ['privacy.html', privacy],
   ['support.html', support],
 ]) {
-  const visible = markup.replace(/<!--[\s\S]*?-->/g, '').replace(/<(script|style)[\s\S]*?<\/\1>/g, '');
+  // Executable JavaScript is excluded because it is not copy. JSON-LD is not
+  // excluded: it is the structured data search engines and the assistants quote
+  // back, so a count disclosed there is published just as surely as one in a
+  // paragraph, and stripping every <script> block hid exactly that surface.
+  const visible = markup
+    .replace(/<!--[\s\S]*?-->/g, '')
+    .replace(/<style[\s\S]*?<\/style>/gi, '')
+    .replace(/<script\b(?![^>]*application\/ld\+json)[\s\S]*?<\/script>/gi, '');
   for (const pattern of MEMBER_COUNT_DISCLOSURE) {
     assert.doesNotMatch(
       visible,
