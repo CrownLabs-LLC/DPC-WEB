@@ -6,6 +6,15 @@
   shows a one-click copy button. Prose around it is fine; the copyable payload
   itself goes in the block.
 
+# Business rules (do not break)
+
+- **The number of members is never published. Ever.** No active count, no
+  remaining-spots figure, no "join N others", no founding-class size, on the
+  site, in press, in social copy, or in anything drafted for external use.
+  Membership size is an internal figure only. If asked to add social proof,
+  use member quotes or partner count, never a headcount. Enforced by
+  `scripts/test-release-readiness.mjs` across every public page.
+
 # Project notes
 
 - Static marketing site + Vercel serverless functions (`api/`). No framework,
