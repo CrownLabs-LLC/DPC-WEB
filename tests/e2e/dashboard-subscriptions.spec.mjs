@@ -168,8 +168,11 @@ test('setup fee incidents raise the banner while fresh pending remains informati
   await expect(page.locator('#banner')).toContainText('1 setup fee evidence conflict(s)');
   await expect(page.locator('#banner')).not.toContainText('3 setup fee payment');
   const freshPending = page.locator('#setup-fee-actions .ops-row').filter({ hasText: 'Fresh payment finalization pending' });
-  await expect(freshPending.locator('.ops-count')).toHaveText('3');
+  await expect(freshPending.locator('.ops-count')).toHaveText('2');
   await expect(freshPending.locator('.ops-count')).not.toHaveClass(/critical|warning/);
+  await expect(page.locator('#setup-fee-actions')).toContainText('Needs intervention');
+  await expect(page.locator('#setup-fee-actions')).toContainText('Pipeline context');
+  await expect(page.locator('#setup-fee-actions')).not.toContainText('stale row above');
 });
 
 test('acquisition shows where visitors are lost and how they reached Join', async ({ page }) => {
