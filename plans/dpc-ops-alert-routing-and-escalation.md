@@ -92,7 +92,9 @@ escalation; it does not remove him from every form of business awareness.
   result by pushing failures, a thrown subquery is indistinguishable from a
   healthy result.
 - The `webhook_errors` query uses `limit=5`, so its reported count saturates at
-  five and cannot support a count-based threshold.
+  five and cannot support a count-based threshold. It also filters only on
+  `level='error'`, not the Stripe-webhook source, so unrelated operational
+  bookkeeping could poison the signal.
 - If the Vercel cron stops, the deployment loses `CRON_SECRET`, or execution
   fails before monitoring completes, the existing email path cannot reliably
   announce that monitoring is blind.
@@ -404,12 +406,21 @@ exception, or database text.
 
 On every authenticated production invocation, write exactly one append-only
 `webhook_logs` row when Supabase is reachable, independent of alert delivery
-or throttling. Use a constant message and an allowlisted `detail` payload
-containing the checked-at timestamp, environment, each stable key with
-observation state and severity, and integer phase timings. One row contains the
-invocation's observation array; do not insert once per key. A failed insert
-becomes visible as an explicit monitoring observation and a coverage gap; it
-must not be mistaken for a successful sample.
+or throttling. Pin this evidence row to
+`source='health-check-observation'` and `level='info'`. Use a constant message
+and an allowlisted `detail` payload containing the checked-at timestamp,
+environment, each stable key with observation state and severity, and integer
+phase timings. One row contains the invocation's observation array; do not
+insert once per key. A failed insert becomes visible as an explicit monitoring
+observation and a coverage gap; it must not be mistaken for a successful
+sample. Persist any coverage-gap bookkeeping under
+`source='health-check-observation-gap'` and `level='info'`, never as a webhook
+error.
+
+Constrain the webhook-error probe to `source='stripe-webhook'` in Phase 2A.
+Phase 4 replaces its capped query with an exact count while retaining that
+source boundary. Health-check evidence and coverage bookkeeping must never
+feed the production-webhook error signal.
 
 Keep the existing fingerprint suppression for SEV-1. Exempt any result set
 containing SEV-0 from the flat six-hour window: send the first SEV-0 email
@@ -429,6 +440,11 @@ This is an interim reminder policy, not the Phase 4 incident lifecycle.
       coverage gap, never as a successful sample.
 - [ ] The record contains only timestamp, environment, stable key, observation
       state, severity, and integer timings; it contains no arbitrary text.
+- [ ] Observation and coverage-gap rows use their pinned sources and
+      `level='info'`; the webhook-error probe includes only
+      `source='stripe-webhook'`.
+- [ ] A regression test proves observation and coverage-gap rows cannot be
+      counted by the webhook-error probe.
 - [ ] Thirty-day frequency, observed duration, unknown counts, and runtime
       percentiles are derivable from the per-run rows and recorded coverage.
 - [ ] Subjects contain severity, production environment, capability, and
@@ -521,10 +537,11 @@ when that exact problem recovers.
 
 ### What to build
 
-Build on the Phase 2A explicit per-run observations. Replace the limited
-webhook-error query with an exact count before assigning any count-dependent
-threshold. Promote observations into durable per-key lifecycle state; do not
-reuse the append-only evidence rows as acknowledgement state.
+Build on the Phase 2A explicit per-run observations. Replace the limited,
+source-filtered webhook-error query with an exact count before assigning any
+count-dependent threshold. Retain `source='stripe-webhook'` in the exact query.
+Promote observations into durable per-key lifecycle state; do not reuse the
+append-only evidence rows as acknowledgement state.
 
 Add the DPC-owned incident-state migration and spec update as a separate schema
 slice. After it is merged and applied, make DPC-WEB reconcile each key through a
