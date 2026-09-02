@@ -109,6 +109,9 @@ escalation; it does not remove him from every form of business awareness.
   vocabulary, with SEV-0 most urgent. Do not introduce a parallel P1/P2 scale.
 - **Incident identity:** Each stable problem key is independent and namespaced,
   for example `dpc-web:production:checkout-canary:cors`.
+- **State-independent deduplication:** A PagerDuty `dedup_key` is derived only
+  from the literal system name, environment, and stable problem key. Computing
+  it must not read Supabase or mutable incident state.
 - **Impact-aware classification:** A reviewed policy registry supplies the
   default severity, title, capability, runbook, thresholds, and route. Aggregate
   checks may change severity using count, age, event type, consecutive failures,
@@ -131,7 +134,11 @@ escalation; it does not remove him from every form of business awareness.
 - **State-store failure:** When incident state cannot be read or written,
   degrade to stateless immediate delivery. Duplicate alerts are acceptable;
   silence is not. Emit no recoveries and open/log
-  `monitoring:state-store-unavailable`.
+  `monitoring:state-store-unavailable`. A Supabase outage therefore produces
+  the underlying SEV-0 observation, the stateless-delivery path, and the
+  monitoring-degradation observation. The existing `supabaseDown` short-
+  circuit around the throttle read is the precedent: do not spend the runtime
+  budget consulting a dependency already known to be unavailable.
 - **Table ownership:** The incident-state migration belongs in the DPC
   repository's `supabase/migrations/` ledger, not DPC-WEB `db/*.sql`, so
   migration drift checks cover it. RLS is deny-all and DPC-WEB writes with the
@@ -203,27 +210,39 @@ serial wall time by the number of active incidents.
 
 The health-check execution contract is:
 
-1. authenticate and send the in-progress Cron check-in;
-2. gather explicit observations concurrently;
-3. reconcile incident state;
-4. send the OK Cron check-in;
-5. fan out transition notifications concurrently with `Promise.allSettled`;
-6. return a diagnostic response.
+1. authenticate the production cron invocation;
+2. launch the in-progress Cron check-in with a short timeout, without blocking
+   observation gathering;
+3. gather explicit observations concurrently;
+4. append the Phase 2A per-run observation record;
+5. from Phase 4 onward, reconcile incident state;
+6. send the OK Cron check-in;
+7. fan out transition notifications concurrently with `Promise.allSettled`;
+8. return a diagnostic response.
 
-The OK check-in attests that the checker gathered and reconciled observations;
-it does not attest that email or PagerDuty delivery succeeded. A delivery
-failure opens/logs its own monitoring incident and invokes the alternate
-delivery path.
+Before Phase 4, there is no reconciliation step. The OK check-in follows
+gathering and the attempted Phase 2A observation append. From Phase 4 onward,
+it follows gathering and reconciliation. The OK check-in attests that the
+checker ran; it does not attest that email or PagerDuty delivery succeeded. A
+delivery failure opens/logs its own monitoring incident and invokes the
+alternate delivery path.
+
+The in-progress check-in exists to enable max-runtime detection. It is
+best-effort and off the critical path: Sentry slowness or failure cannot delay
+gathering or fail the health-check invocation. The OK check-in remains the
+liveness signal.
 
 | Phase | Maximum budget |
 | --- | ---: |
-| Authentication plus in-progress check-in | 1.5 seconds |
+| Authentication plus in-progress check-in launch | 0.25 seconds |
 | Concurrent observation gathering | 5.5 seconds |
-| Incident-state reconciliation | 2.5 seconds |
+| Per-run observation append | 2 seconds |
+| Incident-state reconciliation, reserved until Phase 4 | 2.5 seconds |
 | OK/error check-in | 1.5 seconds |
 | Concurrent notification fan-out | 4 seconds |
 | Final logging and response | 1.5 seconds |
-| **Total planned bound** | **16.5 seconds** |
+| **Immediate-tranche bound** | **14.75 seconds** |
+| **Phase 4 planned bound** | **17.25 seconds** |
 
 Outbound transitions are prioritized by severity, capped per run, and overflow
 is represented by one allowlisted summary transition. The cap must never drop a
@@ -308,7 +327,8 @@ Target: dashboard visibility and a conditional daily digest; no page.
 The first production change set is intentionally smaller than the full design:
 
 1. Phase 1 — remove Nick/`hello@` and decouple operational recipients.
-2. Phase 2A — add severity-led subjects to the existing direct email path.
+2. Phase 2A — add explicit per-run evidence, severity-led subjects, and
+   30-minute-or-faster SEV-0 reminders to the existing direct email path.
 3. Phase 3 — add the independent Sentry Cron dead-man's switch.
 
 This removes Nick and closes monitoring blindness without waiting for
@@ -356,15 +376,20 @@ ops-recipient test.
 
 ---
 
-## Phase 2A: Put the severity verdict in the existing alert
+## Phase 2A: Add evidence, verdicts, and urgent reminders
 
-**User stories:** Brandi can understand urgency and affected capability from the
-subject without opening the dashboard.
+**User stories:** Brandi can understand urgency and affected capability from
+the subject without opening the dashboard. Operators can measure every check,
+including throttled and unknown results, during the scope-gate period. An
+active SEV-0 cannot remain silent for six hours.
 
 ### What to build
 
-Add the policy-supplied severity, capability, and verdict to the current email
-path without yet adding incident-state persistence:
+Convert each check to return an explicit `healthy`, `unhealthy`, or `unknown`
+observation. Replace the two swallowed Supabase subquery failures so a thrown
+query records `unknown`, never an implied healthy result. Add the policy-
+supplied severity, capability, and verdict to the current email path without
+yet adding mutable incident-state persistence:
 
 ```text
 [SEV-0][PROD][CHECKOUT] Legal-version contract invalid — acknowledge now
@@ -377,18 +402,46 @@ the highest severity and states that additional findings exist. The body groups
 allowlisted findings by severity. It never interpolates arbitrary provider,
 exception, or database text.
 
+On every authenticated production invocation, write exactly one append-only
+`webhook_logs` row when Supabase is reachable, independent of alert delivery
+or throttling. Use a constant message and an allowlisted `detail` payload
+containing the checked-at timestamp, environment, each stable key with
+observation state and severity, and integer phase timings. One row contains the
+invocation's observation array; do not insert once per key. A failed insert
+becomes visible as an explicit monitoring observation and a coverage gap; it
+must not be mistaken for a successful sample.
+
+Keep the existing fingerprint suppression for SEV-1. Exempt any result set
+containing SEV-0 from the flat six-hour window: send the first SEV-0 email
+immediately and remind at least every 30 minutes while it remains observed.
+This is an interim reminder policy, not the Phase 4 incident lifecycle.
+
 ### Acceptance criteria
 
 - [ ] Every existing problem/warning key has a reviewed default severity or a
       safe SEV-1 fallback.
+- [ ] Every check returns `healthy`, `unhealthy`, or `unknown`; a throwing
+      subquery records unknown and cannot be interpreted as healthy.
+- [ ] Every authenticated production run writes exactly one allowlisted
+      observation row when Supabase is reachable, including healthy, throttled,
+      and alert-failed runs.
+- [ ] A failed observation append is explicitly reported and counted as a
+      coverage gap, never as a successful sample.
+- [ ] The record contains only timestamp, environment, stable key, observation
+      state, severity, and integer timings; it contains no arbitrary text.
+- [ ] Thirty-day frequency, observed duration, unknown counts, and runtime
+      percentiles are derivable from the per-run rows and recorded coverage.
 - [ ] Subjects contain severity, production environment, capability, and
       plain-language verdict.
 - [ ] Mixed-severity alerts lead with the highest severity.
 - [ ] An isolated checkout stall with healthy canaries does not claim checkout
       is unavailable.
+- [ ] An active SEV-0 alerts immediately and repeats no more than 30 minutes
+      after the previous successful alert while it remains observed.
+- [ ] SEV-1 retains the existing suppression policy during the interim.
 - [ ] Notification payload tests enforce the allowlist.
-- [ ] The old generic `DPC ops alert: N problems detected` subject is absent and
-      a test proves it cannot be selected.
+- [ ] The old generic `DPC ops alert: N problems detected` subject is absent,
+      and a test proves it cannot be selected.
 
 ---
 
@@ -399,20 +452,24 @@ cannot send ordinary alerts.
 
 ### What to build
 
-Create an environment-scoped Sentry Cron monitor for the five-minute production
-health check using Sentry's plain HTTP check-in endpoint. Do not add a Sentry SDK
-dependency. Configure a 15–20 minute grace window, tolerating two missed runs,
-plus a max-runtime alert.
+Create an environment-scoped Sentry Cron monitor for the five-minute
+production health check using Sentry's plain HTTP check-in endpoint. Do not add
+a Sentry SDK dependency. Configure a 15–20 minute grace window, tolerating two
+missed runs, plus a max-runtime alert.
 
-Send in-progress immediately after authenticating a real production cron
-invocation. Send OK after gather and reconcile complete, before notification
-fan-out. Send error only when gather or reconcile cannot complete. Business
-problems do not make the Cron execution itself erroneous.
+After authenticating a real production cron invocation, launch the in-progress
+check-in concurrently and retain its promise, but do not await it before
+gathering. Give it a short timeout, handle its rejection, and settle it before
+return so Sentry latency cannot consume the gathering budget or fail the run.
+Before Phase 4, send OK after gather and the Phase 2A observation-append
+attempt. From Phase 4 onward, send OK after gather and reconciliation. Send
+error only when gather or the applicable reconciliation cannot complete.
+Business problems do not make Cron execution itself erroneous.
 
 Derive environment scope before sending any check-in. Preview and Development
-must never use the production monitor slug or PagerDuty workflow. The existing
-email-only `alertSuppressed` guard is insufficient because it occurs too late
-to protect check-ins.
+send no Sentry Cron check-ins at all and never enter a PagerDuty workflow. The
+existing email-only `alertSuppressed` guard is insufficient because it occurs
+too late to protect check-ins.
 
 Initially notify Brandi directly from the Sentry workflow. After PagerDuty is
 configured, route missed/error/max-runtime monitor alerts through Sentry's
@@ -423,11 +480,15 @@ native PagerDuty integration.
 - [ ] Normal five-minute production runs appear as successful check-ins.
 - [ ] A completed run with business problems still reports successful Cron
       execution.
-- [ ] Gather or reconcile failure reports an error check-in.
+- [ ] Gather failure, or reconciliation failure after Phase 4, reports an error
+      check-in.
+- [ ] A slow or failed in-progress check-in neither delays observation gathering
+      nor fails the run.
 - [ ] No check-in within the reviewed grace window creates one monitor alert.
 - [ ] Exceeding the reviewed runtime creates an alert.
-- [ ] Missing or mismatched `CRON_SECRET` cannot make the monitor appear healthy.
-- [ ] Preview and Development cannot check in to the production monitor or page.
+- [ ] Missing or mismatched `CRON_SECRET` cannot make the monitor appear
+      healthy.
+- [ ] Preview and Development send no check-ins and cannot page.
 - [ ] Monitor recovery closes or clearly resolves the existing alert.
 - [ ] Staging proves missed, error, overlong, success, and recovery before any
       controlled production miss is approved.
@@ -436,12 +497,15 @@ native PagerDuty integration.
 
 ## Thirty-day observation and scope gate
 
-Before the stateful phases, summarize 30 days of sanitized operational data:
+Before the stateful phases, summarize 30 days of sanitized Phase 2A observation
+rows. Report expected-run coverage and investigate gaps before using the data
+for the gate. Derive:
 
 - frequency and duration by stable key;
 - false positives and unknown observations;
 - number of mixed-key emails;
-- any incident lasting longer than the current suppression window;
+- any continuously observed incident lasting longer than its suppression or
+  reminder window;
 - sensitive Stripe event types actually observed as undelivered; and
 - checker/runtime latency percentiles and headroom.
 
@@ -450,17 +514,17 @@ notification cap, reminder cadence, and whether the remaining phases retain
 their proposed scope. This is a scope/calibration gate, not permission to put
 Nick back into the interim route.
 
-## Phase 4: Add explicit observations and per-key incident lifecycle
+## Phase 4: Promote observations into per-key incident lifecycle
 
 **User stories:** Brandi receives one coherent incident per problem and knows
 when that exact problem recovers.
 
 ### What to build
 
-First convert every check to return explicit `healthy`, `unhealthy`, or
-`unknown`. Replace the two swallowed Supabase subquery failures. Replace the
-limited webhook-error query with an exact count before assigning any
-count-dependent threshold.
+Build on the Phase 2A explicit per-run observations. Replace the limited
+webhook-error query with an exact count before assigning any count-dependent
+threshold. Promote observations into durable per-key lifecycle state; do not
+reuse the append-only evidence rows as acknowledgement state.
 
 Add the DPC-owned incident-state migration and spec update as a separate schema
 slice. After it is merged and applied, make DPC-WEB reconcile each key through a
@@ -475,15 +539,15 @@ success, repeat count, resolved time, allowlisted summary, and runbook ID.
 
 ### Acceptance criteria
 
-- [ ] Every check returns an explicit observation state.
+- [ ] Every Phase 2A observation participates in per-key lifecycle state.
 - [ ] A throwing subquery yields unknown, never healthy, and cannot resolve an
       incident.
 - [ ] Sustained unknown opens a separate SEV-1 monitoring-degradation incident
       while leaving the underlying incident open.
 - [ ] `A -> A+B -> A -> healthy` preserves independent A and B lifecycles.
 - [ ] Adding/removing one problem cannot reset another problem's throttle.
-- [ ] State-store failure notifies statelessly, emits no recovery, and opens/logs
-      `monitoring:state-store-unavailable`.
+- [ ] State-store failure notifies statelessly, emits no recovery, and
+      opens/logs `monitoring:state-store-unavailable`.
 - [ ] Exactly one invocation wins each transition under overlapping runs.
 - [ ] Recovery follows the configured healthy threshold.
 - [ ] An incident that was never successfully notified emits no all-clear.
@@ -505,9 +569,19 @@ technical backup is appointed, repeat unacknowledged pages to Brandi; Nick is
 not a fallback.
 
 Send health-check trigger/update/resolve actions directly to PagerDuty Events
-API v2 with the stable incident key as `dedup_key`. Mirror lifecycle in the
-dashboard and operational log, not Sentry. Mid-incident SEV-1-to-SEV-0
-escalation retains the same key and updates the existing incident.
+API v2. Compute `dedup_key` deterministically from the system, environment, and
+stable problem key without consulting Supabase or mutable incident state.
+Mirror lifecycle in the dashboard and operational log, not Sentry. Mid-
+incident SEV-1-to-SEV-0 escalation retains the same key and updates the
+existing incident.
+
+When Supabase is unreachable, the checker observes the underlying SEV-0,
+enters stateless delivery, and emits
+`monitoring:state-store-unavailable`. Local reads cannot deduplicate those
+five-minute retries. PagerDuty's state-independent `dedup_key` is therefore the
+authoritative page-storm control: retries update the same PagerDuty incident
+instead of opening new ones. The monitoring-degradation key is separately
+stable and does not replace or resolve the underlying Supabase incident.
 
 If PagerDuty delivery fails, attempt the direct-to-Brandi operational email,
 record/open `monitoring:pagerduty-delivery-failed`, and expose it on the
@@ -519,6 +593,8 @@ dashboard. Notification failures are processed without recursive fan-out.
 - [ ] Brandi receives SMS and can acknowledge through PagerDuty.
 - [ ] Acknowledgement stops configured repeats.
 - [ ] Repeated observations update/deduplicate the existing incident.
+- [ ] With Supabase unavailable, each retry computes the same `dedup_key`
+      without state and does not create another PagerDuty incident.
 - [ ] Recovery resolves that same incident.
 - [ ] Mid-incident SEV-1-to-SEV-0 escalation reuses the same `dedup_key`.
 - [ ] PagerDuty API failure falls back to direct email and becomes visible as
@@ -615,8 +691,8 @@ If browser-visible dashboard or status presentation changes:
 npm run test:e2e
 ```
 
-Run the DPC repository's required TypeScript, Jest, database, and diff checks for
-the separately owned state-table slice.
+Run the DPC repository's required TypeScript, Jest, database, and diff checks
+for the separately owned state-table slice.
 
 Staging evidence must prove:
 
@@ -637,10 +713,12 @@ Staging evidence must prove:
 ### Immediate tranche
 
 1. Ship recipient decoupling.
-2. Ship severity-led subjects and allowlisted email content.
+2. Ship explicit per-run observations, severity-led subjects, allowlisted email
+   content, and 30-minute-or-faster SEV-0 reminders.
 3. Configure the production Sentry Cron monitor through plain HTTP check-ins.
 4. Verify direct-to-Brandi delivery and at least three healthy check-ins.
-5. Disable the old generic route only after the new direct path passes.
+5. Confirm the deployed direct path cannot select the old generic subject or
+   recipient fallback.
 
 ### After the 30-day scope gate
 
