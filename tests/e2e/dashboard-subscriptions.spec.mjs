@@ -28,11 +28,25 @@ const OVERVIEW = {
   renewals: { due_7d: 2 },
 };
 
+const SETUP_FEE_OVERVIEW = {
+  intents: {
+    assessed: 6,
+    live: 1,
+    payment_pending: 1,
+    payment_pending_stale_15m: 0,
+    completed: 5,
+    completed_with_evidence: 5,
+    completed_missing_evidence: 0,
+  },
+  evidence: { recorded: 5, conflicts: 0 },
+};
+
 function dashboardPayload() {
   return {
     generated_at: '2048-08-22T19:00:00.000Z',
     days: 30,
     subscription_overview: OVERVIEW,
+    member_setup_fee_overview: SETUP_FEE_OVERVIEW,
     funnel: {
       configured: true,
       daily: [
@@ -110,6 +124,10 @@ test('subscription operations lead the dashboard without deposit or member PII v
   await expect(page.locator('#subscription-actions')).toContainText('No collection attempt recorded');
   await expect(page.locator('#subscription-actions')).toContainText('Other dunning timing');
   await expect(page.locator('#subscription-actions')).toContainText('first attempt not scheduled');
+  await expect(page.getByRole('heading', { name: 'Member Setup Fee reconciliation' })).toBeVisible();
+  await expect(page.locator('#setup-fee-actions')).toContainText('Payment pending over 15 minutes');
+  await expect(page.locator('#setup-fee-actions')).toContainText('Fresh payment finalization pending');
+  await expect(page.locator('#setup-fee-actions')).toContainText('5 completed with evidence');
 
   await expect(page.getByRole('heading', { name: 'Membership mix' })).toBeVisible();
   await expect(page.locator('#membership-mix')).toContainText('Tap');
@@ -121,6 +139,40 @@ test('subscription operations lead the dashboard without deposit or member PII v
   await expect(page.getByText('Recent deposits')).toHaveCount(0);
   await expect(page.getByText('Collected', { exact: true })).toHaveCount(0);
   await expect(page.locator('body')).not.toContainText('buyer@example.com');
+});
+
+test('setup fee incidents raise the banner while fresh pending remains informational', async ({ page }) => {
+  await page.unroute('**/api/dashboard-data?**');
+  await page.route('**/api/dashboard-data?**', async (route) => {
+    const payload = dashboardPayload();
+    payload.funnel.totals.checkout_stalled = 0;
+    payload.member_setup_fee_overview = {
+      intents: {
+        ...SETUP_FEE_OVERVIEW.intents,
+        payment_pending: 3,
+        payment_pending_stale_15m: 1,
+        completed_missing_evidence: 2,
+      },
+      evidence: { recorded: 5, conflicts: 1 },
+    };
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(payload),
+    });
+  });
+  await page.goto('/dashboard');
+
+  await expect(page.locator('#banner')).toContainText('1 setup fee payment(s) pending over 15 minutes');
+  await expect(page.locator('#banner')).toContainText('2 completed checkout(s) missing setup fee evidence');
+  await expect(page.locator('#banner')).toContainText('1 setup fee evidence conflict(s)');
+  await expect(page.locator('#banner')).not.toContainText('3 setup fee payment');
+  const freshPending = page.locator('#setup-fee-actions .ops-row').filter({ hasText: 'Fresh payment finalization pending' });
+  await expect(freshPending.locator('.ops-count')).toHaveText('2');
+  await expect(freshPending.locator('.ops-count')).not.toHaveClass(/critical|warning/);
+  await expect(page.locator('#setup-fee-actions')).toContainText('Needs intervention');
+  await expect(page.locator('#setup-fee-actions')).toContainText('Pipeline context');
+  await expect(page.locator('#setup-fee-actions')).not.toContainText('stale row above');
 });
 
 test('acquisition shows where visitors are lost and how they reached Join', async ({ page }) => {
@@ -333,12 +385,32 @@ test('subscription report failure stays visible without hiding acquisition and h
   await expect(page.getByRole('heading', { name: 'System health' })).toBeVisible();
 });
 
+test('setup fee report failure stays visible without hiding subscription operations', async ({ page }) => {
+  await page.unroute('**/api/dashboard-data?**');
+  await page.route('**/api/dashboard-data?**', async (route) => {
+    const payload = dashboardPayload();
+    payload.funnel.totals.checkout_stalled = 0;
+    payload.member_setup_fee_overview = { error: 'setup fee overview: supabase rpc returned 503' };
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(payload),
+    });
+  });
+  await page.goto('/dashboard');
+
+  await expect(page.locator('#banner')).toContainText('Member Setup Fee reconciliation unavailable');
+  await expect(page.locator('#setup-fee-actions')).toContainText('setup fee overview: supabase rpc returned 503');
+  await expect(page.locator('#subscriber-kpis')).toContainText('Active memberships');
+});
+
 test('an intentionally unconfigured preview does not raise an RPC failure banner', async ({ page }) => {
   await page.unroute('**/api/dashboard-data?**');
   await page.route('**/api/dashboard-data?**', async (route) => {
     const payload = dashboardPayload();
     payload.funnel.totals.checkout_stalled = 0;
     payload.subscription_overview = { configured: false };
+    payload.member_setup_fee_overview = { configured: false };
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -349,4 +421,5 @@ test('an intentionally unconfigured preview does not raise an RPC failure banner
 
   await expect(page.locator('#subscriber-kpis')).toContainText('Subscription report unavailable');
   await expect(page.locator('#banner')).not.toContainText('Subscription report unavailable');
+  await expect(page.locator('#banner')).not.toContainText('Member Setup Fee reconciliation unavailable');
 });

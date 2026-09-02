@@ -475,6 +475,29 @@ function normalizeSubscriptionOverview(overview) {
   };
 }
 
+function normalizeMemberSetupFeeOverview(overview) {
+  if (!isRecord(overview.intents) || !isRecord(overview.evidence)) {
+    throw new Error('setup fee report is missing reconciliation counts');
+  }
+  const intents = overview.intents;
+  const evidence = overview.evidence;
+  return {
+    intents: {
+      assessed: countOrNull(intents.assessed),
+      live: countOrNull(intents.live),
+      payment_pending: countOrNull(intents.payment_pending),
+      payment_pending_stale_15m: countOrNull(intents.payment_pending_stale_15m),
+      completed: countOrNull(intents.completed),
+      completed_with_evidence: countOrNull(intents.completed_with_evidence),
+      completed_missing_evidence: countOrNull(intents.completed_missing_evidence),
+    },
+    evidence: {
+      recorded: countOrNull(evidence.recorded),
+      conflicts: countOrNull(evidence.conflicts),
+    },
+  };
+}
+
 async function subscriptionOverviewSection(now) {
   if (!supabaseConfigured()) return { configured: false };
   const overview = await supabaseRpc('ops_subscription_overview', {
@@ -484,6 +507,17 @@ async function subscriptionOverviewSection(now) {
     throw new Error('billing report returned an invalid payload');
   }
   return normalizeSubscriptionOverview(overview);
+}
+
+async function memberSetupFeeOverviewSection(now) {
+  if (!supabaseConfigured()) return { configured: false };
+  const overview = await supabaseRpc('ops_member_setup_fee_overview', {
+    p_now: new Date(now).toISOString(),
+  });
+  if (!isRecord(overview)) {
+    throw new Error('setup fee report returned an invalid payload');
+  }
+  return normalizeMemberSetupFeeOverview(overview);
 }
 
 // Webhook failures from both sides: our own error log, and Stripe's view of
@@ -518,9 +552,10 @@ export default async function handler(req, res) {
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
   const resend = new Resend(process.env.RESEND_API_KEY);
 
-  const [funnel, subscriptionOverview, alerts, health] = await Promise.allSettled([
+  const [funnel, subscriptionOverview, memberSetupFeeOverview, alerts, health] = await Promise.allSettled([
     funnelSection(days, now),
     subscriptionOverviewSection(now),
+    memberSetupFeeOverviewSection(now),
     alertsSection(stripe),
     healthChecks(stripe, resend),
   ]);
@@ -533,6 +568,7 @@ export default async function handler(req, res) {
     days,
     funnel: unwrap(funnel, 'funnel'),
     subscription_overview: unwrap(subscriptionOverview, 'subscription overview'),
+    member_setup_fee_overview: unwrap(memberSetupFeeOverview, 'setup fee overview'),
     alerts: unwrap(alerts, 'alerts'),
     health: unwrap(health, 'health'),
   });

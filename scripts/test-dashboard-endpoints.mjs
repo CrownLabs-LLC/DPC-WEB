@@ -219,6 +219,20 @@ const OPS_SUBSCRIPTION_OVERVIEW = {
   renewals: { due_7d: 2 },
 };
 
+const OPS_MEMBER_SETUP_FEE_OVERVIEW = {
+  member_email: 'must-not-leak@example.com',
+  intents: {
+    assessed: 6,
+    live: 1,
+    payment_pending: 1,
+    payment_pending_stale_15m: 0,
+    completed: 5,
+    completed_with_evidence: 5,
+    completed_missing_evidence: 0,
+  },
+  evidence: { recorded: 5, conflicts: 0, stripe_invoice_id: 'in_must_not_leak' },
+};
+
 function mockStripeHttps() {
   return (options) => {
     const req = new PassThrough();
@@ -237,7 +251,13 @@ function mockStripeHttps() {
   };
 }
 
-function mockDashboardFetch({ hangResendDomains = false, failSubscriptionOverview = false, partialSubscriptionOverview = false, extraCheckoutRows = [] } = {}) {
+function mockDashboardFetch({
+  hangResendDomains = false,
+  failSubscriptionOverview = false,
+  failSetupFeeOverview = false,
+  partialSubscriptionOverview = false,
+  extraCheckoutRows = [],
+} = {}) {
   return async (url, opts = {}) => {
     const u = String(url);
     if (u.includes('/rest/v1/rpc/ops_subscription_overview')) {
@@ -250,6 +270,18 @@ function mockDashboardFetch({ hangResendDomains = false, failSubscriptionOvervie
       return new Response(JSON.stringify(partialSubscriptionOverview
         ? { totals: OPS_SUBSCRIPTION_OVERVIEW.totals }
         : OPS_SUBSCRIPTION_OVERVIEW), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    }
+    if (u.includes('/rest/v1/rpc/ops_member_setup_fee_overview')) {
+      if (failSetupFeeOverview) {
+        return new Response('{"message":"report unavailable"}', { status: 503 });
+      }
+      check('setup fee overview uses POST', opts.method === 'POST', opts);
+      const body = JSON.parse(opts.body || '{}');
+      check('setup fee overview pins the dashboard clock', Boolean(Date.parse(body.p_now)), body);
+      return new Response(JSON.stringify(OPS_MEMBER_SETUP_FEE_OVERVIEW), {
         status: 200,
         headers: { 'content-type': 'application/json' },
       });
@@ -448,6 +480,17 @@ process.env.SUPABASE_SERVICE_ROLE_KEY = 'service_test_key';
   check('subscription overview remains PII-free', (
     !/must-not-leak|email|first_name|last_name|stripe_customer_id/i.test(JSON.stringify(overview))
   ), overview);
+  const setupFeeOverview = out.body?.member_setup_fee_overview;
+  check('billing-owned setup fee reconciliation is returned', (
+    setupFeeOverview?.intents?.assessed === 6
+    && setupFeeOverview?.intents?.payment_pending === 1
+    && setupFeeOverview?.intents?.payment_pending_stale_15m === 0
+    && setupFeeOverview?.evidence?.recorded === 5
+    && setupFeeOverview?.evidence?.conflicts === 0
+  ), setupFeeOverview);
+  check('setup fee reconciliation remains PII-free', (
+    !/must-not-leak|email|first_name|last_name|stripe_/i.test(JSON.stringify(setupFeeOverview))
+  ), setupFeeOverview);
   const alerts = out.body?.alerts;
   check('undelivered stripe events surfaced', alerts?.undelivered_events?.length === 1, alerts);
   check('webhook error log surfaced', alerts?.webhook_errors?.length === 1, alerts);
@@ -457,6 +500,26 @@ process.env.SUPABASE_SERVICE_ROLE_KEY = 'service_test_key';
   check('health: subscription read probe ok', byName['Stripe key can read subscriptions']?.ok === true, byName);
   check('health: live mode detected from key prefix', byName['Stripe key is live mode']?.ok === true, byName);
   check('health: resend key accepted', byName['Resend key accepted by Resend']?.ok === true, byName);
+}
+
+// Case: setup-fee reconciliation degrades independently while the rest stays up.
+{
+  const origFetch = globalThis.fetch;
+  const origHttpsRequest = https.request;
+  globalThis.fetch = mockDashboardFetch({ failSetupFeeOverview: true });
+  https.request = mockStripeHttps();
+  const handler = await fresh('../api/dashboard-data.js');
+  const { res, out } = mockRes();
+  await handler({ method: 'GET', headers: { authorization: 'Bearer sekret-token' }, query: { days: '30' } }, res);
+  globalThis.fetch = origFetch;
+  https.request = origHttpsRequest;
+
+  check('setup fee report failure keeps dashboard available', (
+    out.status === 200
+    && out.body?.member_setup_fee_overview?.error?.startsWith('setup fee overview:')
+    && out.body?.subscription_overview?.totals?.active === 9
+    && out.body?.funnel?.totals?.visits === 2
+  ), out.body);
 }
 
 // Case: a partial but valid aggregate is projected safely instead of leaking
