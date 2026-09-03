@@ -1,6 +1,6 @@
 // Scheduled health check (every five minutes; see vercel.json "crons").
-// Runs the same live checks as the dashboard and EMAILS an alert when
-// something is broken:
+// Sentry Cron tracks whether the checker executes; the checks below EMAIL an
+// alert when something is broken:
 //   - a required env var is missing
 //   - Stripe rejects the key for a capability the app needs, or it's test-mode
 //   - Resend rejects its key
@@ -21,7 +21,7 @@
 // may use the dashboard token instead.
 import Stripe from 'stripe';
 import { Resend } from 'resend';
-import { timingSafeEqual, createHash } from 'node:crypto';
+import { timingSafeEqual, createHash, randomUUID } from 'node:crypto';
 import {
   supabaseConfigured,
   supabaseSelect,
@@ -46,11 +46,13 @@ const JOIN_URL = 'https://www.downtownpourcollective.com/join';
 const LEGAL_VERSIONS_URL = 'https://www.downtownpourcollective.com/api/legal-versions?fresh=1';
 const LEGAL_VERSION_KEYS = ['tos', 'privacy', 'memberTerms', 'autoRenewalTerms'];
 const CHECKOUT_ENDPOINT = 'https://ebiuspbgzggrdiaswpcc.supabase.co/functions/v1/circle-checkout';
-// End-to-end budget: gather is ~4s (bounded probes, concurrent). The alert
-// path below gets 2s + 2s + 4s + 2s. The worst case is around 14s, inside the
-// 30s function limit with ample margin to return the diagnostic response.
+// End-to-end budget: bounded probes run concurrently, the Sentry start overlaps
+// gathering, and the final check-in is capped at 1.5s. The immediate-tranche
+// bound remains below 15s inside the 30s function limit.
 const THROTTLE_IO_TIMEOUT_MS = 2000;
 const ALERT_SEND_TIMEOUT_MS = 4000;
+const SENTRY_START_TIMEOUT_MS = 1000;
+const SENTRY_FINISH_TIMEOUT_MS = 1500;
 const DASHBOARD_URL = 'https://www.downtownpourcollective.com/dashboard';
 const DEFAULT_ALERT_FROM =
   'Downtown Pour Collective Operations <support@downtownpourcollective.com>';
@@ -219,6 +221,11 @@ const POLICY = Object.freeze({
     severity: 'SEV-1', capability: 'MONITORING',
     title: 'Operations reply-to is invalid',
     action: 'Restore the direct operations reply-to',
+  },
+  'env:SENTRY_CRON_CHECKIN_URL': {
+    severity: 'SEV-1', capability: 'MONITORING',
+    title: 'Cron monitor is not configured',
+    action: 'Correct the Sentry Cron ingestion URL',
   },
   'env:VERCEL_ENV': {
     severity: 'SEV-1', capability: 'MONITORING',
@@ -792,6 +799,73 @@ async function sendAlert(
   }
 }
 
+const SENTRY_MONITOR_CONFIG = Object.freeze({
+  schedule: Object.freeze({ type: 'crontab', value: '*/5 * * * *' }),
+  checkin_margin: 10,
+  max_runtime: 1,
+  timezone: 'UTC',
+  failure_issue_threshold: 1,
+  recovery_threshold: 1,
+});
+
+function readSentryCronConfiguration() {
+  const value = String(process.env.SENTRY_CRON_CHECKIN_URL || '').trim();
+  if (!value) return { issue: 'missing in Vercel' };
+  try {
+    const url = new URL(value);
+    const sentryHost =
+      /(^|\.)ingest(?:\.[a-z0-9-]+)?\.sentry\.io$/i.test(url.hostname);
+    const completePath =
+      /^\/api\/\d+\/cron\/[a-z0-9][a-z0-9_.-]{0,49}\/[a-f0-9]{16,64}\/?$/i
+        .test(url.pathname);
+    if (
+      url.protocol !== 'https:' ||
+      url.port ||
+      url.username ||
+      url.password ||
+      url.search ||
+      url.hash ||
+      !sentryHost ||
+      !completePath
+    ) {
+      return { issue: 'is not a valid Sentry Relay Cron ingestion URL' };
+    }
+    return { url: value };
+  } catch {
+    return { issue: 'is not a valid Sentry Relay Cron ingestion URL' };
+  }
+}
+
+async function sendSentryCronCheckIn(
+  url,
+  checkInId,
+  status,
+  startedAt,
+  timeoutMs,
+) {
+  const payload = {
+    check_in_id: checkInId,
+    status,
+    environment: 'production',
+    ...(status === 'in_progress'
+      ? { monitor_config: SENTRY_MONITOR_CONFIG }
+      : { duration: Math.max(0, (Date.now() - startedAt) / 1000) }),
+  };
+  const response = await withTimeout(
+    fetch(url, {
+      method: 'POST',
+      signal: AbortSignal.timeout(timeoutMs),
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(payload),
+    }),
+    timeoutMs,
+    `Sentry Cron ${status} check-in`,
+  );
+  if (!response.ok) {
+    throw new Error(`Sentry Cron ${status} returned ${response.status}`);
+  }
+}
+
 function integerTimings(timings) {
   return Object.fromEntries(
     Object.entries(timings).map(([key, value]) => [key, Math.round(value)]),
@@ -810,7 +884,10 @@ export default async function handler(req, res) {
   }
   const header = String(req.headers.authorization || '');
   const bearer = header.startsWith('Bearer ') ? header.slice(7) : '';
-  if (!tokenMatches(bearer, process.env.CRON_SECRET) && !tokenMatches(bearer, process.env.DASHBOARD_TOKEN)) {
+  const cronAuthenticated = tokenMatches(bearer, process.env.CRON_SECRET);
+  const dashboardAuthenticated =
+    tokenMatches(bearer, process.env.DASHBOARD_TOKEN);
+  if (!cronAuthenticated && !dashboardAuthenticated) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
@@ -819,6 +896,52 @@ export default async function handler(req, res) {
   const alertSuppressed = ['preview', 'development']
     .includes(runtimeEnvironment);
   const productionRun = runtimeEnvironment === 'production';
+  const sentryConfig = productionRun
+    ? readSentryCronConfiguration()
+    : {};
+  const shouldCheckIn =
+    productionRun && cronAuthenticated && Boolean(sentryConfig.url);
+  const sentryCheckInId = shouldCheckIn
+    ? randomUUID().replaceAll('-', '')
+    : null;
+  const sentryStartPromise = shouldCheckIn
+    ? sendSentryCronCheckIn(
+      sentryConfig.url,
+      sentryCheckInId,
+      'in_progress',
+      now,
+      SENTRY_START_TIMEOUT_MS,
+    )
+      .then(() => 'sent')
+      .catch((err) => {
+        console.error(
+          'health-check: Sentry in-progress check-in failed',
+          err?.message || err,
+        );
+        return 'failed';
+      })
+    : Promise.resolve('skipped');
+  const finishSentryCheckIn = async (status) => {
+    if (!shouldCheckIn) return null;
+    const started = await sentryStartPromise;
+    let completed = 'sent';
+    try {
+      await sendSentryCronCheckIn(
+        sentryConfig.url,
+        sentryCheckInId,
+        status,
+        now,
+        SENTRY_FINISH_TIMEOUT_MS,
+      );
+    } catch (err) {
+      completed = 'failed';
+      console.error(
+        `health-check: Sentry ${status} check-in failed`,
+        err?.message || err,
+      );
+    }
+    return { in_progress: started, final: completed, status };
+  };
   const alertConfig = readAlertConfiguration();
   const alertConfigIssues = alertSuppressed ? [] : alertConfig.issues;
   // Per-phase durations, logged and returned so the real timeout margin can
@@ -833,13 +956,46 @@ export default async function handler(req, res) {
     }
   };
 
-  const gathered = await timed(
-    'gather_ms',
-    () => gatherProblems(now, {
-      checkObservationFreshness: productionRun,
-    }),
-  );
+  let gathered;
+  try {
+    gathered = await timed(
+      'gather_ms',
+      () => gatherProblems(now, {
+        checkObservationFreshness: productionRun,
+      }),
+    );
+  } catch (err) {
+    const cronMonitor = shouldCheckIn
+      ? await timed(
+        'sentry_finish_ms',
+        () => finishSentryCheckIn('error'),
+      )
+      : null;
+    timings.total_ms = Date.now() - now;
+    console.error(
+      'health-check: observation gathering could not complete',
+      err?.message || err,
+    );
+    res.setHeader('Cache-Control', 'no-store');
+    return res.status(500).json({
+      error: 'Health check could not complete',
+      timings,
+      ...(cronMonitor ? { cron_monitor: cronMonitor } : {}),
+    });
+  }
   const { problems, warnings, states } = gathered;
+  if (productionRun) {
+    const key = 'env:SENTRY_CRON_CHECKIN_URL';
+    if (sentryConfig.issue) {
+      states.set(key, { state: 'unhealthy' });
+      problems.push({
+        key,
+        text: `SENTRY_CRON_CHECKIN_URL ${sentryConfig.issue}`,
+      });
+    } else {
+      states.set(key, { state: 'healthy' });
+    }
+  }
   if (productionRun || alertSuppressed) {
     states.set('env:VERCEL_ENV', { state: 'healthy' });
   } else {
@@ -1028,6 +1184,12 @@ export default async function handler(req, res) {
   }
 
   problems.sort((a, b) => (a.key < b.key ? -1 : 1));
+  const cronMonitor = shouldCheckIn
+    ? await timed(
+      'sentry_finish_ms',
+      () => finishSentryCheckIn('ok'),
+    )
+    : null;
   timings.total_ms = Date.now() - now;
   console.info('health-check: timings', timings);
 
@@ -1044,6 +1206,7 @@ export default async function handler(req, res) {
     ...(alertSuppressed && alertableProblems.length
       ? { alert_suppressed: true }
       : {}),
+    ...(cronMonitor ? { cron_monitor: cronMonitor } : {}),
     timings,
     ...(alertError ? { alert_error: alertError } : {}),
   });

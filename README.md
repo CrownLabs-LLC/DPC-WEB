@@ -40,6 +40,7 @@ See [`.env.example`](.env.example). Required:
 - `CRON_SECRET` (scheduled health-check authentication)
 - `ALERT_TO`, `ALERT_FROM`, and `ALERT_REPLY_TO` (required for a green
   Production operations check)
+- `SENTRY_CRON_CHECKIN_URL` (Production-only Sentry Relay Cron ingestion URL)
 
 Optional (have sensible defaults):
 - `NOTIFY_TO` — comma-separated recipients

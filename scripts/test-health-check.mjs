@@ -10,6 +10,9 @@ import { PassThrough } from 'node:stream';
 const OPS_TO = 'ops-owner@example.com';
 const OPS_FROM = 'DPC Operations <ops-sender@example.com>';
 const OPS_REPLY_TO = 'ops-reply@example.com';
+const SENTRY_CRON_URL =
+  'https://o123.ingest.sentry.io/api/456/cron/dpc-web-health/' +
+  'abc123abc123abc123abc123abc123ab/';
 
 function mockRes() {
   const out = { status: null, body: null };
@@ -45,6 +48,7 @@ function setHealthyEnv() {
   process.env.ALERT_TO = OPS_TO;
   process.env.ALERT_FROM = OPS_FROM;
   process.env.ALERT_REPLY_TO = OPS_REPLY_TO;
+  process.env.SENTRY_CRON_CHECKIN_URL = SENTRY_CRON_URL;
   process.env.VERCEL_ENV = 'production';
   delete process.env.DASHBOARD_TOKEN;
   delete process.env.NOTIFY_DEPOSIT_TO;
@@ -125,10 +129,31 @@ function mockFetch({
   stalledHandoffCount = 1,
   fallbackHandoff = false,
   canaryDelayMs = 0,
+  sentryInProgressDelayMs = 0,
+  failSentryInProgress = false,
+  failSentryFinish = false,
 } = {}, sentEmails, stats) {
   return async (url, opts) => {
     const u = String(url);
+    if (u === SENTRY_CRON_URL) {
+      const body = JSON.parse(opts?.body || '{}');
+      stats.sentryCheckIns.push(body);
+      stats.events.push(`sentry:${body.status}:started`);
+      if (body.status === 'in_progress' && sentryInProgressDelayMs) {
+        await new Promise((resolve) =>
+          setTimeout(resolve, sentryInProgressDelayMs));
+      }
+      stats.events.push(`sentry:${body.status}:finished`);
+      if (
+        (body.status === 'in_progress' && failSentryInProgress) ||
+        (body.status !== 'in_progress' && failSentryFinish)
+      ) {
+        return new Response(null, { status: 503 });
+      }
+      return new Response(null, { status: 202 });
+    }
     if (u === 'https://www.downtownpourcollective.com/join') {
+      stats.events.push('gather:join-started');
       if (canaryDelayMs) await new Promise((resolve) => setTimeout(resolve, canaryDelayMs));
       const body = joinCanaryBroken
         ? '<html><h1>Join</h1></html>'
@@ -167,6 +192,7 @@ function mockFetch({
         if (opts?.method === 'POST') {
           const row = JSON.parse(opts.body);
           stats.webhookInserts.push(row);
+          stats.events.push(`supabase:${row.source}:insert`);
           if (rejectAllWebhookInserts) {
             return new Response('writes unavailable', { status: 503 });
           }
@@ -255,23 +281,35 @@ async function run(
     webhookInserts: [],
     webhookErrorQueries: [],
     observationFreshnessQueries: [],
+    sentryCheckIns: [],
+    events: [],
   };
   const origFetch = globalThis.fetch;
   const origHttps = https.request;
+  const origAllSettled = Promise.allSettled;
   globalThis.fetch = mockFetch(mockOpts, sentEmails, stats);
   https.request = mockStripeHttps(mockOpts);
   const handler = await fresh();
   if (postImportEnvTweaks) postImportEnvTweaks();
+  if (mockOpts.gatherFails) {
+    Promise.allSettled = async () => {
+      throw new Error('forced gather failure');
+    };
+  }
   const { res, out } = mockRes();
   // withTimeout/AbortSignal timers are unref'ed; socketless mocks would let
   // the event loop drain before they fire, so hold the loop open.
   const keepAlive = setTimeout(() => {}, 20000);
   const startedAt = Date.now();
-  await handler({ method: 'GET', headers: reqHeaders }, res);
+  try {
+    await handler({ method: 'GET', headers: reqHeaders }, res);
+  } finally {
+    clearTimeout(keepAlive);
+    globalThis.fetch = origFetch;
+    https.request = origHttps;
+    Promise.allSettled = origAllSettled;
+  }
   const elapsed = Date.now() - startedAt;
-  clearTimeout(keepAlive);
-  globalThis.fetch = origFetch;
-  https.request = origHttps;
   return { out, sentEmails, stats, elapsed };
 }
 
@@ -281,36 +319,91 @@ function insertsFrom(stats, source) {
 
 // Case 1: CRON_SECRET missing -> fail closed with 503
 {
-  const { out } = await run({}, () => { delete process.env.CRON_SECRET; });
+  const { out, stats } = await run({}, () => {
+    delete process.env.CRON_SECRET;
+  });
   check('no CRON_SECRET -> 503 (fails closed)', out.status === 503, out);
+  check('no CRON_SECRET sends no Sentry check-in',
+    stats.sentryCheckIns.length === 0,
+    stats.sentryCheckIns);
 }
 
 // Case 2: wrong bearer -> 401
 {
-  const { out } = await run({}, null, { authorization: 'Bearer wrong' });
+  const { out, stats } = await run(
+    {},
+    null,
+    { authorization: 'Bearer wrong' },
+  );
   check('wrong bearer -> 401', out.status === 401, out);
+  check('wrong bearer sends no Sentry check-in',
+    stats.sentryCheckIns.length === 0,
+    stats.sentryCheckIns);
 }
 
 // Case 3: dashboard token accepted for manual runs
 {
-  const { out } = await run({}, () => { process.env.DASHBOARD_TOKEN = 'dash-token'; }, { authorization: 'Bearer dash-token' });
+  const { out, stats } = await run(
+    {},
+    () => { process.env.DASHBOARD_TOKEN = 'dash-token'; },
+    { authorization: 'Bearer dash-token' },
+  );
   check('dashboard token accepted -> 200', out.status === 200, out);
+  check('manual dashboard run sends no Sentry check-in',
+    stats.sentryCheckIns.length === 0,
+    stats.sentryCheckIns);
 }
 
 // Case 4: all healthy -> ok:true, no email
 {
-  const { out, sentEmails } = await run({});
+  const { out, sentEmails, stats } = await run({});
   check('healthy -> ok:true', out.status === 200 && out.body.ok === true, out.body);
   check('healthy -> no alert email', sentEmails.length === 0, sentEmails);
+  const [started, completed] = stats.sentryCheckIns;
+  check('healthy cron sends paired in-progress and OK check-ins',
+    stats.sentryCheckIns.length === 2 &&
+      started?.status === 'in_progress' &&
+      completed?.status === 'ok' &&
+      started?.check_in_id === completed?.check_in_id,
+    stats.sentryCheckIns);
+  check('Cron check-in IDs and payloads are allowlisted',
+    /^[a-f0-9]{32}$/.test(started?.check_in_id || '') &&
+      JSON.stringify(Object.keys(started || {}).sort()) ===
+        JSON.stringify([
+          'check_in_id',
+          'environment',
+          'monitor_config',
+          'status',
+        ]) &&
+      JSON.stringify(Object.keys(completed || {}).sort()) ===
+        JSON.stringify(['check_in_id', 'duration', 'environment', 'status']),
+    stats.sentryCheckIns);
+  check('OK check-in follows the evidence append attempt',
+    stats.events.indexOf('supabase:health-check-observation:insert') <
+      stats.events.indexOf('sentry:ok:started'),
+    stats.events);
+  check('Sentry monitor config pins liveness and recovery policy',
+    started?.environment === 'production' &&
+      started?.monitor_config?.schedule?.type === 'crontab' &&
+      started?.monitor_config?.schedule?.value === '*/5 * * * *' &&
+      started?.monitor_config?.checkin_margin === 10 &&
+      started?.monitor_config?.max_runtime === 1 &&
+      started?.monitor_config?.failure_issue_threshold === 1 &&
+      started?.monitor_config?.recovery_threshold === 1 &&
+      Number.isFinite(completed?.duration),
+    stats.sentryCheckIns);
 }
 
 // Case 5: production join markup loses its native handoff recovery -> alert
 let brokenJoinFingerprint = null;
 {
-  const { out, sentEmails } = await run({ joinCanaryBroken: true });
+  const { out, sentEmails, stats } = await run({ joinCanaryBroken: true });
   brokenJoinFingerprint = out.body.fingerprint;
   check('broken checkout canary is flagged', out.body.problems.some((p) => p.includes('checkout canary')), out.body.problems);
   check('broken checkout canary sends an alert', out.body.alerted === true && sentEmails.length === 1, out.body);
+  check('business incident still completes the Cron check-in as OK',
+    stats.sentryCheckIns.at(-1)?.status === 'ok',
+    stats.sentryCheckIns);
 }
 
 // Case 6: one stalled browser handoff is visible without paging operators.
@@ -1070,7 +1163,8 @@ for (const environment of ['preview', 'development']) {
   });
   check(`${environment || 'unset'} writes no production evidence`,
     insertsFrom(stats, 'health-check-observation').length === 0 &&
-      stats.observationFreshnessQueries.length === 0,
+      stats.observationFreshnessQueries.length === 0 &&
+      stats.sentryCheckIns.length === 0,
     stats);
 }
 {
@@ -1084,7 +1178,8 @@ for (const environment of ['preview', 'development']) {
     out.body);
   check('unset environment writes no mislabeled Production evidence',
     insertsFrom(stats, 'health-check-observation').length === 0 &&
-      stats.observationFreshnessQueries.length === 0,
+      stats.observationFreshnessQueries.length === 0 &&
+      stats.sentryCheckIns.length === 0,
     stats);
 }
 
@@ -1190,6 +1285,80 @@ for (const environment of ['preview', 'development']) {
         item.state === 'unknown' &&
         item.severity === 'SEV-2'),
     evidence);
+}
+
+// Case 55: an unexpected gather failure closes the paired check-in as error.
+{
+  const { out, stats } = await run({ gatherFails: true });
+  const [started, completed] = stats.sentryCheckIns;
+  check('gather failure returns a controlled server error',
+    out.status === 500 && out.body?.error === 'Health check could not complete',
+    out);
+  check('gather failure sends a paired error check-in',
+    stats.sentryCheckIns.length === 2 &&
+      started?.status === 'in_progress' &&
+      completed?.status === 'error' &&
+      started?.check_in_id === completed?.check_in_id,
+    stats.sentryCheckIns);
+}
+
+// Case 56: the in-progress request starts before gather but is never awaited on
+// the gather path. Its failure cannot turn a successful invocation into error.
+{
+  const { out, stats, elapsed } = await run({
+    sentryInProgressDelayMs: 300,
+    failSentryInProgress: true,
+  });
+  check('slow in-progress check-in does not delay gather',
+    stats.events.indexOf('gather:join-started') <
+      stats.events.indexOf('sentry:in_progress:finished'),
+    stats.events);
+  check('failed in-progress check-in does not fail the run',
+    out.status === 200 &&
+      out.body.ok === true &&
+      stats.sentryCheckIns.at(-1)?.status === 'ok' &&
+      elapsed < 1600,
+    { out, elapsed, checkIns: stats.sentryCheckIns });
+}
+
+// Case 57: final check-in delivery is best-effort. The missing OK will be
+// detected by Sentry's independent schedule, not reported as business failure.
+{
+  const { out, stats } = await run({ failSentryFinish: true });
+  check('failed final check-in does not invert business health',
+    out.status === 200 &&
+      out.body.ok === true &&
+      stats.sentryCheckIns.at(-1)?.status === 'ok',
+    { out, checkIns: stats.sentryCheckIns });
+}
+
+// Case 58: missing, off-domain, or legacy ingestion configuration is visible
+// through direct email and can never turn the check into an SSRF primitive.
+for (const [label, value] of [
+  ['missing', null],
+  [
+    'off-domain',
+    'https://example.com/api/456/cron/dpc-web-health/' +
+      'abc123abc123abc123abc123abc123ab/',
+  ],
+  [
+    'legacy',
+    'https://sentry.io/api/0/organizations/dpc/monitors/' +
+      'dpc-web-production-health/checkins/',
+  ],
+]) {
+  const { out, sentEmails, stats } = await run({}, () => {
+    if (value) process.env.SENTRY_CRON_CHECKIN_URL = value;
+    else delete process.env.SENTRY_CRON_CHECKIN_URL;
+  });
+  check(`${label} Sentry Cron URL is a visible monitoring problem`,
+    out.body.problems.some((problem) =>
+      problem.includes('SENTRY_CRON_CHECKIN_URL')) &&
+      sentEmails.length === 1,
+    out.body);
+  check(`${label} Sentry Cron URL sends no check-in`,
+    stats.sentryCheckIns.length === 0,
+    stats.sentryCheckIns);
 }
 
 process.exit(failures ? 1 : 0);

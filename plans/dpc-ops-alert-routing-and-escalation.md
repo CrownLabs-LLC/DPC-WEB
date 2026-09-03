@@ -537,9 +537,13 @@ cannot send ordinary alerts.
 ### What to build
 
 Create an environment-scoped Sentry Cron monitor for the five-minute
-production health check using Sentry's plain HTTP check-in endpoint. Do not add
-a Sentry SDK dependency. Configure a 15–20 minute grace window, tolerating two
-missed runs, plus a max-runtime alert.
+production health check using Sentry's current Relay HTTP ingestion endpoint.
+Store the complete generated endpoint as a Production-only environment value;
+reject non-HTTPS, off-domain, query-bearing, or legacy endpoint shapes. Do not
+add a Sentry SDK dependency. Upsert a five-minute UTC schedule with a 10-minute
+post-schedule margin, one-minute max runtime, one-failure issue threshold, and
+one-success recovery threshold. This tolerates two missed runs and detects the
+gap 15 minutes after the last expected cadence.
 
 After authenticating a real production cron invocation, launch the in-progress
 check-in concurrently and retain its promise, but do not await it before
@@ -553,7 +557,8 @@ Business problems do not make Cron execution itself erroneous.
 Derive environment scope before sending any check-in. Preview and Development
 send no Sentry Cron check-ins at all and never enter a PagerDuty workflow. The
 existing email-only `alertSuppressed` guard is insufficient because it occurs
-too late to protect check-ins.
+too late to protect check-ins. A Production request authenticated only with the
+manual dashboard token also sends no check-in; it cannot manufacture liveness.
 
 Initially notify Brandi directly from the Sentry workflow. After PagerDuty is
 configured, route missed/error/max-runtime monitor alerts through Sentry's
@@ -562,6 +567,8 @@ native PagerDuty integration.
 ### Acceptance criteria
 
 - [ ] Normal five-minute production runs appear as successful check-ins.
+- [ ] Start and finish use the same client-generated check-in ID and only the
+      current Relay ingestion endpoint.
 - [ ] A completed run with business problems still reports successful Cron
       execution.
 - [ ] Gather failure, or reconciliation failure after Phase 4, reports an error
@@ -573,6 +580,12 @@ native PagerDuty integration.
 - [ ] Missing or mismatched `CRON_SECRET` cannot make the monitor appear
       healthy.
 - [ ] Preview and Development send no check-ins and cannot page.
+- [ ] Dashboard-token and unknown-environment requests send no Production
+      check-in.
+- [ ] Missing, malformed, legacy, or off-domain ingestion URLs are rejected and
+      surface through the direct operations route without making a request.
+- [ ] Check-in payloads contain only ID, status, Production environment, fixed
+      monitor configuration, and duration.
 - [ ] Monitor recovery closes or clearly resolves the existing alert.
 - [ ] Staging proves missed, error, overlong, success, and recovery before any
       controlled production miss is approved.
@@ -805,7 +818,8 @@ Staging evidence must prove:
 1. Ship recipient decoupling.
 2. Ship explicit per-run observations, severity-led subjects, allowlisted email
    content, and 30-minute-or-faster SEV-0 reminders.
-3. Configure the production Sentry Cron monitor through plain HTTP check-ins.
+3. Configure the production Sentry Cron monitor through current Relay HTTP
+   check-ins.
 4. Verify direct-to-Brandi delivery and at least three healthy check-ins.
 5. Confirm the deployed direct path cannot select the old generic subject or
    recipient fallback.

@@ -532,6 +532,20 @@ for (const name of ['ALERT_TO', 'ALERT_FROM', 'ALERT_REPLY_TO']) {
   assert.match(envExample, new RegExp(`^${name}=\\S`, 'm'));
   assert.ok(readme.includes(`\`${name}\``));
 }
+assert.match(envExample, /^SENTRY_CRON_CHECKIN_URL=https:\/\//m);
+assert.ok(readme.includes('`SENTRY_CRON_CHECKIN_URL`'));
+assert.equal(packageJson.dependencies?.['@sentry/node'], undefined);
+assert.match(
+  healthCheckSource,
+  /productionRun\s*&&\s*cronAuthenticated\s*&&[\s\S]{0,80}sentryConfig\.url/,
+);
+assert.match(healthCheckSource, /SENTRY_START_TIMEOUT_MS\s*=\s*\d+/);
+assert.match(healthCheckSource, /SENTRY_FINISH_TIMEOUT_MS\s*=\s*\d+/);
+assert.match(healthCheckSource, /checkin_margin:\s*10/);
+assert.match(healthCheckSource, /max_runtime:\s*1/);
+assert.match(healthCheckSource, /recovery_threshold:\s*1/);
+assert.match(healthCheckSource, /finishSentryCheckIn\('error'\)/);
+assert.match(healthCheckSource, /finishSentryCheckIn\('ok'\)/);
 assert.match(
   healthCheckSource,
   /Downtown Pour Collective Operations <support@downtownpourcollective\.com>/,
