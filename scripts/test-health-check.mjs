@@ -111,6 +111,9 @@ function mockFetch({
   observationInsertFails = false,
   gapInsertFails = false,
   rejectAllWebhookInserts = false,
+  latestObservationMinutesAgo = 5,
+  noObservationRows = false,
+  observationFreshnessQueryFails = false,
   supabaseDown = false,
   hangEmail = false,
   hangResendDomains = false,
@@ -178,7 +181,24 @@ function mockFetch({
           }
           return new Response(null, { status: 201 });
         }
-        if (u.includes('source=eq.health-check')) {
+        if (u.includes('source=eq.health-check-observation&')) {
+          stats.observationFreshnessQueries.push(u);
+          if (observationFreshnessQueryFails) {
+            return new Response('freshness query failed', { status: 503 });
+          }
+          const rows = noObservationRows
+            ? []
+            : [{
+              ts: new Date(
+                Date.now() - latestObservationMinutesAgo * 60000,
+              ).toISOString(),
+            }];
+          return new Response(JSON.stringify(rows), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          });
+        }
+        if (u.includes('source=eq.health-check&')) {
           stats.throttleReads += 1;
           const requested = u.match(/fingerprint=eq\.([0-9a-f]+)/)?.[1];
           const sinceText = u.match(/ts=gte\.([^&]+)/)?.[1];
@@ -234,6 +254,7 @@ async function run(
     legalVersionsUrls: [],
     webhookInserts: [],
     webhookErrorQueries: [],
+    observationFreshnessQueries: [],
   };
   const origFetch = globalThis.fetch;
   const origHttps = https.request;
@@ -1048,7 +1069,8 @@ for (const environment of ['preview', 'development']) {
     process.env.VERCEL_ENV = environment;
   });
   check(`${environment || 'unset'} writes no production evidence`,
-    insertsFrom(stats, 'health-check-observation').length === 0,
+    insertsFrom(stats, 'health-check-observation').length === 0 &&
+      stats.observationFreshnessQueries.length === 0,
     stats);
 }
 {
@@ -1061,7 +1083,8 @@ for (const environment of ['preview', 'development']) {
       sentEmails[0]?.subject?.includes('[UNKNOWN]'),
     out.body);
   check('unset environment writes no mislabeled Production evidence',
-    insertsFrom(stats, 'health-check-observation').length === 0,
+    insertsFrom(stats, 'health-check-observation').length === 0 &&
+      stats.observationFreshnessQueries.length === 0,
     stats);
 }
 
@@ -1071,6 +1094,7 @@ for (const environment of ['preview', 'development']) {
   const { out, sentEmails, stats } = await run({
     keyOk: false,
     rejectAllWebhookInserts: true,
+    latestObservationMinutesAgo: 20,
   });
   const observation = out.body.observations?.find((item) =>
     item.key === 'monitoring:observation-append');
@@ -1078,11 +1102,94 @@ for (const environment of ['preview', 'development']) {
     observation?.state === 'unknown',
     out.body);
   check('write-only fault sends at most one email per invocation',
-    out.body.alerted === true && sentEmails.length === 1,
+    out.body.alerted === true &&
+      sentEmails.length === 1 &&
+      JSON.stringify(sentEmails[0]).includes('Health evidence is stale'),
     sentEmails);
   check('write-only fault attempts distinct coverage-gap bookkeeping',
     insertsFrom(stats, 'health-check-observation-gap').length === 1,
     stats);
+}
+
+// Case 51: a delayed prior observation is a SEV-1 coverage problem before the
+// current invocation attempts its own append.
+{
+  const { out, sentEmails, stats } = await run({
+    latestObservationMinutesAgo: 16,
+  });
+  const observation = out.body.observations?.find((item) =>
+    item.key === 'monitoring:observation-stale');
+  check('stale observation history is SEV-1',
+    observation?.state === 'unhealthy' &&
+      observation?.severity === 'SEV-1',
+    out.body);
+  check('stale observation history sends one fixed-policy email',
+    sentEmails.length === 1 &&
+      JSON.stringify(sentEmails[0]).includes('Health evidence is stale'),
+    sentEmails);
+  check('freshness probe is source scoped',
+    stats.observationFreshnessQueries.length === 1 &&
+      stats.observationFreshnessQueries[0]
+        .includes('source=eq.health-check-observation') &&
+      stats.observationFreshnessQueries[0].includes('level=eq.info'),
+    stats.observationFreshnessQueries);
+}
+
+// Case 52: two missed five-minute writes are tolerated inside the 15-minute
+// freshness window.
+{
+  const { out, sentEmails } = await run({
+    latestObservationMinutesAgo: 14,
+  });
+  const observation = out.body.observations?.find((item) =>
+    item.key === 'monitoring:observation-stale');
+  check('recent observation history remains healthy',
+    observation?.state === 'healthy',
+    out.body);
+  check('recent observation history sends no email',
+    sentEmails.length === 0,
+    sentEmails);
+}
+
+// Case 53: a freshness-query failure is unknown, not stale or healthy.
+{
+  const { out, sentEmails } = await run({
+    observationFreshnessQueryFails: true,
+  });
+  const observation = out.body.observations?.find((item) =>
+    item.key === 'monitoring:observation-stale');
+  check('failed freshness query records SEV-2 unknown',
+    observation?.state === 'unknown' &&
+      observation?.severity === 'SEV-2',
+    out.body);
+  check('failed freshness query is dashboard-only',
+    out.body.warnings.some((warning) =>
+      warning.includes('Observation freshness is unknown')) &&
+      sentEmails.length === 0,
+    out.body);
+}
+
+// Case 54: no prior evidence is bootstrap-unknown; this successful invocation
+// creates the baseline without a false stale alert.
+{
+  const { out, sentEmails, stats } = await run({ noObservationRows: true });
+  const observation = out.body.observations?.find((item) =>
+    item.key === 'monitoring:observation-stale');
+  check('missing observation history is bootstrap unknown',
+    observation?.state === 'unknown' &&
+      observation?.severity === 'SEV-2',
+    out.body);
+  check('bootstrap unknown writes a baseline without email',
+    insertsFrom(stats, 'health-check-observation').length === 1 &&
+      sentEmails.length === 0,
+    stats);
+  const evidence = insertsFrom(stats, 'health-check-observation')[0];
+  check('bootstrap evidence records freshness as unknown',
+    evidence?.detail?.observations?.some((item) =>
+      item.key === 'monitoring:observation-stale' &&
+        item.state === 'unknown' &&
+        item.severity === 'SEV-2'),
+    evidence);
 }
 
 process.exit(failures ? 1 : 0);

@@ -331,7 +331,9 @@ The first production change set is intentionally smaller than the full design:
 1. Phase 1 — remove Nick/`hello@` and decouple operational recipients.
 2. Phase 2A — add explicit per-run evidence, severity-led subjects, and
    30-minute-or-faster SEV-0 reminders to the existing direct email path.
-3. Phase 3 — add the independent Sentry Cron dead-man's switch.
+3. Phase 2B — detect stale observation evidence and close the write-only fault
+   blind spot without adding mutable incident state.
+4. Phase 3 — add the independent Sentry Cron dead-man's switch.
 
 This removes Nick and closes monitoring blindness without waiting for
 PagerDuty procurement or per-key state. After 30 days of real incident data,
@@ -481,6 +483,52 @@ This is an interim reminder policy, not the Phase 4 incident lifecycle.
 
 ---
 
+## Phase 2B: Detect observation coverage staleness
+
+**User stories:** Operators can detect missing per-run evidence after a partial
+database fault. An unrelated incident cannot consume the invocation's only
+email while observation coverage silently disappears.
+
+### What to build
+
+On authenticated Production runs, query the newest prior row scoped to
+`source='health-check-observation'` and `level='info'` before appending the
+current invocation's evidence. The level filter uses the existing
+`(level, ts DESC)` index. Treat a prior observation less than 15 minutes old as
+healthy. Treat one at least 15 minutes old as a SEV-1
+`monitoring:observation-stale` problem. This tolerates two missed five-minute
+writes while detecting a sustained coverage gap.
+
+Treat a failed freshness query or the absence of any prior observation as
+SEV-2 `unknown`, never healthy or stale. A successful current invocation
+establishes the first baseline without a false paging email. Keep the stale
+verdict policy-supplied and allowlisted. When another incident is present,
+include the stale finding in that single email instead of sending a second
+message for the invocation.
+
+Preview, Development, and unrecognized runtime environments must not query or
+write Production observation evidence. Remove the implicit Production default
+from the email helper and require every send path to pass its environment label
+explicitly.
+
+### Acceptance criteria
+
+- [ ] The freshness query is scoped to `health-check-observation` rows at
+      `level='info'` and can use the existing level/timestamp index.
+- [ ] A prior row less than 15 minutes old records healthy and sends no email.
+- [ ] A prior row at least 15 minutes old records a SEV-1 problem.
+- [ ] A failed freshness query records SEV-2 unknown, never healthy or stale.
+- [ ] No prior row records bootstrap unknown and a successful run writes the
+      baseline without sending a stale alert.
+- [ ] A write-only fault plus another incident sends at most one email, and a
+      stale coverage finding is included when the prior row is old.
+- [ ] Preview, Development, and unknown environments do not query Production
+      observation history.
+- [ ] Every alert send path supplies an explicit environment label; the helper
+      has no default Production label.
+
+---
+
 ## Phase 3: Add the independent Cron dead-man's switch
 
 **User stories:** Brandi is notified when monitoring stops, even if the checker
@@ -534,8 +582,9 @@ native PagerDuty integration.
 ## Thirty-day observation and scope gate
 
 Before the stateful phases, summarize 30 days of sanitized Phase 2A observation
-rows. Report expected-run coverage and investigate gaps before using the data
-for the gate. Derive:
+rows, using the Phase 2B freshness signal to identify sustained gaps. Report
+expected-run coverage and investigate gaps before using the data for the gate.
+Derive:
 
 - frequency and duration by stable key;
 - false positives and unknown observations;
