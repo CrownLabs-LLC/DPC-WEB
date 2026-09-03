@@ -1342,6 +1342,16 @@ for (const [label, value] of [
       'abc123abc123abc123abc123abc123ab/',
   ],
   [
+    'hyphenated-lookalike',
+    'https://evil-ingest.sentry.io/api/456/cron/dpc-web-health/' +
+      'abc123abc123abc123abc123abc123ab/',
+  ],
+  [
+    'suffix-extended-host',
+    'https://o123.ingest.sentry.io.attacker.com/api/456/cron/' +
+      'dpc-web-health/abc123abc123abc123abc123abc123ab/',
+  ],
+  [
     'legacy',
     'https://sentry.io/api/0/organizations/dpc/monitors/' +
       'dpc-web-production-health/checkins/',

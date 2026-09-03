@@ -304,8 +304,9 @@ Setup (required):
    business-notification recipient. Record recipient roles and delivery result,
    but no credentials or private phone number.
 7. Confirm three consecutive Sentry check-ins finish `ok`. Then use a separate
-   non-production test monitor to prove missed, error, max-runtime, and recovery
-   delivery before approving any controlled Production miss.
+   non-production test monitor to prove missed, error, max-runtime, recovery,
+   and an `in_progress` delivery failure followed by a successful terminal
+   check-in before approving any controlled Production miss.
 
 To test it: `curl -H "Authorization: Bearer $CRON_SECRET" https://www.downtownpourcollective.com/api/health-check`
 returns `{"ok":true,...}` when everything is green. The response includes an

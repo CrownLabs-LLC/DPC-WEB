@@ -587,8 +587,9 @@ native PagerDuty integration.
 - [ ] Check-in payloads contain only ID, status, Production environment, fixed
       monitor configuration, and duration.
 - [ ] Monitor recovery closes or clearly resolves the existing alert.
-- [ ] Staging proves missed, error, overlong, success, and recovery before any
-      controlled production miss is approved.
+- [ ] Staging proves missed, error, overlong, success, recovery, and a failed
+      in-progress delivery followed by terminal success before any controlled
+      production miss is approved.
 
 ---
 
