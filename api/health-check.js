@@ -9,8 +9,8 @@
 //   - webhook errors logged in the last 75 min
 //
 // Alerting is throttled per incident: the normalized problem set is hashed
-// into a fingerprint, and a repeat of the SAME fingerprint within 6 hours
-// stays quiet while a NEW problem set alerts immediately. Fingerprints are
+// into a fingerprint. SEV-0 repeats after 30 minutes; SEV-1 retains the
+// six-hour window. A new problem set alerts immediately. Fingerprints are
 // stored in webhook_logs (detail.fingerprint).
 //
 // Auth fails closed: without CRON_SECRET the endpoint returns 503 (matching
@@ -33,6 +33,7 @@ import {
 const UNDELIVERED_GRACE_MIN = 30;
 const RECENT_ERROR_WINDOW_MIN = 75;
 const THROTTLE_HOURS = 6;
+const SEV0_REMINDER_MIN = 30;
 const CHECKOUT_SIGNAL_WINDOW_MIN = 10;
 const CANARY_TIMEOUT_MS = 3000;
 const JOIN_URL = 'https://www.downtownpourcollective.com/join';
@@ -44,8 +45,8 @@ const LEGAL_VERSIONS_URL = 'https://www.downtownpourcollective.com/api/legal-ver
 const LEGAL_VERSION_KEYS = ['tos', 'privacy', 'memberTerms', 'autoRenewalTerms'];
 const CHECKOUT_ENDPOINT = 'https://ebiuspbgzggrdiaswpcc.supabase.co/functions/v1/circle-checkout';
 // End-to-end budget: gather is ~4s (bounded probes, concurrent). The alert
-// path below gets 2s + 4s + 2s, keeping the worst case around 12s — inside
-// the 30s function limit with ample margin to return the diagnostic response.
+// path below gets 2s + 2s + 4s + 2s. The worst case is around 14s, inside the
+// 30s function limit with ample margin to return the diagnostic response.
 const THROTTLE_IO_TIMEOUT_MS = 2000;
 const ALERT_SEND_TIMEOUT_MS = 4000;
 const DASHBOARD_URL = 'https://www.downtownpourcollective.com/dashboard';
@@ -55,6 +56,185 @@ const PROHIBITED_OPS_ADDRESSES = new Set([
   'hello@downtownpourcollective.com',
   'nick@downtownpourcollective.com',
 ]);
+const SENSITIVE_STRIPE_EVENT_TYPES = new Set([
+  'checkout.session.completed',
+  'checkout.session.async_payment_failed',
+  'customer.subscription.created',
+  'customer.subscription.updated',
+  'customer.subscription.deleted',
+  'invoice.payment_failed',
+  'invoice.paid',
+  'charge.refunded',
+  'charge.dispute.created',
+]);
+const POLICY = Object.freeze({
+  'legal-versions:unavailable': {
+    severity: 'SEV-1', capability: 'CHECKOUT',
+    title: 'Checkout legal terms are unavailable',
+    action: 'Check the legal-versions endpoint',
+  },
+  'legal-versions:incomplete': {
+    severity: 'SEV-0', capability: 'CHECKOUT',
+    title: 'Checkout legal terms are incomplete',
+    action: 'Restore the complete legal-version tuple',
+  },
+  'legal-versions:unreachable': {
+    severity: 'SEV-1', capability: 'CHECKOUT',
+    title: 'Checkout legal terms could not be verified',
+    action: 'Check the site and legal-versions endpoint',
+  },
+  'checkout-canary:join': {
+    severity: 'SEV-1', capability: 'CHECKOUT',
+    title: 'Checkout recovery path is unhealthy',
+    action: 'Inspect the production join page',
+  },
+  'checkout-canary:cors': {
+    severity: 'SEV-0', capability: 'CHECKOUT',
+    title: 'Checkout CORS contract is broken',
+    action: 'Restore the checkout preflight response',
+  },
+  'checkout-canary:validation': {
+    severity: 'SEV-0', capability: 'CHECKOUT',
+    title: 'Checkout validation contract is broken',
+    action: 'Inspect the checkout edge function',
+  },
+  'checkout-canary:unreachable': {
+    severity: 'SEV-1', capability: 'CHECKOUT',
+    title: 'Checkout canary could not complete',
+    action: 'Check the site and checkout function',
+  },
+  'check:Stripe secret key set': {
+    severity: 'SEV-0', capability: 'BILLING',
+    title: 'Stripe secret key is missing',
+    action: 'Restore the production Stripe key',
+  },
+  'check:Stripe webhook secret set': {
+    severity: 'SEV-0', capability: 'BILLING',
+    title: 'Stripe webhook secret is missing',
+    action: 'Restore the production webhook secret',
+  },
+  'check:Resend API key set': {
+    severity: 'SEV-1', capability: 'EMAIL',
+    title: 'Resend API key is missing',
+    action: 'Restore the production Resend key',
+  },
+  'check:Resend founding audience ID set': {
+    severity: 'SEV-2', capability: 'EMAIL',
+    title: 'Founding audience configuration is missing',
+    action: 'Restore the Resend audience ID',
+  },
+  'check:Supabase URL set': {
+    severity: 'SEV-1', capability: 'DATA',
+    title: 'Supabase URL is missing',
+    action: 'Restore the production Supabase URL',
+  },
+  'check:Supabase anon key set': {
+    severity: 'SEV-1', capability: 'DATA',
+    title: 'Supabase public key is missing',
+    action: 'Restore the production Supabase public key',
+  },
+  'check:Supabase service role key set': {
+    severity: 'SEV-1', capability: 'DATA',
+    title: 'Supabase service key is missing',
+    action: 'Restore the production Supabase service key',
+  },
+  'check:Stripe key is live mode': {
+    severity: 'SEV-0', capability: 'BILLING',
+    title: 'Stripe is not using a live-mode key',
+    action: 'Restore the production Stripe key',
+  },
+  'check:Stripe key can read checkout sessions': {
+    severity: 'SEV-0', capability: 'BILLING',
+    title: 'Stripe checkout access is rejected',
+    action: 'Restore the required Stripe key permission',
+  },
+  'check:Stripe key can read subscriptions': {
+    severity: 'SEV-0', capability: 'BILLING',
+    title: 'Stripe subscription access is rejected',
+    action: 'Restore the required Stripe key permission',
+  },
+  'check:Stripe key can read events': {
+    severity: 'SEV-0', capability: 'BILLING',
+    title: 'Stripe event access is rejected',
+    action: 'Restore the required Stripe key permission',
+  },
+  'check:Resend key accepted by Resend': {
+    severity: 'SEV-1', capability: 'EMAIL',
+    title: 'Resend credentials are rejected',
+    action: 'Restore a valid production Resend key',
+  },
+  'check:Supabase reachable': {
+    severity: 'SEV-0', capability: 'DATA',
+    title: 'Supabase is unreachable',
+    action: 'Check Supabase production availability',
+  },
+  'health-checks-failed': {
+    severity: 'SEV-1', capability: 'MONITORING',
+    title: 'Provider checks could not complete',
+    action: 'Inspect the health-check runtime',
+  },
+  undelivered_events: {
+    severity: 'SEV-2', capability: 'BILLING',
+    title: 'Stripe events are undelivered',
+    action: 'Inspect Stripe webhook delivery',
+  },
+  'undelivered-list-failed': {
+    severity: 'SEV-2', capability: 'MONITORING',
+    title: 'Stripe delivery status is unknown',
+    action: 'Check Stripe event visibility',
+  },
+  webhook_errors: {
+    severity: 'SEV-1', capability: 'BILLING',
+    title: 'Stripe webhook errors are active',
+    action: 'Inspect the webhook error dashboard',
+  },
+  checkout_handoff_stalled: {
+    severity: 'SEV-2', capability: 'CHECKOUT',
+    title: 'Checkout handoffs are stalling',
+    action: 'Inspect checkout handoff telemetry',
+  },
+  'env:STRIPE_SECRET_KEY': {
+    severity: 'SEV-0', capability: 'BILLING',
+    title: 'Stripe secret key is missing',
+    action: 'Restore the production Stripe key',
+  },
+  'env:RESEND_API_KEY': {
+    severity: 'SEV-1', capability: 'EMAIL',
+    title: 'Resend API key is missing',
+    action: 'Restore the production Resend key',
+  },
+  'env:ALERT_TO': {
+    severity: 'SEV-0', capability: 'MONITORING',
+    title: 'Operations recipient is invalid',
+    action: 'Restore the direct operations recipient',
+  },
+  'env:ALERT_FROM': {
+    severity: 'SEV-1', capability: 'MONITORING',
+    title: 'Operations sender is invalid',
+    action: 'Restore the verified operations sender',
+  },
+  'env:ALERT_REPLY_TO': {
+    severity: 'SEV-1', capability: 'MONITORING',
+    title: 'Operations reply-to is invalid',
+    action: 'Restore the direct operations reply-to',
+  },
+  'env:VERCEL_ENV': {
+    severity: 'SEV-1', capability: 'MONITORING',
+    title: 'Runtime environment is ambiguous',
+    action: 'Restore the Vercel environment identity',
+  },
+  'monitoring:observation-append': {
+    severity: 'SEV-1', capability: 'MONITORING',
+    title: 'Health evidence could not be recorded',
+    action: 'Check the observation store',
+  },
+});
+const DEFAULT_POLICY = Object.freeze({
+  severity: 'SEV-1',
+  capability: 'MONITORING',
+  title: 'An operations check is unhealthy',
+  action: 'Open the operations dashboard',
+});
 const EMAIL_ATOM_CHARS = "a-z0-9!#$%&'*+/=?^_`{|}~-";
 const EMAIL_LOCAL_PATTERN =
   `[${EMAIL_ATOM_CHARS}]+(?:\\.[${EMAIL_ATOM_CHARS}]+)*`;
@@ -86,7 +266,7 @@ function isBareMailbox(value) {
 function isSenderIdentity(value) {
   const sender = String(value).trim();
   if (isBareMailbox(sender)) return true;
-  const formatted = /^[^<>\r\n]+\s<([^<>\r\n]+)>$/.exec(sender);
+  const formatted = /^[^<>\r\n]+\s*<([^<>\r\n]+)>$/.exec(sender);
   return Boolean(formatted && isBareMailbox(formatted[1]));
 }
 
@@ -132,13 +312,50 @@ function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
-// Problems are {key, text}: key is stable across runs (used for the incident
-// fingerprint), text carries the human/run-specific detail for the email.
+function policyFor(key, severity) {
+  return {
+    ...(POLICY[key] || DEFAULT_POLICY),
+    ...(severity ? { severity } : {}),
+  };
+}
+
+function publicObservations(states) {
+  const keys = new Set([...Object.keys(POLICY), ...states.keys()]);
+  return [...keys].sort().map((key) => {
+    const observed = states.get(key) || {};
+    return {
+      key,
+      severity: observed.severity || policyFor(key).severity,
+      state: observed.state || 'unknown',
+    };
+  });
+}
+
+// Diagnostic text remains available in the authenticated JSON response. It is
+// deliberately excluded from notifications and durable observation evidence.
 async function gatherProblems(now) {
   const problems = [];
   const warnings = [];
+  const states = new Map();
   const stripeKey = process.env.STRIPE_SECRET_KEY;
   const resendKey = process.env.RESEND_API_KEY;
+  const observe = (key, state, severity) => {
+    states.set(key, { state, ...(severity ? { severity } : {}) });
+  };
+  const add = (target, key, text, options = {}) => {
+    const state = options.state || 'unhealthy';
+    observe(key, state, options.severity);
+    target.push({ key, text, severity: options.severity, state });
+  };
+
+  observe(
+    'env:STRIPE_SECRET_KEY',
+    stripeKey ? 'healthy' : 'unhealthy',
+  );
+  observe(
+    'env:RESEND_API_KEY',
+    resendKey ? 'healthy' : 'unhealthy',
+  );
 
   const jobs = [];
 
@@ -154,17 +371,42 @@ async function gatherProblems(now) {
         'legal-versions canary'
       );
       if (!response.ok) {
-        problems.push({ key: 'legal-versions:unavailable', text: `/api/legal-versions is unhealthy (HTTP ${response.status}) — join and depositor checkout are blocked` });
+        add(
+          problems,
+          'legal-versions:unavailable',
+          `/api/legal-versions is unhealthy (HTTP ${response.status}) — ` +
+            'join and depositor checkout are blocked',
+        );
+        observe('legal-versions:incomplete', 'unknown');
+        observe('legal-versions:unreachable', 'healthy');
         return;
       }
+      observe('legal-versions:unavailable', 'healthy');
+      observe('legal-versions:unreachable', 'healthy');
       let tuple = null;
       try { tuple = JSON.parse(body); } catch { /* handled as incomplete below */ }
-      const missing = LEGAL_VERSION_KEYS.filter((key) => typeof tuple?.[key] !== 'string' || !tuple[key]);
+      const missing = LEGAL_VERSION_KEYS.filter((key) =>
+        typeof tuple?.[key] !== 'string' || !tuple[key]);
       if (missing.length) {
-        problems.push({ key: 'legal-versions:incomplete', text: `/api/legal-versions returned an incomplete tuple (missing: ${missing.join(', ')})` });
+        add(
+          problems,
+          'legal-versions:incomplete',
+          `/api/legal-versions returned an incomplete tuple ` +
+            `(missing: ${missing.join(', ')})`,
+        );
+      } else {
+        observe('legal-versions:incomplete', 'healthy');
       }
     } catch (err) {
-      problems.push({ key: 'legal-versions:unreachable', text: `/api/legal-versions could not be probed: ${String(err?.message || err)}` });
+      observe('legal-versions:unavailable', 'unknown');
+      observe('legal-versions:incomplete', 'unknown');
+      add(
+        problems,
+        'legal-versions:unreachable',
+        `/api/legal-versions could not be probed: ` +
+          String(err?.message || err),
+        { state: 'unknown' },
+      );
     }
   })());
 
@@ -190,20 +432,51 @@ async function gatherProblems(now) {
       const markup = joinProbe.body;
       const markers = ['id="checkout-fallback"', '.btn[hidden]', 'join_checkout_stalled', 'window.location.assign'];
       if (!joinRes.ok || markers.some((marker) => !markup.includes(marker))) {
-        problems.push({ key: 'checkout-canary:join', text: `Production checkout canary failed: join recovery markup is missing or unhealthy (HTTP ${joinRes.status})` });
+        add(
+          problems,
+          'checkout-canary:join',
+          'Production checkout canary failed: join recovery markup is ' +
+            `missing or unhealthy (HTTP ${joinRes.status})`,
+        );
+      } else {
+        observe('checkout-canary:join', 'healthy');
       }
       const optionsRes = optionsProbe.response;
       const methods = optionsRes.headers.get('access-control-allow-methods') || '';
       if (!optionsRes.ok || !methods.includes('POST')) {
-        problems.push({ key: 'checkout-canary:cors', text: `Production checkout canary failed: checkout CORS preflight is unhealthy (HTTP ${optionsRes.status})` });
+        add(
+          problems,
+          'checkout-canary:cors',
+          'Production checkout canary failed: checkout CORS preflight is ' +
+            `unhealthy (HTTP ${optionsRes.status})`,
+        );
+      } else {
+        observe('checkout-canary:cors', 'healthy');
       }
       const invalidRes = invalidProbe.response;
       const invalidBody = invalidProbe.body;
       if (invalidRes.status !== 400 || !invalidBody.includes('INVALID_REQUEST')) {
-        problems.push({ key: 'checkout-canary:validation', text: `Production checkout canary failed: safe invalid request returned HTTP ${invalidRes.status}` });
+        add(
+          problems,
+          'checkout-canary:validation',
+          'Production checkout canary failed: safe invalid request returned ' +
+            `HTTP ${invalidRes.status}`,
+        );
+      } else {
+        observe('checkout-canary:validation', 'healthy');
       }
+      observe('checkout-canary:unreachable', 'healthy');
     } catch (err) {
-      problems.push({ key: 'checkout-canary:unreachable', text: `Production checkout canary could not run: ${String(err?.message || err)}` });
+      observe('checkout-canary:join', 'unknown');
+      observe('checkout-canary:cors', 'unknown');
+      observe('checkout-canary:validation', 'unknown');
+      add(
+        problems,
+        'checkout-canary:unreachable',
+        `Production checkout canary could not run: ` +
+          String(err?.message || err),
+        { state: 'unknown' },
+      );
     }
   })());
 
@@ -213,24 +486,42 @@ async function gatherProblems(now) {
 
     jobs.push(
       healthChecks(stripe, resend).then((checks) => {
+        observe('health-checks-failed', 'healthy');
         for (const check of checks) {
+          const key = `check:${check.name}`;
+          observe(key, check.ok ? 'healthy' : 'unhealthy');
           if (!check.ok) {
-            if (check.page === false) {
-              console.warn('health-check: non-paging provider warning', check.name, check.detail);
-              warnings.push({
-                key: `check:${check.name}`,
-                text: check.detail ? `${check.name} — ${check.detail}` : check.name,
-              });
+            const severity = check.page === false
+              ? 'SEV-2'
+              : policyFor(key).severity;
+            if (severity === 'SEV-2') {
+              console.warn(
+                'health-check: non-paging provider warning',
+                check.name,
+                check.detail,
+              );
+              add(
+                warnings,
+                key,
+                check.detail ? `${check.name} — ${check.detail}` : check.name,
+                { severity },
+              );
               continue;
             }
-            problems.push({
-              key: `check:${check.name}`,
-              text: check.detail ? `${check.name} — ${check.detail}` : check.name,
-            });
+            add(
+              problems,
+              key,
+              check.detail ? `${check.name} — ${check.detail}` : check.name,
+            );
           }
         }
       }).catch((err) => {
-        problems.push({ key: 'health-checks-failed', text: `Health checks could not run: ${String(err?.message || err)}` });
+        add(
+          problems,
+          'health-checks-failed',
+          `Health checks could not run: ${String(err?.message || err)}`,
+          { state: 'unknown' },
+        );
       })
     );
 
@@ -238,52 +529,118 @@ async function gatherProblems(now) {
       listUndeliveredEvents(stripe, 50).then((undelivered) => {
         const graceCutoff = Math.floor(now / 1000) - UNDELIVERED_GRACE_MIN * 60;
         const stale = undelivered.filter((e) => e.created < graceCutoff);
+        observe('undelivered-list-failed', 'healthy');
         if (stale.length) {
           const oldest = stale[stale.length - 1];
-          problems.push({
-            key: 'undelivered_events',
-            text: `${stale.length} Stripe event(s) undelivered for over ${UNDELIVERED_GRACE_MIN} minutes (oldest: ${oldest.type} ${oldest.id})`,
-          });
+          const sensitive = stale.some((event) =>
+            SENSITIVE_STRIPE_EVENT_TYPES.has(event.type));
+          const target = sensitive ? problems : warnings;
+          add(
+            target,
+            'undelivered_events',
+            `${stale.length} Stripe event(s) undelivered for over ` +
+              `${UNDELIVERED_GRACE_MIN} minutes ` +
+              `(oldest: ${oldest.type} ${oldest.id})`,
+            { severity: sensitive ? 'SEV-0' : 'SEV-2' },
+          );
+        } else {
+          observe('undelivered_events', 'healthy');
         }
       }).catch((err) => {
-        problems.push({ key: 'undelivered-list-failed', text: `Could not list Stripe events: ${String(err?.message || err)}` });
+        observe('undelivered_events', 'unknown');
+        add(
+          warnings,
+          'undelivered-list-failed',
+          `Could not list Stripe events: ${String(err?.message || err)}`,
+          { state: 'unknown' },
+        );
       })
     );
   } else {
-    if (!stripeKey) problems.push({ key: 'env:STRIPE_SECRET_KEY', text: 'STRIPE_SECRET_KEY missing in Vercel' });
-    if (!resendKey) problems.push({ key: 'env:RESEND_API_KEY', text: 'RESEND_API_KEY missing in Vercel' });
+    if (!stripeKey) {
+      add(
+        problems,
+        'env:STRIPE_SECRET_KEY',
+        'STRIPE_SECRET_KEY missing in Vercel',
+      );
+    }
+    if (!resendKey) {
+      add(
+        problems,
+        'env:RESEND_API_KEY',
+        'RESEND_API_KEY missing in Vercel',
+      );
+    }
   }
 
   if (supabaseConfigured()) {
     const sinceIso = new Date(now - RECENT_ERROR_WINDOW_MIN * 60000).toISOString();
     jobs.push(
-      supabaseSelect(`webhook_logs?select=ts,message&level=eq.error&ts=gte.${sinceIso}&order=ts.desc&limit=5`)
+      // Reviewed source allowlist: any new webhook_logs error writer must be
+      // added here, in the dashboard query, and in the contract tests.
+      supabaseSelect(
+        'webhook_logs?select=ts,message&level=eq.error' +
+          `&source=eq.stripe-webhook&ts=gte.${sinceIso}` +
+          '&order=ts.desc&limit=5',
+      )
         .then((recentErrors) => {
           if (recentErrors.length) {
-            problems.push({
-              key: 'webhook_errors',
-              text: `${recentErrors.length} webhook error(s) in the last ${RECENT_ERROR_WINDOW_MIN} minutes (latest: ${recentErrors[0].message})`,
-            });
+            add(
+              problems,
+              'webhook_errors',
+              `${recentErrors.length} webhook error(s) in the last ` +
+                `${RECENT_ERROR_WINDOW_MIN} minutes ` +
+                `(latest: ${recentErrors[0].message})`,
+            );
+          } else {
+            observe('webhook_errors', 'healthy');
           }
         })
-        // Supabase reachability is already covered by healthChecks; don't double-report.
-        .catch((err) => console.error('health-check: webhook_logs query failed', err?.message || err))
+        .catch((err) => {
+          add(
+            warnings,
+            'webhook_errors',
+            `Webhook error status is unknown: ${String(err?.message || err)}`,
+            { state: 'unknown', severity: 'SEV-2' },
+          );
+        })
     );
     const signalSince = new Date(now - CHECKOUT_SIGNAL_WINDOW_MIN * 60000).toISOString();
     jobs.push(
       supabaseSelect(`site_events?select=event,flow_id&event=eq.join_checkout_stalled&ts=gte.${signalSince}&order=ts.desc&limit=100`)
         .then((rows) => {
-          const stalled = new Set(rows.filter((row) => row.event === 'join_checkout_stalled').map((row) => row.flow_id || JSON.stringify(row))).size;
-          if (stalled) problems.push({ key: 'checkout_handoff_stalled', text: `${stalled} stalled checkout handoff(s) detected in the last ${CHECKOUT_SIGNAL_WINDOW_MIN} minutes` });
+          const stalled = new Set(rows
+            .filter((row) => row.event === 'join_checkout_stalled')
+            .map((row) => row.flow_id || JSON.stringify(row))).size;
+          if (stalled) {
+            const severity = stalled > 1 ? 'SEV-1' : 'SEV-2';
+            add(
+              stalled > 1 ? problems : warnings,
+              'checkout_handoff_stalled',
+              `${stalled} stalled checkout handoff(s) detected in the last ` +
+                `${CHECKOUT_SIGNAL_WINDOW_MIN} minutes`,
+              { severity },
+            );
+          } else {
+            observe('checkout_handoff_stalled', 'healthy');
+          }
         })
-        .catch((err) => console.error('health-check: checkout signal query failed', err?.message || err))
+        .catch((err) => {
+          add(
+            warnings,
+            'checkout_handoff_stalled',
+            'Checkout handoff status is unknown: ' +
+              String(err?.message || err),
+            { state: 'unknown', severity: 'SEV-2' },
+          );
+        })
     );
   }
 
   await Promise.allSettled(jobs);
   problems.sort((a, b) => (a.key < b.key ? -1 : 1));
   warnings.sort((a, b) => (a.key < b.key ? -1 : 1));
-  return { problems, warnings };
+  return { problems, warnings, states };
 }
 
 function fingerprintOf(problems) {
@@ -291,15 +648,30 @@ function fingerprintOf(problems) {
   return createHash('sha256').update(keys.join('|')).digest('hex').slice(0, 16);
 }
 
-async function recentlyAlerted(now, fingerprint) {
+function highestSeverity(items) {
+  return items.reduce(
+    (highest, item) => {
+      const severity = policyFor(item.key, item.severity).severity;
+      return severity < highest ? severity : highest;
+    },
+    'SEV-2',
+  );
+}
+
+async function recentlyAlerted(now, fingerprint, severity) {
   if (!supabaseConfigured()) return false;
   try {
-    const sinceIso = new Date(now - THROTTLE_HOURS * 3600000).toISOString();
+    const windowMs = severity === 'SEV-0'
+      ? SEV0_REMINDER_MIN * 60000
+      : THROTTLE_HOURS * 3600000;
+    const sinceIso = new Date(now - windowMs).toISOString();
     // Filter by fingerprint server-side so a burst of distinct incidents can
     // never push a still-active fingerprint out of the result window.
     const rows = await supabaseSelect(
-      `webhook_logs?select=ts&source=eq.health-check&level=eq.info&detail->>fingerprint=eq.${fingerprint}&ts=gte.${sinceIso}&limit=1`,
-      THROTTLE_IO_TIMEOUT_MS
+      'webhook_logs?select=ts&source=eq.health-check&level=eq.info' +
+        `&detail->>fingerprint=eq.${fingerprint}` +
+        `&ts=gte.${sinceIso}&limit=1`,
+      THROTTLE_IO_TIMEOUT_MS,
     );
     return rows.length > 0;
   } catch {
@@ -307,20 +679,49 @@ async function recentlyAlerted(now, fingerprint) {
   }
 }
 
-async function sendAlert(problems, now, alertConfig) {
+async function sendAlert(
+  problems,
+  now,
+  alertConfig,
+  environmentLabel = 'PROD',
+) {
   const resend = new Resend(process.env.RESEND_API_KEY);
-  const items = problems.map((p) => `<li>${escapeHtml(p.text)}</li>`).join('');
+  const ordered = [...problems].sort((a, b) => {
+    const aSeverity = policyFor(a.key, a.severity).severity;
+    const bSeverity = policyFor(b.key, b.severity).severity;
+    return aSeverity.localeCompare(bSeverity) || a.key.localeCompare(b.key);
+  });
+  const lead = policyFor(ordered[0].key, ordered[0].severity);
+  const additional = ordered.length > 1
+    ? ` + ${ordered.length - 1} additional finding` +
+      (ordered.length === 2 ? '' : 's')
+    : '';
+  const groups = ['SEV-0', 'SEV-1', 'SEV-2'].map((severity) => {
+    const items = ordered
+      .filter((problem) =>
+        policyFor(problem.key, problem.severity).severity === severity)
+      .map((problem) => {
+        const policy = policyFor(problem.key, problem.severity);
+        return '<li><strong>' + escapeHtml(policy.title) + '</strong> — ' +
+          escapeHtml(policy.action) + '</li>';
+      })
+      .join('');
+    return items
+      ? `<h3>${escapeHtml(severity)}</h3><ul>${items}</ul>`
+      : '';
+  }).join('');
   const email = {
     from: alertConfig.from,
     to: alertConfig.to,
-    subject: `⚠ DPC ops alert: ${problems.length} problem${problems.length === 1 ? '' : 's'} detected`,
+    subject: `[${lead.severity}][${environmentLabel}][${lead.capability}] ` +
+      `${lead.title} — ${lead.action}${additional}`,
     html: `
-      <h2>DPC five-minute health check found ${problems.length} problem${problems.length === 1 ? '' : 's'}</h2>
-      <ul>${items}</ul>
+      <h2>DPC operations alert</h2>
+      ${groups}
       <p><a href="${DASHBOARD_URL}">Open the ops dashboard</a> for live status.
       Checked at ${escapeHtml(new Date(now).toISOString())}.</p>
-      <p>You'll get at most one email every ${THROTTLE_HOURS} hours for this same set of problems;
-      a different problem alerts immediately.</p>
+      <p>SEV-0 incidents remind every ${SEV0_REMINDER_MIN} minutes;
+      other active incidents retain the ${THROTTLE_HOURS}-hour window.</p>
     `,
   };
   if (alertConfig.replyTo) email.replyTo = alertConfig.replyTo;
@@ -332,8 +733,17 @@ async function sendAlert(problems, now, alertConfig) {
     'resend.emails.send',
   );
   if (result?.error) {
-    throw new Error(`alert email failed: ${result.error.message || result.error.name || 'resend error'}`);
+    throw new Error(
+      `alert email failed: ` +
+        (result.error.message || result.error.name || 'resend error'),
+    );
   }
+}
+
+function integerTimings(timings) {
+  return Object.fromEntries(
+    Object.entries(timings).map(([key, value]) => [key, Math.round(value)]),
+  );
 }
 
 export default async function handler(req, res) {
@@ -353,7 +763,10 @@ export default async function handler(req, res) {
   }
 
   const now = Date.now();
-  const alertSuppressed = Boolean(process.env.VERCEL_ENV && process.env.VERCEL_ENV !== 'production');
+  const runtimeEnvironment = process.env.VERCEL_ENV;
+  const alertSuppressed = ['preview', 'development']
+    .includes(runtimeEnvironment);
+  const productionRun = runtimeEnvironment === 'production';
   const alertConfig = readAlertConfiguration();
   const alertConfigIssues = alertSuppressed ? [] : alertConfig.issues;
   // Per-phase durations, logged and returned so the real timeout margin can
@@ -368,12 +781,43 @@ export default async function handler(req, res) {
     }
   };
 
-  const { problems, warnings } = await timed('gather_ms', () => gatherProblems(now));
-  for (const issue of alertConfigIssues) {
-    problems.push({ key: `env:${issue.name}`, text: `${issue.name} ${issue.reason}` });
+  const gathered = await timed('gather_ms', () => gatherProblems(now));
+  const { problems, warnings, states } = gathered;
+  if (productionRun || alertSuppressed) {
+    states.set('env:VERCEL_ENV', { state: 'healthy' });
+  } else {
+    states.set('env:VERCEL_ENV', { state: 'unhealthy' });
+    problems.push({
+      key: 'env:VERCEL_ENV',
+      text: 'VERCEL_ENV missing or unrecognized',
+    });
   }
+  for (const issue of alertConfigIssues) {
+    const key = `env:${issue.name}`;
+    states.set(key, { state: 'unhealthy' });
+    problems.push({ key, text: `${issue.name} ${issue.reason}` });
+  }
+  for (const name of ['ALERT_TO', 'ALERT_FROM', 'ALERT_REPLY_TO']) {
+    const key = `env:${name}`;
+    if (!states.has(key)) states.set(key, { state: 'healthy' });
+  }
+
+  const supabaseDown = problems.some((problem) =>
+    problem.key === 'check:Supabase reachable');
+  states.set('monitoring:observation-append', {
+    state: productionRun && supabaseConfigured() && !supabaseDown
+      ? 'healthy'
+      : 'unknown',
+  });
   problems.sort((a, b) => (a.key < b.key ? -1 : 1));
-  const fingerprint = problems.length ? fingerprintOf(problems) : null;
+  const alertableProblems = problems.filter((problem) =>
+    policyFor(problem.key, problem.severity).severity !== 'SEV-2');
+  let fingerprint = alertableProblems.length
+    ? fingerprintOf(alertableProblems)
+    : null;
+  let severity = alertableProblems.length
+    ? highestSeverity(alertableProblems)
+    : null;
   let alerted = false;
   let throttled = false;
   let alertError = '';
@@ -384,23 +828,33 @@ export default async function handler(req, res) {
       .map((issue) => `${issue.name} ${issue.reason}`),
   ];
 
-  if (problems.length) {
-    console.error('health-check: problems detected', problems.map((p) => p.text));
+  if (alertableProblems.length) {
+    console.error(
+      'health-check: problems detected',
+      alertableProblems.map((problem) => problem.text),
+    );
     // When the gather phase already established Supabase is down, skip the
     // throttle read/write entirely — they would only burn deadline budget.
     // Trade-off: during a Supabase outage the alert repeats every five minutes.
-    const supabaseDown = problems.some((p) => p.key === 'check:Supabase reachable');
     if (alertSuppressed) {
       console.info('health-check: alert email suppressed outside production');
     } else if (alertDeliveryIssues.length) {
       alertError = `cannot email: ${alertDeliveryIssues.join('; ')}`;
-    } else if (!supabaseDown && (await timed('throttle_read_ms', () => recentlyAlerted(now, fingerprint)))) {
+    } else if (!supabaseDown && (await timed(
+      'throttle_read_ms',
+      () => recentlyAlerted(now, fingerprint, severity),
+    ))) {
       throttled = true;
     } else {
       try {
         await timed(
           'alert_send_ms',
-          () => sendAlert(problems, now, alertConfig),
+          () => sendAlert(
+            alertableProblems,
+            now,
+            alertConfig,
+            productionRun ? 'PROD' : 'UNKNOWN',
+          ),
         );
         alerted = true;
         if (supabaseConfigured() && !supabaseDown) {
@@ -409,7 +863,11 @@ export default async function handler(req, res) {
               level: 'info',
               source: 'health-check',
               message: 'alert email sent',
-              detail: { fingerprint, keys: problems.map((p) => p.key), problems: problems.map((p) => p.text) },
+              detail: {
+                fingerprint,
+                keys: alertableProblems.map((problem) => problem.key),
+                severity,
+              },
             }, THROTTLE_IO_TIMEOUT_MS));
           } catch (err) {
             console.error('health-check: could not record alert (throttle may not apply)', err?.message || err);
@@ -422,6 +880,92 @@ export default async function handler(req, res) {
     }
   }
 
+  // Write evidence after the bounded notification path. Its total_ms therefore
+  // covers healthy, throttled, successful-alert, and failed-alert runs on the
+  // same basis. The database row timestamp also captures time to the insert.
+  timings.total_ms = Date.now() - now;
+  if (productionRun && supabaseConfigured() && !supabaseDown) {
+    const evidence = {
+      level: 'info',
+      source: 'health-check-observation',
+      message: 'health check observations',
+      detail: {
+        checked_at: new Date(now).toISOString(),
+        environment: 'production',
+        observations: publicObservations(states),
+        timings: integerTimings(timings),
+      },
+    };
+    try {
+      await timed(
+        'observation_write_ms',
+        () => supabaseInsert(
+          'webhook_logs',
+          evidence,
+          THROTTLE_IO_TIMEOUT_MS,
+        ),
+      );
+    } catch (err) {
+      states.set('monitoring:observation-append', { state: 'unknown' });
+      const observationProblem = {
+        key: 'monitoring:observation-append',
+        state: 'unknown',
+        text: `Health observation append failed: ` +
+          String(err?.message || err),
+      };
+      problems.push(observationProblem);
+      if (!fingerprint) {
+        fingerprint = fingerprintOf([observationProblem]);
+        severity = policyFor(observationProblem.key).severity;
+      }
+      const gap = {
+        level: 'info',
+        source: 'health-check-observation-gap',
+        message: 'health check observation gap',
+        detail: {
+          checked_at: new Date(now).toISOString(),
+          environment: 'production',
+          observations: publicObservations(states),
+          timings: integerTimings(timings),
+        },
+      };
+      try {
+        await timed(
+          'observation_gap_write_ms',
+          () => supabaseInsert(
+            'webhook_logs',
+            gap,
+            THROTTLE_IO_TIMEOUT_MS,
+          ),
+        );
+      } catch (gapError) {
+        console.error(
+          'health-check: could not record observation coverage gap',
+          gapError?.message || gapError,
+        );
+      }
+      // The primary evidence store cannot safely deduplicate its own failure.
+      // Notify statelessly after the gap attempt rather than hide the outage.
+      if (!alerted && !alertDeliveryIssues.length) {
+        try {
+          await timed(
+            'observation_alert_send_ms',
+            () => sendAlert([observationProblem], now, alertConfig),
+          );
+          alerted = true;
+        } catch (notificationError) {
+          const message = String(
+            notificationError?.message || notificationError,
+          );
+          alertError = alertError
+            ? `${alertError}; ${message}`
+            : message;
+        }
+      }
+    }
+  }
+
+  problems.sort((a, b) => (a.key < b.key ? -1 : 1));
   timings.total_ms = Date.now() - now;
   console.info('health-check: timings', timings);
 
@@ -431,10 +975,13 @@ export default async function handler(req, res) {
     checked_at: new Date(now).toISOString(),
     problems: problems.map((p) => p.text),
     warnings: warnings.map((warning) => warning.text),
+    observations: publicObservations(states),
     fingerprint,
     alerted,
     throttled,
-    ...(alertSuppressed && problems.length ? { alert_suppressed: true } : {}),
+    ...(alertSuppressed && alertableProblems.length
+      ? { alert_suppressed: true }
+      : {}),
     timings,
     ...(alertError ? { alert_error: alertError } : {}),
   });

@@ -189,21 +189,21 @@ de-identified analytics".
 A Vercel Pro cron (see `vercel.json` → `crons`) hits `/api/health-check` every
 five minutes. It runs a non-transactional checkout canary, checks recent
 browser handoff signals, runs the same live checks as the dashboard, and
-emails an alert directly to the approved Crown Labs operational recipient when
-anything is wrong: a missing env var, a Stripe key that fails a capability the
-app needs (reading Checkout Sessions, Subscriptions, or Events), a test-mode
-key, a rejected Resend key, Supabase unreachable, Stripe events undelivered
-for over 30 minutes, or webhook errors logged in the last 75 minutes. Every
-probe has a bounded timeout so the checker survives the outages it exists to
-detect.
+emails SEV-0 and SEV-1 alerts directly to the approved Crown Labs operational
+recipient. Subjects identify severity, Production, affected capability, and a
+fixed plain-language verdict. SEV-2 results remain visible without immediate
+email. Checks cover required configuration, provider access, checkout
+contracts, undelivered sensitive Stripe events, recent webhook errors, and
+checkout handoff signals. Every probe has a bounded timeout so the checker
+survives the outages it exists to detect.
 
 The operational route is intentionally separate from partner-intake and
 founding-deposit email. `ALERT_TO` is required in Production and has no
 fallback; a missing or prohibited recipient makes the health check unhealthy
-and blocks delivery. `ALERT_FROM` and `ALERT_REPLY_TO` are optional overrides.
-A missing or prohibited sender is reported as unhealthy while delivery uses
-the verified `support@downtownpourcollective.com` sender. A missing or
-prohibited reply-to is reported as unhealthy and omitted. The health check
+and blocks delivery. `ALERT_FROM` and `ALERT_REPLY_TO` are also required for a
+green check, but their defects do not block delivery. A missing or prohibited
+sender uses the verified `support@downtownpourcollective.com` fallback. A
+missing or prohibited reply-to is reported as unhealthy and omitted. The check
 never inherits a business-notification recipient or sender. Exact, plus, and
 dotted aliases of prohibited DPC mailboxes are rejected.
 
@@ -218,12 +218,24 @@ request, and sends malformed JSON that must be rejected with `INVALID_REQUEST`.
 It never sends a valid challenge or member details and cannot create a checkout
 intent or Stripe Checkout Session.
 
-Alerts are throttled **per incident**: the set of problems is fingerprinted,
-and the same fingerprint stays quiet for 6 hours while a *different* problem
-alerts immediately (tracked in `webhook_logs`, so throttling needs the
-Supabase vars; without them every five-minute run emails while a problem persists).
-Preview and development invocations still return detected problems but suppress
-alert email, so an unreleased bundle cannot page production operators.
+Alerts are throttled **per incident**: the set of alertable problems is
+fingerprinted. The same SEV-1 fingerprint stays quiet for 6 hours; an active
+SEV-0 reminds every 30 minutes. A different problem set alerts immediately.
+Throttle records live in `webhook_logs`, so without Supabase every five-minute
+run emails while a problem persists.
+
+Each authenticated Production run also writes one allowlisted observation row
+to `webhook_logs` when Supabase is reachable. It records every stable key as
+`healthy`, `unhealthy`, or `unknown`, plus integer phase timings and comparable
+total runtime through the bounded notification phase. This evidence is
+independent of email and throttling. Preview and Development return results but
+write no Production evidence and send no operations email.
+
+If reads work but observation inserts fail, an otherwise healthy invocation
+sends one stateless evidence-failure email. A run that already sent its main
+incident email does not send a second email for the evidence failure. Because
+the write fault also prevents a durable throttle marker, the stateless warning
+may repeat on the next five-minute invocation until writes recover.
 
 Setup (required):
 
@@ -252,17 +264,31 @@ Setup (required):
    but no credentials or private phone number.
 
 To test it: `curl -H "Authorization: Bearer $CRON_SECRET" https://www.downtownpourcollective.com/api/health-check`
-returns `{"ok":true,...}` when everything is green. Non-paging provider
-failures return `ok: false` with a `warnings` array and an empty `problems`
-array.
+returns `{"ok":true,...}` when everything is green. The response includes an
+`observations` array. Non-paging results return `ok: false` with a `warnings`
+array and an empty `problems` array.
 
-Known limitations: (1) if `RESEND_API_KEY` itself is the thing that breaks,
-the alert email can't send — the failure still shows on the dashboard and in
-the Vercel cron logs; (2) the Stripe probes cover **read** capabilities only —
-the webhook also needs Checkout Session **write** (it stamps `welcome_sent`
-metadata), which has no safe probe. If you ever switch to a restricted key,
-grant Checkout Sessions read *and* write, Subscriptions read, and Events
-read.
+Known limitations:
+
+1. If `RESEND_API_KEY` itself breaks, the alert email cannot send. The failure
+   still shows on the dashboard, in observation evidence when writable, and in
+   Vercel logs.
+2. The Stripe probes cover **read** capabilities only. The webhook also needs
+   Checkout Session **write** to stamp `welcome_sent` metadata, which has no
+   safe probe. A restricted key needs Checkout Sessions read and write,
+   Subscriptions read, and Events read.
+3. SEV-2 conditions have no email path before the Phase 6 digest. In
+   particular, `undelivered-list-failed` is dashboard and evidence only during
+   the observation window.
+4. Five-minute evidence adds roughly 15 MB per month at the current row size.
+   Retain it through the 30-day gate, then approve retention or archival before
+   Phase 4 adds more operational writers.
+5. Persisted `total_ms` ends immediately before the bounded observation insert.
+   For conservative 30-second-cap headroom, add the 2-second insert budget; the
+   row timestamp minus `checked_at` also measures time through database arrival.
+6. An unset or unrecognized `VERCEL_ENV` alerts as an ambiguous environment but
+   writes no row labeled Production. Explicit Preview and Development remain
+   suppressed.
 
 ### 2e. Checkout release gate — automated and physical devices
 

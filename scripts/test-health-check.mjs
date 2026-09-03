@@ -58,7 +58,11 @@ function setHealthyEnv() {
 }
 
 // Stripe https mock: healthy or auth-rejected list endpoints, empty/stale events.
-function mockStripeHttps({ keyOk = true, staleEvent = false } = {}) {
+function mockStripeHttps({
+  keyOk = true,
+  staleEvent = false,
+  staleEventType = 'checkout.session.completed',
+} = {}) {
   return (options) => {
     const req = new PassThrough();
     req.setTimeout = () => req;
@@ -76,7 +80,12 @@ function mockStripeHttps({ keyOk = true, staleEvent = false } = {}) {
         body = {
           object: 'list', has_more: false,
           data: staleEvent
-            ? [{ id: 'evt_stale', type: 'checkout.session.completed', created: Math.floor(Date.now() / 1000) - 7200, pending_webhooks: 1 }]
+            ? [{
+              id: 'evt_stale',
+              type: staleEventType,
+              created: Math.floor(Date.now() / 1000) - 7200,
+              pending_webhooks: 1,
+            }]
             : [],
         };
       } else if (path.startsWith('/v1/checkout/sessions') || path.startsWith('/v1/subscriptions')) {
@@ -94,7 +103,26 @@ function mockStripeHttps({ keyOk = true, staleEvent = false } = {}) {
 }
 
 // fetch mock for Resend + Supabase; records sent alert emails + throttle reads.
-function mockFetch({ priorAlertFingerprint = null, recentWebhookErrors = false, supabaseDown = false, hangEmail = false, hangResendDomains = false, resendDomainErrorName = '', joinCanaryBroken = false, legalVersionsStatus = 200, legalVersionsBody = null, stalledHandoff = false, fallbackHandoff = false, canaryDelayMs = 0 } = {}, sentEmails, stats) {
+function mockFetch({
+  priorAlertFingerprint = null,
+  priorAlertMinutesAgo = 60,
+  recentWebhookErrors = false,
+  webhookQueryFails = false,
+  observationInsertFails = false,
+  gapInsertFails = false,
+  rejectAllWebhookInserts = false,
+  supabaseDown = false,
+  hangEmail = false,
+  hangResendDomains = false,
+  resendDomainErrorName = '',
+  joinCanaryBroken = false,
+  legalVersionsStatus = 200,
+  legalVersionsBody = null,
+  stalledHandoff = false,
+  stalledHandoffCount = 1,
+  fallbackHandoff = false,
+  canaryDelayMs = 0,
+} = {}, sentEmails, stats) {
   return async (url, opts) => {
     const u = String(url);
     if (u === 'https://www.downtownpourcollective.com/join') {
@@ -133,12 +161,40 @@ function mockFetch({ priorAlertFingerprint = null, recentWebhookErrors = false, 
     if (u.includes('/rest/v1/')) {
       if (supabaseDown) return new Response('unavailable', { status: 503 });
       if (u.includes('/rest/v1/webhook_logs')) {
-        if (opts?.method === 'POST') return new Response(null, { status: 201 });
+        if (opts?.method === 'POST') {
+          const row = JSON.parse(opts.body);
+          stats.webhookInserts.push(row);
+          if (rejectAllWebhookInserts) {
+            return new Response('writes unavailable', { status: 503 });
+          }
+          if (
+            row.source === 'health-check-observation' &&
+            observationInsertFails
+          ) {
+            return new Response('insert failed', { status: 503 });
+          }
+          if (row.source === 'health-check-observation-gap' && gapInsertFails) {
+            return new Response('gap insert failed', { status: 503 });
+          }
+          return new Response(null, { status: 201 });
+        }
         if (u.includes('source=eq.health-check')) {
           stats.throttleReads += 1;
           const requested = u.match(/fingerprint=eq\.([0-9a-f]+)/)?.[1];
-          const rows = requested && requested === priorAlertFingerprint ? [{ ts: new Date().toISOString() }] : [];
+          const sinceText = u.match(/ts=gte\.([^&]+)/)?.[1];
+          const since = sinceText
+            ? new Date(decodeURIComponent(sinceText)).getTime()
+            : 0;
+          const priorAlertAt = Date.now() - priorAlertMinutesAgo * 60000;
+          const rows = requested && requested === priorAlertFingerprint &&
+            priorAlertAt >= since
+            ? [{ ts: new Date(priorAlertAt).toISOString() }]
+            : [];
           return new Response(JSON.stringify(rows), { status: 200, headers: { 'content-type': 'application/json' } });
+        }
+        stats.webhookErrorQueries.push(u);
+        if (webhookQueryFails) {
+          return new Response('query failed', { status: 503 });
         }
         return new Response(JSON.stringify(
           recentWebhookErrors ? [{ ts: new Date().toISOString(), message: 'handler failed: boom' }] : []
@@ -146,7 +202,15 @@ function mockFetch({ priorAlertFingerprint = null, recentWebhookErrors = false, 
       }
       if (u.includes('/rest/v1/site_events')) {
         const rows = [];
-        if (stalledHandoff) rows.push({ event: 'join_checkout_stalled', flow_id: '00000000-0000-4000-8000-000000000001' });
+        if (stalledHandoff) {
+          for (let i = 0; i < stalledHandoffCount; i += 1) {
+            rows.push({
+              event: 'join_checkout_stalled',
+              flow_id: '00000000-0000-4000-8000-' +
+                String(i + 1).padStart(12, '0'),
+            });
+          }
+        }
         if (fallbackHandoff) rows.push({ event: 'join_checkout_fallback_clicked', flow_id: '00000000-0000-4000-8000-000000000002' });
         return new Response(JSON.stringify(rows), { status: 200, headers: { 'content-type': 'application/json' } });
       }
@@ -165,7 +229,12 @@ async function run(
   setHealthyEnv();
   if (envTweaks) envTweaks();
   const sentEmails = [];
-  const stats = { throttleReads: 0, legalVersionsUrls: [] };
+  const stats = {
+    throttleReads: 0,
+    legalVersionsUrls: [],
+    webhookInserts: [],
+    webhookErrorQueries: [],
+  };
   const origFetch = globalThis.fetch;
   const origHttps = https.request;
   globalThis.fetch = mockFetch(mockOpts, sentEmails, stats);
@@ -183,6 +252,10 @@ async function run(
   globalThis.fetch = origFetch;
   https.request = origHttps;
   return { out, sentEmails, stats, elapsed };
+}
+
+function insertsFrom(stats, source) {
+  return stats.webhookInserts.filter((row) => row.source === source);
 }
 
 // Case 1: CRON_SECRET missing -> fail closed with 503
@@ -211,17 +284,28 @@ async function run(
 }
 
 // Case 5: production join markup loses its native handoff recovery -> alert
+let brokenJoinFingerprint = null;
 {
   const { out, sentEmails } = await run({ joinCanaryBroken: true });
+  brokenJoinFingerprint = out.body.fingerprint;
   check('broken checkout canary is flagged', out.body.problems.some((p) => p.includes('checkout canary')), out.body.problems);
   check('broken checkout canary sends an alert', out.body.alerted === true && sentEmails.length === 1, out.body);
 }
 
-// Case 6: a real stalled browser handoff is surfaced within the signal window
+// Case 6: one stalled browser handoff is visible without paging operators.
 {
   const { out, sentEmails } = await run({ stalledHandoff: true });
-  check('stalled checkout handoff is flagged', out.body.problems.some((p) => p.includes('stalled checkout handoff')), out.body.problems);
-  check('stalled checkout handoff sends an alert', out.body.alerted === true && sentEmails.length === 1, out.body);
+  check(
+    'stalled checkout handoff is visible',
+    out.body.warnings.some((warning) =>
+      warning.includes('stalled checkout handoff')),
+    out.body.warnings,
+  );
+  check(
+    'one stalled checkout handoff sends no alert',
+    out.body.alerted === false && sentEmails.length === 0,
+    out.body,
+  );
 }
 
 // Case 7: recovery-link use is dashboard context, not a paging incident
@@ -262,7 +346,13 @@ let brokenKeyFingerprint = null;
   check('broken key -> ok:false', out.body.ok === false, out.body);
   check('capability probe named', out.body.problems.some((p) => p.includes('Stripe key can read')), out.body.problems);
   check('alert email sent', out.body.alerted === true && sentEmails.length === 1, out.body);
-  check('alert email lists the problem', JSON.stringify(sentEmails[0]).includes('Invalid API Key'), sentEmails[0]);
+  check(
+    'alert email uses reviewed policy text',
+    JSON.stringify(sentEmails[0])
+      .includes('Stripe checkout access is rejected') &&
+      !JSON.stringify(sentEmails[0]).includes('Invalid API Key'),
+    sentEmails[0],
+  );
   check('alert email uses only the ops recipient', JSON.stringify(sentEmails[0]?.to) === JSON.stringify([OPS_TO]), sentEmails[0]);
   check('alert email uses the ops sender', sentEmails[0]?.from === OPS_FROM, sentEmails[0]);
   check('alert email uses the ops reply-to', sentEmails[0]?.reply_to === OPS_REPLY_TO, sentEmails[0]);
@@ -314,9 +404,12 @@ let brokenKeyFingerprint = null;
   check('recent webhook errors flagged', out.body.problems.some((p) => p.includes('webhook error')), out.body.problems);
 }
 
-// Case 17: same incident within 6h -> throttled, no second email
+// Case 17: SEV-1 retains the six-hour suppression window.
 {
-  const { out, sentEmails } = await run({ keyOk: false, priorAlertFingerprint: brokenKeyFingerprint });
+  const { out, sentEmails } = await run({
+    joinCanaryBroken: true,
+    priorAlertFingerprint: brokenJoinFingerprint,
+  });
   check('same fingerprint throttled', out.body.throttled === true && out.body.alerted === false, out.body);
   check('throttled -> no email sent', sentEmails.length === 0, sentEmails);
 }
@@ -602,6 +695,394 @@ for (const [name, expected] of [
       problem.includes('ALERT_TO contains a prohibited operational identity')),
     out.body,
   );
+}
+
+// Case 32: every authenticated healthy Production run leaves one atomic,
+// allowlisted observation row independently of notification delivery.
+{
+  const { out, stats } = await run({});
+  const rows = insertsFrom(stats, 'health-check-observation');
+  check(
+    'healthy production run writes one observation row',
+    rows.length === 1,
+    stats,
+  );
+  const row = rows[0];
+  check(
+    'observation row uses pinned bookkeeping identity',
+    row?.level === 'info' && row?.message === 'health check observations',
+    row,
+  );
+  check(
+    'observation detail has only allowlisted top-level fields',
+    JSON.stringify(Object.keys(row?.detail || {}).sort()) ===
+      JSON.stringify(['checked_at', 'environment', 'observations', 'timings']),
+    row,
+  );
+  check(
+    'observation items have only key, severity, and state',
+    row?.detail?.observations?.length > 0 &&
+      row.detail.observations.every((item) =>
+        JSON.stringify(Object.keys(item).sort()) ===
+          JSON.stringify(['key', 'severity', 'state'])),
+    row,
+  );
+  check(
+    'healthy observations are explicit',
+    row?.detail?.observations?.every((item) => item.state === 'healthy'),
+    row,
+  );
+  check(
+    'observation timings are integer milliseconds',
+    Object.values(row?.detail?.timings || {}).length > 0 &&
+      Object.values(row.detail.timings).every(Number.isInteger),
+    row,
+  );
+  check(
+    'observation evidence includes comparable total runtime',
+    Number.isInteger(row?.detail?.timings?.total_ms),
+    row,
+  );
+  check(
+    'healthy response exposes explicit observations',
+    out.body.observations?.length > 0,
+    out.body,
+  );
+}
+
+// Case 33: Preview and Development do not create Production evidence.
+{
+  const { stats } = await run({}, () => {
+    process.env.VERCEL_ENV = 'preview';
+  });
+  check(
+    'preview writes no production observation row',
+    insertsFrom(stats, 'health-check-observation').length === 0,
+    stats,
+  );
+}
+
+// Case 34: bookkeeping can never feed the production webhook-error signal.
+{
+  const { stats } = await run({});
+  check(
+    'webhook error probe is source allowlisted',
+    stats.webhookErrorQueries.length === 1 &&
+      stats.webhookErrorQueries[0].includes('source=eq.stripe-webhook'),
+    stats.webhookErrorQueries,
+  );
+}
+
+// Case 35: a failed diagnostic query is unknown, never implicitly healthy.
+{
+  const { out } = await run({ webhookQueryFails: true });
+  const observation = out.body.observations?.find((item) =>
+    item.key === 'webhook_errors');
+  check(
+    'failed webhook query records unknown',
+    observation?.state === 'unknown' && observation?.severity === 'SEV-2',
+    out.body,
+  );
+}
+
+// Case 36: a failed evidence append is visible and uses a distinct info-level
+// coverage-gap source if the second write succeeds.
+{
+  const { out, sentEmails, stats } = await run({
+    observationInsertFails: true,
+  });
+  const gaps = insertsFrom(stats, 'health-check-observation-gap');
+  const observation = out.body.observations?.find((item) =>
+    item.key === 'monitoring:observation-append');
+  check(
+    'failed observation append records a coverage gap',
+    gaps.length === 1,
+    stats,
+  );
+  check('coverage gap stays info-level', gaps[0]?.level === 'info', gaps[0]);
+  check(
+    'failed observation append is explicit unknown',
+    observation?.state === 'unknown',
+    out.body,
+  );
+  check(
+    'healthy run with failed evidence sends one stateless alert',
+    sentEmails.length === 1,
+    sentEmails,
+  );
+}
+
+// Case 37: outbound notifications use policy text, not arbitrary provider
+// details, and the old generic subject is unreachable.
+{
+  const { sentEmails } = await run({ keyOk: false });
+  const payload = JSON.stringify(sentEmails[0]);
+  check(
+    'alert subject contains severity, environment, and capability',
+    /^\[SEV-0\]\[PROD\]\[[A-Z-]+\]/.test(sentEmails[0]?.subject || ''),
+    sentEmails[0],
+  );
+  check(
+    'alert excludes raw provider errors',
+    !payload.includes('Invalid API Key'),
+    sentEmails[0],
+  );
+  check(
+    'old generic alert subject is absent',
+    !payload.includes('DPC ops alert:'),
+    sentEmails[0],
+  );
+}
+
+// Case 38: mixed severities lead with the highest and disclose additional
+// findings without leaking webhook log messages.
+{
+  const { sentEmails } = await run({
+    legalVersionsBody: { tos: '3.0', privacy: '4.2', memberTerms: '3.0' },
+    recentWebhookErrors: true,
+  });
+  const payload = JSON.stringify(sentEmails[0]);
+  check(
+    'mixed alert leads with SEV-0',
+    sentEmails[0]?.subject?.startsWith('[SEV-0]'),
+    sentEmails[0],
+  );
+  check(
+    'mixed alert states additional findings exist',
+    /additional finding/.test(sentEmails[0]?.subject || ''),
+    sentEmails[0],
+  );
+  check(
+    'mixed alert excludes webhook free text',
+    !payload.includes('handler failed: boom'),
+    sentEmails[0],
+  );
+}
+
+// Case 39: an isolated handoff stall with healthy canaries is informational
+// and never claims checkout is unavailable.
+{
+  const { out, sentEmails } = await run({ stalledHandoff: true });
+  const observation = out.body.observations?.find((item) =>
+    item.key === 'checkout_handoff_stalled');
+  check(
+    'isolated handoff stall is SEV-2',
+    observation?.state === 'unhealthy' && observation?.severity === 'SEV-2',
+    out.body,
+  );
+  check(
+    'isolated handoff stall sends no immediate email',
+    sentEmails.length === 0,
+    sentEmails,
+  );
+}
+
+// Case 40: an undelivered event outside the reviewed sensitive allowlist is
+// dashboard-only during the immediate tranche.
+{
+  const { out, sentEmails } = await run({
+    staleEvent: true,
+    staleEventType: 'product.updated',
+  });
+  const observation = out.body.observations?.find((item) =>
+    item.key === 'undelivered_events');
+  check(
+    'non-sensitive undelivered event is SEV-2',
+    observation?.severity === 'SEV-2',
+    out.body,
+  );
+  check(
+    'non-sensitive undelivered event sends no email',
+    sentEmails.length === 0,
+    sentEmails,
+  );
+}
+
+// Case 41: SEV-0 reminders use a 30-minute window rather than the legacy
+// six-hour silence.
+{
+  const incident = { legalVersionsBody: { tos: '3.0' } };
+  const first = await run(incident);
+  const recent = await run({
+    ...incident,
+    priorAlertFingerprint: first.out.body.fingerprint,
+    priorAlertMinutesAgo: 25,
+  });
+  const due = await run({
+    ...incident,
+    priorAlertFingerprint: first.out.body.fingerprint,
+    priorAlertMinutesAgo: 31,
+  });
+  check(
+    'SEV-0 remains quiet before 30 minutes',
+    recent.out.body.throttled === true,
+    recent.out.body,
+  );
+  check(
+    'SEV-0 reminds after 30 minutes',
+    due.out.body.alerted === true,
+    due.out.body,
+  );
+}
+
+// Case 42: Claude round-two polish — compact display-name syntax is accepted
+// instead of mysteriously selecting the fallback sender.
+{
+  const compactSender = 'DPC Operations<ops-sender@example.com>';
+  const { sentEmails } = await run({ keyOk: false }, () => {
+    process.env.ALERT_FROM = compactSender;
+  });
+  check(
+    'compact sender display syntax is accepted',
+    sentEmails[0]?.from === compactSender,
+    sentEmails[0],
+  );
+}
+
+// Case 43: throttling controls notification delivery, never evidence capture.
+{
+  const first = await run({ joinCanaryBroken: true });
+  const repeated = await run({
+    joinCanaryBroken: true,
+    priorAlertFingerprint: first.out.body.fingerprint,
+  });
+  check('throttled run still writes one observation row',
+    repeated.out.body.throttled === true &&
+      insertsFrom(
+        repeated.stats,
+        'health-check-observation',
+      ).length === 1,
+    repeated.stats);
+  const evidence = insertsFrom(
+    repeated.stats,
+    'health-check-observation',
+  )[0];
+  check('throttled runtime includes its throttle phase',
+    Number.isInteger(evidence?.detail?.timings?.throttle_read_ms) &&
+      Number.isInteger(evidence?.detail?.timings?.total_ms),
+    evidence);
+}
+
+// Case 44: a notification-provider failure also cannot erase run evidence.
+{
+  const failed = await run({ keyOk: false, hangEmail: true });
+  check('alert-failed run still writes one observation row',
+    /timed out/.test(failed.out.body.alert_error || '') &&
+      insertsFrom(
+        failed.stats,
+        'health-check-observation',
+      ).length === 1,
+    failed.stats);
+  const evidence = insertsFrom(
+    failed.stats,
+    'health-check-observation',
+  )[0];
+  check('alert-failed runtime includes the failed send',
+    evidence?.detail?.timings?.alert_send_ms >= 4000 &&
+      evidence?.detail?.timings?.total_ms >= 4000,
+    evidence);
+}
+
+// Case 45: repeated stalls cross the interim threshold and become SEV-1.
+{
+  const { out, sentEmails } = await run({
+    stalledHandoff: true,
+    stalledHandoffCount: 2,
+  });
+  const observation = out.body.observations?.find((item) =>
+    item.key === 'checkout_handoff_stalled');
+  check('repeated checkout stalls are SEV-1',
+    observation?.state === 'unhealthy' &&
+      observation?.severity === 'SEV-1',
+    out.body);
+  check('repeated checkout stalls send an alert',
+    out.body.alerted === true && sentEmails.length === 1,
+    out.body);
+}
+
+// Case 46: the reviewed Stripe event allowlist promotes money/access events.
+{
+  const { out, sentEmails } = await run({ staleEvent: true });
+  const observation = out.body.observations?.find((item) =>
+    item.key === 'undelivered_events');
+  check('sensitive undelivered event is SEV-0',
+    observation?.state === 'unhealthy' &&
+      observation?.severity === 'SEV-0',
+    out.body);
+  check('sensitive undelivered event sends an alert',
+    out.body.alerted === true && sentEmails.length === 1,
+    out.body);
+}
+
+// Case 47: durable evidence contains policy data, never provider diagnostics.
+{
+  const { stats } = await run({ keyOk: false });
+  const evidence = insertsFrom(stats, 'health-check-observation')[0];
+  check('observation evidence excludes arbitrary provider text',
+    !JSON.stringify(evidence).includes('Invalid API Key'),
+    evidence);
+}
+
+// Case 48: missing audience sync configuration is dashboard-only SEV-2.
+{
+  const { out, sentEmails } = await run({}, () => {
+    delete process.env.RESEND_FOUNDING_AUDIENCE_ID;
+  });
+  const observation = out.body.observations?.find((item) =>
+    item.key === 'check:Resend founding audience ID set');
+  check('missing audience configuration is SEV-2',
+    observation?.state === 'unhealthy' &&
+      observation?.severity === 'SEV-2',
+    out.body);
+  check('missing audience configuration sends no email',
+    out.body.problems.length === 0 &&
+      out.body.warnings.length === 1 &&
+      sentEmails.length === 0,
+    out.body);
+}
+
+// Case 49: Preview and Development suppress Production evidence. An unknown
+// environment fails noisy without contaminating the Production dataset.
+for (const environment of ['preview', 'development']) {
+  const { stats } = await run({}, () => {
+    process.env.VERCEL_ENV = environment;
+  });
+  check(`${environment || 'unset'} writes no production evidence`,
+    insertsFrom(stats, 'health-check-observation').length === 0,
+    stats);
+}
+{
+  const { out, sentEmails, stats } = await run({}, () => {
+    delete process.env.VERCEL_ENV;
+  });
+  check('unset environment sends a monitoring alert',
+    out.body.problems.some((problem) => problem.includes('VERCEL_ENV')) &&
+      sentEmails.length === 1 &&
+      sentEmails[0]?.subject?.includes('[UNKNOWN]'),
+    out.body);
+  check('unset environment writes no mislabeled Production evidence',
+    insertsFrom(stats, 'health-check-observation').length === 0,
+    stats);
+}
+
+// Case 50: a write-only Supabase fault cannot emit both the main incident and
+// a second evidence-failure email on the same invocation.
+{
+  const { out, sentEmails, stats } = await run({
+    keyOk: false,
+    rejectAllWebhookInserts: true,
+  });
+  const observation = out.body.observations?.find((item) =>
+    item.key === 'monitoring:observation-append');
+  check('write-only fault leaves evidence state unknown',
+    observation?.state === 'unknown',
+    out.body);
+  check('write-only fault sends at most one email per invocation',
+    out.body.alerted === true && sentEmails.length === 1,
+    sentEmails);
+  check('write-only fault attempts distinct coverage-gap bookkeeping',
+    insertsFrom(stats, 'health-check-observation-gap').length === 1,
+    stats);
 }
 
 process.exit(failures ? 1 : 0);

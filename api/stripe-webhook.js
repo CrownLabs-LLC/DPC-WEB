@@ -68,6 +68,7 @@ async function logOps(level, message, fields = {}) {
       },
       body: JSON.stringify({
         level,
+        source: 'stripe-webhook',
         message: String(message).slice(0, 500),
         event_id: fields.event_id || null,
         session_id: fields.session_id || null,

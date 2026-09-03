@@ -410,14 +410,28 @@ or throttling. Pin this evidence row to
 `source='health-check-observation'` and `level='info'`. Use a constant message
 and an allowlisted `detail` payload containing the checked-at timestamp,
 environment, each stable key with observation state and severity, and integer
-phase timings. One row contains the invocation's observation array; do not
-insert once per key. A failed insert becomes visible as an explicit monitoring
-observation and a coverage gap; it must not be mistaken for a successful
-sample. Persist any coverage-gap bookkeeping under
+phase timings. Write the row after the bounded notification phase so
+`total_ms` is comparable across healthy, throttled, alerted, and alert-failed
+runs; the database row timestamp captures time through arrival at the insert.
+Calculate conservative 30-second-cap headroom from `total_ms` plus the bounded
+observation-write allowance; the row timestamp delta is the arrival-time
+cross-check.
+One row contains the invocation's observation array; do not insert once per
+key. A failed insert becomes visible as an explicit monitoring observation and
+a coverage gap; it must not be mistaken for a successful sample. Persist any
+coverage-gap bookkeeping under
 `source='health-check-observation-gap'` and `level='info'`, never as a webhook
-error.
+error. If the invocation already sent an incident email, do not send a second
+email for its evidence-write failure. Otherwise notify statelessly; the alert
+may repeat every five minutes while writes remain unavailable because the same
+fault prevents a durable throttle marker.
 
 Constrain the webhook-error probe to `source='stripe-webhook'` in Phase 2A.
+Make the Stripe webhook writer set that source explicitly instead of relying
+on the database default, and keep the dashboard query on the same boundary.
+Treat this as a reviewed allowlist: adding another `webhook_logs` error writer
+requires updating the writer, health probe, dashboard query, and contract test
+together.
 Phase 4 replaces its capped query with an exact count while retaining that
 source boundary. Health-check evidence and coverage bookkeeping must never
 feed the production-webhook error signal.
@@ -438,6 +452,8 @@ This is an interim reminder policy, not the Phase 4 incident lifecycle.
       and alert-failed runs.
 - [ ] A failed observation append is explicitly reported and counted as a
       coverage gap, never as a successful sample.
+- [ ] Evidence failure sends at most one email per invocation, including when
+      the main incident path already sent but could not persist its marker.
 - [ ] The record contains only timestamp, environment, stable key, observation
       state, severity, and integer timings; it contains no arbitrary text.
 - [ ] Observation and coverage-gap rows use their pinned sources and
@@ -445,8 +461,12 @@ This is an interim reminder policy, not the Phase 4 incident lifecycle.
       `source='stripe-webhook'`.
 - [ ] A regression test proves observation and coverage-gap rows cannot be
       counted by the webhook-error probe.
+- [ ] The Stripe webhook writer sets `source='stripe-webhook'` explicitly, and
+      tests keep it aligned with both readers.
 - [ ] Thirty-day frequency, observed duration, unknown counts, and runtime
       percentiles are derivable from the per-run rows and recorded coverage.
+- [ ] An unknown runtime environment fails noisy but cannot write evidence
+      labeled as Production.
 - [ ] Subjects contain severity, production environment, capability, and
       plain-language verdict.
 - [ ] Mixed-severity alerts lead with the highest severity.
@@ -524,6 +544,10 @@ for the gate. Derive:
   reminder window;
 - sensitive Stripe event types actually observed as undelivered; and
 - checker/runtime latency percentiles and headroom.
+
+Retain Phase 2A evidence through this gate. Before adding the Phase 4 writers,
+approve a retention or archive policy for observation and coverage-gap rows so
+five-minute evidence does not grow without an explicit lifecycle.
 
 Brandi then confirms the severity registry, consecutive-failure thresholds,
 notification cap, reminder cadence, and whether the remaining phases retain
