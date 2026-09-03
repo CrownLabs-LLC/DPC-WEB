@@ -589,6 +589,7 @@ async function gatherProblems(
         supabaseSelect(
           'webhook_logs?select=ts' +
             '&source=eq.health-check-observation' +
+            '&level=eq.info' +
             '&order=ts.desc&limit=1',
         )
           .then((rows) => {

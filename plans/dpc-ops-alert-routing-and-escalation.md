@@ -492,9 +492,10 @@ email while observation coverage silently disappears.
 ### What to build
 
 On authenticated Production runs, query the newest prior row scoped to
-`source='health-check-observation'` before appending the current invocation's
-evidence. Treat a prior observation less than 15 minutes old as healthy. Treat
-one at least 15 minutes old as a SEV-1
+`source='health-check-observation'` and `level='info'` before appending the
+current invocation's evidence. The level filter uses the existing
+`(level, ts DESC)` index. Treat a prior observation less than 15 minutes old as
+healthy. Treat one at least 15 minutes old as a SEV-1
 `monitoring:observation-stale` problem. This tolerates two missed five-minute
 writes while detecting a sustained coverage gap.
 
@@ -512,7 +513,8 @@ explicitly.
 
 ### Acceptance criteria
 
-- [ ] The freshness query is scoped to `health-check-observation` rows.
+- [ ] The freshness query is scoped to `health-check-observation` rows at
+      `level='info'` and can use the existing level/timestamp index.
 - [ ] A prior row less than 15 minutes old records healthy and sends no email.
 - [ ] A prior row at least 15 minutes old records a SEV-1 problem.
 - [ ] A failed freshness query records SEV-2 unknown, never healthy or stale.

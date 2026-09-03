@@ -232,13 +232,14 @@ independent of email and throttling. Preview and Development return results but
 write no Production evidence and send no operations email.
 
 Before writing the current row, a Production run reads the newest prior
-`health-check-observation` row. A prior row less than 15 minutes old is
-healthy. A row at least 15 minutes old is a SEV-1 coverage problem, which
-surfaces failed or missing observation writes even when another incident has
-already used the invocation's one-email budget. No prior row, or a failed
-freshness query, is SEV-2 `unknown`; a successful current invocation establishes
-the baseline without sending a false stale alert. Preview, Development, and an
-unknown runtime environment never query Production observation freshness.
+`health-check-observation` row at `level='info'`, matching the existing
+`(level, ts DESC)` index. A prior row less than 15 minutes old is healthy. A row
+at least 15 minutes old is a SEV-1 coverage problem, which surfaces failed or
+missing observation writes even when another incident has already used the
+invocation's one-email budget. No prior row, or a failed freshness query, is
+SEV-2 `unknown`; a successful current invocation establishes the baseline
+without sending a false stale alert. Preview, Development, and an unknown
+runtime environment never query Production observation freshness.
 
 If reads work but observation inserts fail, an otherwise healthy invocation
 sends one stateless evidence-failure email. A run that already sent its main

@@ -1130,7 +1130,8 @@ for (const environment of ['preview', 'development']) {
   check('freshness probe is source scoped',
     stats.observationFreshnessQueries.length === 1 &&
       stats.observationFreshnessQueries[0]
-        .includes('source=eq.health-check-observation'),
+        .includes('source=eq.health-check-observation') &&
+      stats.observationFreshnessQueries[0].includes('level=eq.info'),
     stats.observationFreshnessQueries);
 }
 
