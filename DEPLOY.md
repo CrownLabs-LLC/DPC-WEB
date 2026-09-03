@@ -247,6 +247,29 @@ incident email does not send a second email for the evidence failure. Because
 the write fault also prevents a durable throttle marker, the stateless warning
 may repeat on the next five-minute invocation until writes recover.
 
+Each authenticated Production cron invocation also sends paired Sentry Cron
+check-ins through Sentry's current Relay ingestion endpoint. It launches
+`in_progress` without awaiting it before gather, then sends `ok` after the
+observation-append attempt. Business-health problems still finish `ok`: that
+status means the checker executed, not that every dependency was healthy. An
+unexpected gather failure sends `error`. The pair shares a generated check-in
+ID and carries only status, Production environment, duration, and fixed monitor
+configuration.
+
+The check-in upserts a five-minute UTC schedule with a 10-minute margin. A run
+expected five minutes after the prior cadence is therefore eligible for a
+missed-check-in issue 15 minutes after that prior cadence. Max runtime is one
+minute, and one successful check-in recovers the issue. The `in_progress`
+request has a one-second timeout and stays off the gather path; the final
+request has a 1.5 second timeout. Either delivery may fail without changing
+business health. Sentry's missing-check-in detection is the independent
+fallback.
+
+Only a request authenticated with `CRON_SECRET` can emit a check-in. Manual
+Production runs authenticated with `DASHBOARD_TOKEN`, Preview, Development,
+and unknown environments send none, so they cannot make the Production monitor
+appear healthy.
+
 Setup (required):
 
 1. **Vercel** → Environment Variables (Production): add `CRON_SECRET` — any
@@ -262,23 +285,37 @@ Setup (required):
 3. Confirm the `downtownpourcollective.com` domain is verified in Resend so the
    operations sender is authorized. Do not add these settings to Preview or
    Development; those environments suppress operational alert delivery.
-4. Redeploy. Reading values in the Vercel UI does not prove the running
+4. In Sentry, use a DPC-owned project and copy the complete Relay Cron ingestion
+   URL for slug `dpc-web-production-health`. Its path must have the current
+   `/api/<project>/cron/<slug>/<public-key>/` shape, not a legacy
+   `/api/0/.../monitors` path. Add it to Vercel Production only as
+   `SENTRY_CRON_CHECKIN_URL`. Configure the monitor workflow to notify Brandi's
+   approved Crown Labs email for missed, error, and max-runtime issues. Do not
+   put a phone number in Sentry event data, Vercel, or this repository.
+5. Redeploy. Reading values in the Vercel UI does not prove the running
    function sees them. After the deploy, invoke `/api/health-check` with its
    bearer token and confirm the authenticated response has no `ALERT_*`
-   configuration problems. In Vercel, Project → Settings → Cron Jobs should
-   list the five-minute job. Five-minute schedules require the Pro plan.
-5. Run a controlled delivery test and inspect the Resend delivery record.
+   or `SENTRY_CRON_CHECKIN_URL` configuration problems. In Vercel, Project →
+   Settings → Cron Jobs should list the five-minute job. Five-minute schedules
+   require the Pro plan.
+6. Run a controlled delivery test and inspect the Resend delivery record.
    Confirm the message reaches only the approved Crown Labs recipient, uses the
    operations sender and explicit reply-to above, and does not reach any
    business-notification recipient. Record recipient roles and delivery result,
    but no credentials or private phone number.
+7. Confirm three consecutive Sentry check-ins finish `ok`. Then use a separate
+   non-production test monitor to prove missed, error, max-runtime, recovery,
+   and an `in_progress` delivery failure followed by a successful terminal
+   check-in before approving any controlled Production miss.
 
 To test it: `curl -H "Authorization: Bearer $CRON_SECRET" https://www.downtownpourcollective.com/api/health-check`
 returns `{"ok":true,...}` when everything is green. The response includes an
 `observations` array. Non-paging results return `ok: false` with a `warnings`
 array and an empty `problems` array. On the first Production invocation with no
 prior evidence, expect `monitoring:observation-stale` to be `unknown`; repeat
-after five minutes and require that key to be `healthy`.
+after five minutes and require that key to be `healthy`. A real Production cron
+response also contains `cron_monitor` with paired delivery outcomes. A manual
+dashboard-token response intentionally omits it.
 
 Known limitations:
 
@@ -298,9 +335,13 @@ Known limitations:
 5. Persisted `total_ms` ends immediately before the bounded observation insert.
    For conservative 30-second-cap headroom, add the 2-second insert budget; the
    row timestamp minus `checked_at` also measures time through database arrival.
+   Sentry's final check-in duration is the full Phase 3 invocation measurement,
+   including the evidence-append attempt.
 6. An unset or unrecognized `VERCEL_ENV` alerts as an ambiguous environment but
    writes no row labeled Production. Explicit Preview and Development remain
    suppressed.
+7. Sentry Cron carries execution liveness only. It does not replace the
+   dashboard, observation rows, or direct email for business-health findings.
 
 ### 2e. Checkout release gate — automated and physical devices
 
