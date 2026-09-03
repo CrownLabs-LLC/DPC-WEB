@@ -231,6 +231,12 @@ total runtime through the bounded notification phase. This evidence is
 independent of email and throttling. Preview and Development return results but
 write no Production evidence and send no operations email.
 
+If reads work but observation inserts fail, an otherwise healthy invocation
+sends one stateless evidence-failure email. A run that already sent its main
+incident email does not send a second email for the evidence failure. Because
+the write fault also prevents a durable throttle marker, the stateless warning
+may repeat on the next five-minute invocation until writes recover.
+
 Setup (required):
 
 1. **Vercel** → Environment Variables (Production): add `CRON_SECRET` — any
@@ -277,6 +283,12 @@ Known limitations:
 4. Five-minute evidence adds roughly 15 MB per month at the current row size.
    Retain it through the 30-day gate, then approve retention or archival before
    Phase 4 adds more operational writers.
+5. Persisted `total_ms` ends immediately before the bounded observation insert.
+   For conservative 30-second-cap headroom, add the 2-second insert budget; the
+   row timestamp minus `checked_at` also measures time through database arrival.
+6. An unset or unrecognized `VERCEL_ENV` alerts as an ambiguous environment but
+   writes no row labeled Production. Explicit Preview and Development remain
+   suppressed.
 
 ### 2e. Checkout release gate — automated and physical devices
 

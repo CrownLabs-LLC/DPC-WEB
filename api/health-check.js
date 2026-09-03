@@ -218,6 +218,11 @@ const POLICY = Object.freeze({
     title: 'Operations reply-to is invalid',
     action: 'Restore the direct operations reply-to',
   },
+  'env:VERCEL_ENV': {
+    severity: 'SEV-1', capability: 'MONITORING',
+    title: 'Runtime environment is ambiguous',
+    action: 'Restore the Vercel environment identity',
+  },
   'monitoring:observation-append': {
     severity: 'SEV-1', capability: 'MONITORING',
     title: 'Health evidence could not be recorded',
@@ -674,7 +679,12 @@ async function recentlyAlerted(now, fingerprint, severity) {
   }
 }
 
-async function sendAlert(problems, now, alertConfig) {
+async function sendAlert(
+  problems,
+  now,
+  alertConfig,
+  environmentLabel = 'PROD',
+) {
   const resend = new Resend(process.env.RESEND_API_KEY);
   const ordered = [...problems].sort((a, b) => {
     const aSeverity = policyFor(a.key, a.severity).severity;
@@ -703,7 +713,7 @@ async function sendAlert(problems, now, alertConfig) {
   const email = {
     from: alertConfig.from,
     to: alertConfig.to,
-    subject: `[${lead.severity}][PROD][${lead.capability}] ` +
+    subject: `[${lead.severity}][${environmentLabel}][${lead.capability}] ` +
       `${lead.title} — ${lead.action}${additional}`,
     html: `
       <h2>DPC operations alert</h2>
@@ -753,9 +763,10 @@ export default async function handler(req, res) {
   }
 
   const now = Date.now();
+  const runtimeEnvironment = process.env.VERCEL_ENV;
   const alertSuppressed = ['preview', 'development']
-    .includes(process.env.VERCEL_ENV);
-  const productionRun = !alertSuppressed;
+    .includes(runtimeEnvironment);
+  const productionRun = runtimeEnvironment === 'production';
   const alertConfig = readAlertConfiguration();
   const alertConfigIssues = alertSuppressed ? [] : alertConfig.issues;
   // Per-phase durations, logged and returned so the real timeout margin can
@@ -772,6 +783,15 @@ export default async function handler(req, res) {
 
   const gathered = await timed('gather_ms', () => gatherProblems(now));
   const { problems, warnings, states } = gathered;
+  if (productionRun || alertSuppressed) {
+    states.set('env:VERCEL_ENV', { state: 'healthy' });
+  } else {
+    states.set('env:VERCEL_ENV', { state: 'unhealthy' });
+    problems.push({
+      key: 'env:VERCEL_ENV',
+      text: 'VERCEL_ENV missing or unrecognized',
+    });
+  }
   for (const issue of alertConfigIssues) {
     const key = `env:${issue.name}`;
     states.set(key, { state: 'unhealthy' });
@@ -829,7 +849,12 @@ export default async function handler(req, res) {
       try {
         await timed(
           'alert_send_ms',
-          () => sendAlert(alertableProblems, now, alertConfig),
+          () => sendAlert(
+            alertableProblems,
+            now,
+            alertConfig,
+            productionRun ? 'PROD' : 'UNKNOWN',
+          ),
         );
         alerted = true;
         if (supabaseConfigured() && !supabaseDown) {
@@ -921,7 +946,7 @@ export default async function handler(req, res) {
       }
       // The primary evidence store cannot safely deduplicate its own failure.
       // Notify statelessly after the gap attempt rather than hide the outage.
-      if (!alertDeliveryIssues.length) {
+      if (!alerted && !alertDeliveryIssues.length) {
         try {
           await timed(
             'observation_alert_send_ms',

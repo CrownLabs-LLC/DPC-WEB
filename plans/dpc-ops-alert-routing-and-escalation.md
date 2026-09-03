@@ -413,12 +413,18 @@ environment, each stable key with observation state and severity, and integer
 phase timings. Write the row after the bounded notification phase so
 `total_ms` is comparable across healthy, throttled, alerted, and alert-failed
 runs; the database row timestamp captures time through arrival at the insert.
+Calculate conservative 30-second-cap headroom from `total_ms` plus the bounded
+observation-write allowance; the row timestamp delta is the arrival-time
+cross-check.
 One row contains the invocation's observation array; do not insert once per
 key. A failed insert becomes visible as an explicit monitoring observation and
 a coverage gap; it must not be mistaken for a successful sample. Persist any
 coverage-gap bookkeeping under
 `source='health-check-observation-gap'` and `level='info'`, never as a webhook
-error.
+error. If the invocation already sent an incident email, do not send a second
+email for its evidence-write failure. Otherwise notify statelessly; the alert
+may repeat every five minutes while writes remain unavailable because the same
+fault prevents a durable throttle marker.
 
 Constrain the webhook-error probe to `source='stripe-webhook'` in Phase 2A.
 Make the Stripe webhook writer set that source explicitly instead of relying
@@ -446,6 +452,8 @@ This is an interim reminder policy, not the Phase 4 incident lifecycle.
       and alert-failed runs.
 - [ ] A failed observation append is explicitly reported and counted as a
       coverage gap, never as a successful sample.
+- [ ] Evidence failure sends at most one email per invocation, including when
+      the main incident path already sent but could not persist its marker.
 - [ ] The record contains only timestamp, environment, stable key, observation
       state, severity, and integer timings; it contains no arbitrary text.
 - [ ] Observation and coverage-gap rows use their pinned sources and
@@ -457,6 +465,8 @@ This is an interim reminder policy, not the Phase 4 incident lifecycle.
       tests keep it aligned with both readers.
 - [ ] Thirty-day frequency, observed duration, unknown counts, and runtime
       percentiles are derivable from the per-run rows and recorded coverage.
+- [ ] An unknown runtime environment fails noisy but cannot write evidence
+      labeled as Production.
 - [ ] Subjects contain severity, production environment, capability, and
       plain-language verdict.
 - [ ] Mixed-severity alerts lead with the highest severity.

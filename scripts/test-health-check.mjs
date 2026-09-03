@@ -110,6 +110,7 @@ function mockFetch({
   webhookQueryFails = false,
   observationInsertFails = false,
   gapInsertFails = false,
+  rejectAllWebhookInserts = false,
   supabaseDown = false,
   hangEmail = false,
   hangResendDomains = false,
@@ -163,6 +164,9 @@ function mockFetch({
         if (opts?.method === 'POST') {
           const row = JSON.parse(opts.body);
           stats.webhookInserts.push(row);
+          if (rejectAllWebhookInserts) {
+            return new Response('writes unavailable', { status: 503 });
+          }
           if (
             row.source === 'health-check-observation' &&
             observationInsertFails
@@ -784,7 +788,9 @@ for (const [name, expected] of [
 // Case 36: a failed evidence append is visible and uses a distinct info-level
 // coverage-gap source if the second write succeeds.
 {
-  const { out, stats } = await run({ observationInsertFails: true });
+  const { out, sentEmails, stats } = await run({
+    observationInsertFails: true,
+  });
   const gaps = insertsFrom(stats, 'health-check-observation-gap');
   const observation = out.body.observations?.find((item) =>
     item.key === 'monitoring:observation-append');
@@ -798,6 +804,11 @@ for (const [name, expected] of [
     'failed observation append is explicit unknown',
     observation?.state === 'unknown',
     out.body,
+  );
+  check(
+    'healthy run with failed evidence sends one stateless alert',
+    sentEmails.length === 1,
+    sentEmails,
   );
 }
 
@@ -1030,8 +1041,8 @@ for (const [name, expected] of [
     out.body);
 }
 
-// Case 49: Preview and Development suppress Production evidence, while an
-// unknown environment retains the pre-existing fail-noisy behavior.
+// Case 49: Preview and Development suppress Production evidence. An unknown
+// environment fails noisy without contaminating the Production dataset.
 for (const environment of ['preview', 'development']) {
   const { stats } = await run({}, () => {
     process.env.VERCEL_ENV = environment;
@@ -1041,11 +1052,36 @@ for (const environment of ['preview', 'development']) {
     stats);
 }
 {
-  const { stats } = await run({}, () => {
+  const { out, sentEmails, stats } = await run({}, () => {
     delete process.env.VERCEL_ENV;
   });
-  check('unset environment retains fail-noisy production evidence',
-    insertsFrom(stats, 'health-check-observation').length === 1,
+  check('unset environment sends a monitoring alert',
+    out.body.problems.some((problem) => problem.includes('VERCEL_ENV')) &&
+      sentEmails.length === 1 &&
+      sentEmails[0]?.subject?.includes('[UNKNOWN]'),
+    out.body);
+  check('unset environment writes no mislabeled Production evidence',
+    insertsFrom(stats, 'health-check-observation').length === 0,
+    stats);
+}
+
+// Case 50: a write-only Supabase fault cannot emit both the main incident and
+// a second evidence-failure email on the same invocation.
+{
+  const { out, sentEmails, stats } = await run({
+    keyOk: false,
+    rejectAllWebhookInserts: true,
+  });
+  const observation = out.body.observations?.find((item) =>
+    item.key === 'monitoring:observation-append');
+  check('write-only fault leaves evidence state unknown',
+    observation?.state === 'unknown',
+    out.body);
+  check('write-only fault sends at most one email per invocation',
+    out.body.alerted === true && sentEmails.length === 1,
+    sentEmails);
+  check('write-only fault attempts distinct coverage-gap bookkeeping',
+    insertsFrom(stats, 'health-check-observation-gap').length === 1,
     stats);
 }
 
