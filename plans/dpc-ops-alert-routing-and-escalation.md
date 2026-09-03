@@ -410,10 +410,13 @@ or throttling. Pin this evidence row to
 `source='health-check-observation'` and `level='info'`. Use a constant message
 and an allowlisted `detail` payload containing the checked-at timestamp,
 environment, each stable key with observation state and severity, and integer
-phase timings. One row contains the invocation's observation array; do not
-insert once per key. A failed insert becomes visible as an explicit monitoring
-observation and a coverage gap; it must not be mistaken for a successful
-sample. Persist any coverage-gap bookkeeping under
+phase timings. Write the row after the bounded notification phase so
+`total_ms` is comparable across healthy, throttled, alerted, and alert-failed
+runs; the database row timestamp captures time through arrival at the insert.
+One row contains the invocation's observation array; do not insert once per
+key. A failed insert becomes visible as an explicit monitoring observation and
+a coverage gap; it must not be mistaken for a successful sample. Persist any
+coverage-gap bookkeeping under
 `source='health-check-observation-gap'` and `level='info'`, never as a webhook
 error.
 
@@ -531,6 +534,10 @@ for the gate. Derive:
   reminder window;
 - sensitive Stripe event types actually observed as undelivered; and
 - checker/runtime latency percentiles and headroom.
+
+Retain Phase 2A evidence through this gate. Before adding the Phase 4 writers,
+approve a retention or archive policy for observation and coverage-gap rows so
+five-minute evidence does not grow without an explicit lifecycle.
 
 Brandi then confirms the severity registry, consecutive-failure thresholds,
 notification cap, reminder cadence, and whether the remaining phases retain

@@ -730,6 +730,12 @@ async function sendAlert(problems, now, alertConfig) {
   }
 }
 
+function integerTimings(timings) {
+  return Object.fromEntries(
+    Object.entries(timings).map(([key, value]) => [key, Math.round(value)]),
+  );
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
     res.setHeader('Allow', 'GET');
@@ -747,8 +753,9 @@ export default async function handler(req, res) {
   }
 
   const now = Date.now();
-  const productionRun = process.env.VERCEL_ENV === 'production';
-  const alertSuppressed = !productionRun;
+  const alertSuppressed = ['preview', 'development']
+    .includes(process.env.VERCEL_ENV);
+  const productionRun = !alertSuppressed;
   const alertConfig = readAlertConfiguration();
   const alertConfigIssues = alertSuppressed ? [] : alertConfig.issues;
   // Per-phase durations, logged and returned so the real timeout margin can
@@ -777,77 +784,18 @@ export default async function handler(req, res) {
 
   const supabaseDown = problems.some((problem) =>
     problem.key === 'check:Supabase reachable');
-  if (productionRun && supabaseConfigured() && !supabaseDown) {
-    states.set('monitoring:observation-append', { state: 'healthy' });
-    const evidence = {
-      level: 'info',
-      source: 'health-check-observation',
-      message: 'health check observations',
-      detail: {
-        checked_at: new Date(now).toISOString(),
-        environment: 'production',
-        observations: publicObservations(states),
-        timings: { gather_ms: Math.round(timings.gather_ms) },
-      },
-    };
-    try {
-      await timed(
-        'observation_write_ms',
-        () => supabaseInsert(
-          'webhook_logs',
-          evidence,
-          THROTTLE_IO_TIMEOUT_MS,
-        ),
-      );
-    } catch (err) {
-      states.set('monitoring:observation-append', { state: 'unknown' });
-      problems.push({
-        key: 'monitoring:observation-append',
-        state: 'unknown',
-        text: `Health observation append failed: ` +
-          String(err?.message || err),
-      });
-      const gap = {
-        level: 'info',
-        source: 'health-check-observation-gap',
-        message: 'health check observation gap',
-        detail: {
-          checked_at: new Date(now).toISOString(),
-          environment: 'production',
-          observations: publicObservations(states),
-          timings: {
-            gather_ms: Math.round(timings.gather_ms),
-            observation_write_ms:
-              Math.round(timings.observation_write_ms || 0),
-          },
-        },
-      };
-      try {
-        await timed(
-          'observation_gap_write_ms',
-          () => supabaseInsert(
-            'webhook_logs',
-            gap,
-            THROTTLE_IO_TIMEOUT_MS,
-          ),
-        );
-      } catch (gapError) {
-        console.error(
-          'health-check: could not record observation coverage gap',
-          gapError?.message || gapError,
-        );
-      }
-    }
-  } else {
-    states.set('monitoring:observation-append', { state: 'unknown' });
-  }
+  states.set('monitoring:observation-append', {
+    state: productionRun && supabaseConfigured() && !supabaseDown
+      ? 'healthy'
+      : 'unknown',
+  });
   problems.sort((a, b) => (a.key < b.key ? -1 : 1));
   const alertableProblems = problems.filter((problem) =>
     policyFor(problem.key, problem.severity).severity !== 'SEV-2');
-  const fingerprint = alertableProblems.length
+  let fingerprint = alertableProblems.length
     ? fingerprintOf(alertableProblems)
     : null;
-  const severity = alertableProblems.length
+  let severity = alertableProblems.length
     ? highestSeverity(alertableProblems)
     : null;
   let alerted = false;
@@ -907,6 +855,92 @@ export default async function handler(req, res) {
     }
   }
 
+  // Write evidence after the bounded notification path. Its total_ms therefore
+  // covers healthy, throttled, successful-alert, and failed-alert runs on the
+  // same basis. The database row timestamp also captures time to the insert.
+  timings.total_ms = Date.now() - now;
+  if (productionRun && supabaseConfigured() && !supabaseDown) {
+    const evidence = {
+      level: 'info',
+      source: 'health-check-observation',
+      message: 'health check observations',
+      detail: {
+        checked_at: new Date(now).toISOString(),
+        environment: 'production',
+        observations: publicObservations(states),
+        timings: integerTimings(timings),
+      },
+    };
+    try {
+      await timed(
+        'observation_write_ms',
+        () => supabaseInsert(
+          'webhook_logs',
+          evidence,
+          THROTTLE_IO_TIMEOUT_MS,
+        ),
+      );
+    } catch (err) {
+      states.set('monitoring:observation-append', { state: 'unknown' });
+      const observationProblem = {
+        key: 'monitoring:observation-append',
+        state: 'unknown',
+        text: `Health observation append failed: ` +
+          String(err?.message || err),
+      };
+      problems.push(observationProblem);
+      if (!fingerprint) {
+        fingerprint = fingerprintOf([observationProblem]);
+        severity = policyFor(observationProblem.key).severity;
+      }
+      const gap = {
+        level: 'info',
+        source: 'health-check-observation-gap',
+        message: 'health check observation gap',
+        detail: {
+          checked_at: new Date(now).toISOString(),
+          environment: 'production',
+          observations: publicObservations(states),
+          timings: integerTimings(timings),
+        },
+      };
+      try {
+        await timed(
+          'observation_gap_write_ms',
+          () => supabaseInsert(
+            'webhook_logs',
+            gap,
+            THROTTLE_IO_TIMEOUT_MS,
+          ),
+        );
+      } catch (gapError) {
+        console.error(
+          'health-check: could not record observation coverage gap',
+          gapError?.message || gapError,
+        );
+      }
+      // The primary evidence store cannot safely deduplicate its own failure.
+      // Notify statelessly after the gap attempt rather than hide the outage.
+      if (!alertDeliveryIssues.length) {
+        try {
+          await timed(
+            'observation_alert_send_ms',
+            () => sendAlert([observationProblem], now, alertConfig),
+          );
+          alerted = true;
+        } catch (notificationError) {
+          const message = String(
+            notificationError?.message || notificationError,
+          );
+          alertError = alertError
+            ? `${alertError}; ${message}`
+            : message;
+        }
+      }
+    }
+  }
+
+  problems.sort((a, b) => (a.key < b.key ? -1 : 1));
   timings.total_ms = Date.now() - now;
   console.info('health-check: timings', timings);
 

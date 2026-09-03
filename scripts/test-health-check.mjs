@@ -735,6 +735,11 @@ for (const [name, expected] of [
     row,
   );
   check(
+    'observation evidence includes comparable total runtime',
+    Number.isInteger(row?.detail?.timings?.total_ms),
+    row,
+  );
+  check(
     'healthy response exposes explicit observations',
     out.body.observations?.length > 0,
     out.body,
@@ -937,6 +942,14 @@ for (const [name, expected] of [
         'health-check-observation',
       ).length === 1,
     repeated.stats);
+  const evidence = insertsFrom(
+    repeated.stats,
+    'health-check-observation',
+  )[0];
+  check('throttled runtime includes its throttle phase',
+    Number.isInteger(evidence?.detail?.timings?.throttle_read_ms) &&
+      Number.isInteger(evidence?.detail?.timings?.total_ms),
+    evidence);
 }
 
 // Case 44: a notification-provider failure also cannot erase run evidence.
@@ -949,6 +962,14 @@ for (const [name, expected] of [
         'health-check-observation',
       ).length === 1,
     failed.stats);
+  const evidence = insertsFrom(
+    failed.stats,
+    'health-check-observation',
+  )[0];
+  check('alert-failed runtime includes the failed send',
+    evidence?.detail?.timings?.alert_send_ms >= 4000 &&
+      evidence?.detail?.timings?.total_ms >= 4000,
+    evidence);
 }
 
 // Case 45: repeated stalls cross the interim threshold and become SEV-1.
@@ -1009,13 +1030,22 @@ for (const [name, expected] of [
     out.body);
 }
 
-// Case 49: only an explicit Production environment writes durable evidence.
-for (const environment of ['preview', 'development', '']) {
+// Case 49: Preview and Development suppress Production evidence, while an
+// unknown environment retains the pre-existing fail-noisy behavior.
+for (const environment of ['preview', 'development']) {
   const { stats } = await run({}, () => {
     process.env.VERCEL_ENV = environment;
   });
   check(`${environment || 'unset'} writes no production evidence`,
     insertsFrom(stats, 'health-check-observation').length === 0,
+    stats);
+}
+{
+  const { stats } = await run({}, () => {
+    delete process.env.VERCEL_ENV;
+  });
+  check('unset environment retains fail-noisy production evidence',
+    insertsFrom(stats, 'health-check-observation').length === 1,
     stats);
 }
 

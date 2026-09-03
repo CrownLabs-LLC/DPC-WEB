@@ -226,9 +226,10 @@ run emails while a problem persists.
 
 Each authenticated Production run also writes one allowlisted observation row
 to `webhook_logs` when Supabase is reachable. It records every stable key as
-`healthy`, `unhealthy`, or `unknown`, plus integer phase timings. This evidence
-is independent of email and throttling. Preview and Development return results
-but write no Production evidence and send no operations email.
+`healthy`, `unhealthy`, or `unknown`, plus integer phase timings and comparable
+total runtime through the bounded notification phase. This evidence is
+independent of email and throttling. Preview and Development return results but
+write no Production evidence and send no operations email.
 
 Setup (required):
 
@@ -261,13 +262,21 @@ returns `{"ok":true,...}` when everything is green. The response includes an
 `observations` array. Non-paging results return `ok: false` with a `warnings`
 array and an empty `problems` array.
 
-Known limitations: (1) if `RESEND_API_KEY` itself is the thing that breaks,
-the alert email can't send — the failure still shows on the dashboard and in
-the Vercel cron logs; (2) the Stripe probes cover **read** capabilities only —
-the webhook also needs Checkout Session **write** (it stamps `welcome_sent`
-metadata), which has no safe probe. If you ever switch to a restricted key,
-grant Checkout Sessions read *and* write, Subscriptions read, and Events
-read.
+Known limitations:
+
+1. If `RESEND_API_KEY` itself breaks, the alert email cannot send. The failure
+   still shows on the dashboard, in observation evidence when writable, and in
+   Vercel logs.
+2. The Stripe probes cover **read** capabilities only. The webhook also needs
+   Checkout Session **write** to stamp `welcome_sent` metadata, which has no
+   safe probe. A restricted key needs Checkout Sessions read and write,
+   Subscriptions read, and Events read.
+3. SEV-2 conditions have no email path before the Phase 6 digest. In
+   particular, `undelivered-list-failed` is dashboard and evidence only during
+   the observation window.
+4. Five-minute evidence adds roughly 15 MB per month at the current row size.
+   Retain it through the 30-day gate, then approve retention or archival before
+   Phase 4 adds more operational writers.
 
 ### 2e. Checkout release gate — automated and physical devices
 
