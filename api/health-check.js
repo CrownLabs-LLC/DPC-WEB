@@ -7,6 +7,7 @@
 //   - Supabase is unreachable
 //   - Stripe events undelivered for >30 min (webhook failing/misconfigured)
 //   - webhook errors logged in the last 75 min
+//   - the latest production observation is at least 15 minutes old
 //
 // Alerting is throttled per incident: the normalized problem set is hashed
 // into a fingerprint. SEV-0 repeats after 30 minutes; SEV-1 retains the
@@ -35,6 +36,7 @@ const RECENT_ERROR_WINDOW_MIN = 75;
 const THROTTLE_HOURS = 6;
 const SEV0_REMINDER_MIN = 30;
 const CHECKOUT_SIGNAL_WINDOW_MIN = 10;
+const OBSERVATION_STALE_MIN = 15;
 const CANARY_TIMEOUT_MS = 3000;
 const JOIN_URL = 'https://www.downtownpourcollective.com/join';
 // Probed with ?fresh=1 so the check exercises the live RPC rather than a CDN
@@ -228,6 +230,11 @@ const POLICY = Object.freeze({
     title: 'Health evidence could not be recorded',
     action: 'Check the observation store',
   },
+  'monitoring:observation-stale': {
+    severity: 'SEV-1', capability: 'MONITORING',
+    title: 'Health evidence is stale',
+    action: 'Check health-check observation writes',
+  },
 });
 const DEFAULT_POLICY = Object.freeze({
   severity: 'SEV-1',
@@ -333,7 +340,10 @@ function publicObservations(states) {
 
 // Diagnostic text remains available in the authenticated JSON response. It is
 // deliberately excluded from notifications and durable observation evidence.
-async function gatherProblems(now) {
+async function gatherProblems(
+  now,
+  { checkObservationFreshness = false } = {},
+) {
   const problems = [];
   const warnings = [];
   const states = new Map();
@@ -574,6 +584,47 @@ async function gatherProblems(now) {
   }
 
   if (supabaseConfigured()) {
+    if (checkObservationFreshness) {
+      jobs.push(
+        supabaseSelect(
+          'webhook_logs?select=ts' +
+            '&source=eq.health-check-observation' +
+            '&order=ts.desc&limit=1',
+        )
+          .then((rows) => {
+            const latestAt = Date.parse(rows[0]?.ts || '');
+            if (!rows.length || !Number.isFinite(latestAt)) {
+              add(
+                warnings,
+                'monitoring:observation-stale',
+                'Observation freshness is unknown: no prior evidence row',
+                { state: 'unknown', severity: 'SEV-2' },
+              );
+              return;
+            }
+            const ageMs = now - latestAt;
+            if (ageMs >= OBSERVATION_STALE_MIN * 60000) {
+              add(
+                problems,
+                'monitoring:observation-stale',
+                `Latest health observation is ${Math.floor(ageMs / 60000)} ` +
+                  'minutes old',
+              );
+            } else {
+              observe('monitoring:observation-stale', 'healthy');
+            }
+          })
+          .catch((err) => {
+            add(
+              warnings,
+              'monitoring:observation-stale',
+              'Observation freshness is unknown: ' +
+                String(err?.message || err),
+              { state: 'unknown', severity: 'SEV-2' },
+            );
+          }),
+      );
+    }
     const sinceIso = new Date(now - RECENT_ERROR_WINDOW_MIN * 60000).toISOString();
     jobs.push(
       // Reviewed source allowlist: any new webhook_logs error writer must be
@@ -683,7 +734,7 @@ async function sendAlert(
   problems,
   now,
   alertConfig,
-  environmentLabel = 'PROD',
+  environmentLabel,
 ) {
   const resend = new Resend(process.env.RESEND_API_KEY);
   const ordered = [...problems].sort((a, b) => {
@@ -781,7 +832,12 @@ export default async function handler(req, res) {
     }
   };
 
-  const gathered = await timed('gather_ms', () => gatherProblems(now));
+  const gathered = await timed(
+    'gather_ms',
+    () => gatherProblems(now, {
+      checkObservationFreshness: productionRun,
+    }),
+  );
   const { problems, warnings, states } = gathered;
   if (productionRun || alertSuppressed) {
     states.set('env:VERCEL_ENV', { state: 'healthy' });
@@ -950,7 +1006,12 @@ export default async function handler(req, res) {
         try {
           await timed(
             'observation_alert_send_ms',
-            () => sendAlert([observationProblem], now, alertConfig),
+            () => sendAlert(
+              [observationProblem],
+              now,
+              alertConfig,
+              'PROD',
+            ),
           );
           alerted = true;
         } catch (notificationError) {

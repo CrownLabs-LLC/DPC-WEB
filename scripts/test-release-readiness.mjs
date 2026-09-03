@@ -553,6 +553,14 @@ assert.match(
   healthCheckSource,
   /source=eq\.stripe-webhook/,
 );
+assert.doesNotMatch(
+  healthCheckSource,
+  /environmentLabel\s*=\s*['"]PROD['"]/,
+);
+assert.match(
+  healthCheckSource,
+  /source=eq\.health-check-observation/,
+);
 assert.match(
   dashboardApi,
   /source=eq\.stripe-webhook/,

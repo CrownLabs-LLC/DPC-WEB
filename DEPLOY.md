@@ -231,6 +231,15 @@ total runtime through the bounded notification phase. This evidence is
 independent of email and throttling. Preview and Development return results but
 write no Production evidence and send no operations email.
 
+Before writing the current row, a Production run reads the newest prior
+`health-check-observation` row. A prior row less than 15 minutes old is
+healthy. A row at least 15 minutes old is a SEV-1 coverage problem, which
+surfaces failed or missing observation writes even when another incident has
+already used the invocation's one-email budget. No prior row, or a failed
+freshness query, is SEV-2 `unknown`; a successful current invocation establishes
+the baseline without sending a false stale alert. Preview, Development, and an
+unknown runtime environment never query Production observation freshness.
+
 If reads work but observation inserts fail, an otherwise healthy invocation
 sends one stateless evidence-failure email. A run that already sent its main
 incident email does not send a second email for the evidence failure. Because
@@ -266,7 +275,9 @@ Setup (required):
 To test it: `curl -H "Authorization: Bearer $CRON_SECRET" https://www.downtownpourcollective.com/api/health-check`
 returns `{"ok":true,...}` when everything is green. The response includes an
 `observations` array. Non-paging results return `ok: false` with a `warnings`
-array and an empty `problems` array.
+array and an empty `problems` array. On the first Production invocation with no
+prior evidence, expect `monitoring:observation-stale` to be `unknown`; repeat
+after five minutes and require that key to be `healthy`.
 
 Known limitations:
 
