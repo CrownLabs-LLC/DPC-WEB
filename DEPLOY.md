@@ -188,14 +188,24 @@ de-identified analytics".
 
 A Vercel Pro cron (see `vercel.json` → `crons`) hits `/api/health-check` every
 five minutes. It runs a non-transactional checkout canary, checks recent
-browser handoff signals, runs the same live checks as the dashboard, and **emails
-an alert** to `nick@` + `hello@` (override with `ALERT_TO` / `ALERT_FROM`)
-when anything is wrong: a missing env var, a Stripe key that fails a
-capability the app needs (reading Checkout Sessions, Subscriptions, or
-Events), a test-mode key, a rejected Resend key, Supabase unreachable, Stripe
-events undelivered for over 30 minutes, or webhook errors logged in the last
-75 minutes. Every probe has a bounded timeout so the checker survives the
-outages it exists to detect.
+browser handoff signals, runs the same live checks as the dashboard, and
+emails an alert directly to the approved Crown Labs operational recipient when
+anything is wrong: a missing env var, a Stripe key that fails a capability the
+app needs (reading Checkout Sessions, Subscriptions, or Events), a test-mode
+key, a rejected Resend key, Supabase unreachable, Stripe events undelivered
+for over 30 minutes, or webhook errors logged in the last 75 minutes. Every
+probe has a bounded timeout so the checker survives the outages it exists to
+detect.
+
+The operational route is intentionally separate from partner-intake and
+founding-deposit email. `ALERT_TO` is required in Production and has no
+fallback; a missing or prohibited recipient makes the health check unhealthy
+and blocks delivery. `ALERT_FROM` and `ALERT_REPLY_TO` are optional overrides.
+A missing or prohibited sender is reported as unhealthy while delivery uses
+the verified `support@downtownpourcollective.com` sender. A missing or
+prohibited reply-to is reported as unhealthy and omitted. The health check
+never inherits a business-notification recipient or sender. Exact, plus, and
+dotted aliases of prohibited DPC mailboxes are rejected.
 
 Resend paging distinguishes credential failures from provider noise. Missing,
 invalid, and restricted API keys remain paging problems. A timeout, provider
@@ -215,15 +225,31 @@ Supabase vars; without them every five-minute run emails while a problem persist
 Preview and development invocations still return detected problems but suppress
 alert email, so an unreleased bundle cannot page production operators.
 
-Setup (required — the endpoint refuses to run without it):
+Setup (required):
 
 1. **Vercel** → Environment Variables (Production): add `CRON_SECRET` — any
    long random string (`openssl rand -hex 24`). Vercel automatically sends it
    as a Bearer token on cron invocations; the endpoint **fails closed** with
    503 when the secret is missing and 401 for any caller without it (the
    dashboard token also works, for manual runs).
-2. Redeploy. Vercel → Project → Settings → Cron Jobs should list the five-minute
-   job after the deploy. Five-minute schedules require the Pro plan.
+2. Add these Production-only operational email settings before merging:
+   - `ALERT_TO=brandi@crownlabsllc.com`
+   - `ALERT_FROM=Downtown Pour Collective Operations
+     <support@downtownpourcollective.com>`
+   - `ALERT_REPLY_TO=brandi@crownlabsllc.com`
+3. Confirm the `downtownpourcollective.com` domain is verified in Resend so the
+   operations sender is authorized. Do not add these settings to Preview or
+   Development; those environments suppress operational alert delivery.
+4. Redeploy. Reading values in the Vercel UI does not prove the running
+   function sees them. After the deploy, invoke `/api/health-check` with its
+   bearer token and confirm the authenticated response has no `ALERT_*`
+   configuration problems. In Vercel, Project → Settings → Cron Jobs should
+   list the five-minute job. Five-minute schedules require the Pro plan.
+5. Run a controlled delivery test and inspect the Resend delivery record.
+   Confirm the message reaches only the approved Crown Labs recipient, uses the
+   operations sender and explicit reply-to above, and does not reach any
+   business-notification recipient. Record recipient roles and delivery result,
+   but no credentials or private phone number.
 
 To test it: `curl -H "Authorization: Bearer $CRON_SECRET" https://www.downtownpourcollective.com/api/health-check`
 returns `{"ok":true,...}` when everything is green. Non-paging provider

@@ -7,6 +7,10 @@
 import https from 'node:https';
 import { PassThrough } from 'node:stream';
 
+const OPS_TO = 'ops-owner@example.com';
+const OPS_FROM = 'DPC Operations <ops-sender@example.com>';
+const OPS_REPLY_TO = 'ops-reply@example.com';
+
 function mockRes() {
   const out = { status: null, body: null };
   const res = {
@@ -38,8 +42,19 @@ function setHealthyEnv() {
   process.env.SUPABASE_ANON_KEY = 'anon_dummy';
   process.env.SUPABASE_SERVICE_ROLE_KEY = 'service_dummy';
   process.env.CRON_SECRET = 'cron-secret';
+  process.env.ALERT_TO = OPS_TO;
+  process.env.ALERT_FROM = OPS_FROM;
+  process.env.ALERT_REPLY_TO = OPS_REPLY_TO;
+  process.env.VERCEL_ENV = 'production';
   delete process.env.DASHBOARD_TOKEN;
-  delete process.env.VERCEL_ENV;
+  delete process.env.NOTIFY_DEPOSIT_TO;
+  delete process.env.NOTIFY_DEPOSIT_FROM;
+  delete process.env.NOTIFY_TO;
+  delete process.env.NOTIFY_FROM;
+  delete process.env.AUTOACK_FROM;
+  delete process.env.AUTOACK_REPLY_TO;
+  delete process.env.WELCOME_FROM;
+  delete process.env.WELCOME_REPLY_TO;
 }
 
 // Stripe https mock: healthy or auth-rejected list endpoints, empty/stale events.
@@ -141,7 +156,12 @@ function mockFetch({ priorAlertFingerprint = null, recentWebhookErrors = false, 
   };
 }
 
-async function run(mockOpts = {}, envTweaks = null, reqHeaders = { authorization: 'Bearer cron-secret' }) {
+async function run(
+  mockOpts = {},
+  envTweaks = null,
+  reqHeaders = { authorization: 'Bearer cron-secret' },
+  postImportEnvTweaks = null,
+) {
   setHealthyEnv();
   if (envTweaks) envTweaks();
   const sentEmails = [];
@@ -151,6 +171,7 @@ async function run(mockOpts = {}, envTweaks = null, reqHeaders = { authorization
   globalThis.fetch = mockFetch(mockOpts, sentEmails, stats);
   https.request = mockStripeHttps(mockOpts);
   const handler = await fresh();
+  if (postImportEnvTweaks) postImportEnvTweaks();
   const { res, out } = mockRes();
   // withTimeout/AbortSignal timers are unref'ed; socketless mocks would let
   // the event loop drain before they fire, so hold the loop open.
@@ -227,12 +248,24 @@ async function run(mockOpts = {}, envTweaks = null, reqHeaders = { authorization
 // Case 10: broken Stripe key -> capability problems + alert email sent
 let brokenKeyFingerprint = null;
 {
-  const { out, sentEmails } = await run({ keyOk: false });
+  const { out, sentEmails } = await run({ keyOk: false }, () => {
+    process.env.NOTIFY_DEPOSIT_TO = 'nick@downtownpourcollective.com,hello@downtownpourcollective.com';
+    process.env.NOTIFY_DEPOSIT_FROM = 'Downtown Pour Collective <hello@downtownpourcollective.com>';
+    process.env.NOTIFY_TO = 'nick@downtownpourcollective.com,partners@downtownpourcollective.com';
+    process.env.NOTIFY_FROM = 'DPC Partners <partners@downtownpourcollective.com>';
+    process.env.AUTOACK_FROM = 'Downtown Pour Collective <partners@downtownpourcollective.com>';
+    process.env.AUTOACK_REPLY_TO = 'nick@downtownpourcollective.com';
+    process.env.WELCOME_FROM = 'Downtown Pour Collective <hello@downtownpourcollective.com>';
+    process.env.WELCOME_REPLY_TO = 'hello@downtownpourcollective.com';
+  });
   brokenKeyFingerprint = out.body.fingerprint;
   check('broken key -> ok:false', out.body.ok === false, out.body);
   check('capability probe named', out.body.problems.some((p) => p.includes('Stripe key can read')), out.body.problems);
   check('alert email sent', out.body.alerted === true && sentEmails.length === 1, out.body);
   check('alert email lists the problem', JSON.stringify(sentEmails[0]).includes('Invalid API Key'), sentEmails[0]);
+  check('alert email uses only the ops recipient', JSON.stringify(sentEmails[0]?.to) === JSON.stringify([OPS_TO]), sentEmails[0]);
+  check('alert email uses the ops sender', sentEmails[0]?.from === OPS_FROM, sentEmails[0]);
+  check('alert email uses the ops reply-to', sentEmails[0]?.reply_to === OPS_REPLY_TO, sentEmails[0]);
   check('fingerprint returned', typeof brokenKeyFingerprint === 'string' && brokenKeyFingerprint.length > 0, out.body);
 }
 
@@ -334,6 +367,241 @@ let brokenKeyFingerprint = null;
   check('legal-versions probed exactly once', stats.legalVersionsUrls.length === 1, stats.legalVersionsUrls);
   check('legal-versions probe uses ?fresh=1', stats.legalVersionsUrls.every((u) => u.includes('fresh=1')), stats.legalVersionsUrls);
   check('healthy legal-versions raises nothing', !out.body.problems.some((p) => p.includes('legal-versions')), out.body.problems);
+}
+
+// Case 24: business-notification variables cannot activate the operational
+// route when its own required settings are absent.
+{
+  const { out, sentEmails } = await run({}, () => {
+    delete process.env.ALERT_TO;
+    delete process.env.ALERT_FROM;
+    delete process.env.ALERT_REPLY_TO;
+    process.env.NOTIFY_DEPOSIT_TO = 'nick@downtownpourcollective.com,hello@downtownpourcollective.com';
+    process.env.NOTIFY_DEPOSIT_FROM = 'Downtown Pour Collective <hello@downtownpourcollective.com>';
+    process.env.NOTIFY_TO = 'nick@downtownpourcollective.com,partners@downtownpourcollective.com';
+    process.env.NOTIFY_FROM = 'DPC Partners <partners@downtownpourcollective.com>';
+    process.env.AUTOACK_FROM = 'Downtown Pour Collective <partners@downtownpourcollective.com>';
+    process.env.AUTOACK_REPLY_TO = 'nick@downtownpourcollective.com';
+    process.env.WELCOME_FROM = 'Downtown Pour Collective <hello@downtownpourcollective.com>';
+    process.env.WELCOME_REPLY_TO = 'hello@downtownpourcollective.com';
+  });
+  check('business-only config sends no ops email', sentEmails.length === 0, sentEmails);
+  check('missing ops config makes the health check unhealthy', out.body.ok === false, out.body);
+  check(
+    'missing ops config is present in health problems',
+    ['ALERT_TO', 'ALERT_FROM', 'ALERT_REPLY_TO'].every((name) =>
+      out.body.problems.some((problem) => problem.includes(name))),
+    out.body,
+  );
+  check(
+    'business-only config reports the blocking ops recipient',
+    String(out.body.alert_error).includes('ALERT_TO') &&
+      !String(out.body.alert_error).includes('ALERT_FROM') &&
+      !String(out.body.alert_error).includes('ALERT_REPLY_TO'),
+    out.body,
+  );
+}
+
+// Case 25: missing optional reply-to remains visible but cannot silence the
+// operational route.
+{
+  const { out, sentEmails } = await run({}, () => {
+    delete process.env.ALERT_REPLY_TO;
+  });
+  check(
+    'missing reply-to still sends an ops email',
+    out.body.alerted === true && sentEmails.length === 1,
+    out.body,
+  );
+  check(
+    'missing reply-to makes the health check unhealthy',
+    out.body.ok === false,
+    out.body,
+  );
+  check(
+    'missing reply-to is present in health problems',
+    out.body.problems.some((problem) => problem.includes('ALERT_REPLY_TO')),
+    out.body,
+  );
+  check(
+    'missing reply-to does not set alert_error',
+    !out.body.alert_error,
+    out.body,
+  );
+  check(
+    'missing reply-to is omitted from Resend',
+    sentEmails.length === 1 && !Object.hasOwn(sentEmails[0], 'reply_to'),
+    sentEmails[0],
+  );
+}
+
+// Case 26: a future Vercel edit cannot restore Nick or hello@ to any
+// operational delivery identity.
+for (const [label, name, value] of [
+  ['ALERT_TO', 'ALERT_TO', 'hello@downtownpourcollective.com'],
+  ['ALERT_TO plus alias', 'ALERT_TO', 'hello+ops@downtownpourcollective.com'],
+  ['ALERT_TO dotted alias', 'ALERT_TO', 'h.e.l.l.o@downtownpourcollective.com'],
+]) {
+  const { out, sentEmails } = await run({}, () => {
+    process.env[name] = value;
+  });
+  check(
+    `${label} rejects a prohibited ops identity`,
+    sentEmails.length === 0,
+    sentEmails,
+  );
+  check(
+    `${label} makes the health check unhealthy`,
+    out.body.ok === false,
+    out.body,
+  );
+  check(
+    `${label} is present in health problems`,
+    out.body.problems.some((problem) => problem.includes(name)),
+    out.body,
+  );
+  check(
+    `${label} reports its prohibited ops identity`,
+    String(out.body.alert_error).includes(name),
+    out.body,
+  );
+}
+
+// Case 27: missing sender configuration remains visible but falls back to a
+// safe operations-only identity instead of silencing the alert.
+{
+  const { out, sentEmails } = await run({}, () => {
+    delete process.env.ALERT_FROM;
+  });
+  check(
+    'missing sender still sends an ops email',
+    out.body.alerted === true && sentEmails.length === 1,
+    out.body,
+  );
+  check(
+    'missing sender makes the health check unhealthy',
+    out.body.ok === false,
+    out.body,
+  );
+  check(
+    'missing sender is present in health problems',
+    out.body.problems.some((problem) => problem.includes('ALERT_FROM')),
+    out.body,
+  );
+  check(
+    'missing sender does not set alert_error',
+    !out.body.alert_error,
+    out.body,
+  );
+  check(
+    'missing sender uses the safe operations fallback',
+    sentEmails[0]?.from ===
+      'Downtown Pour Collective Operations <support@downtownpourcollective.com>',
+    sentEmails[0],
+  );
+}
+
+// Case 28: prohibited optional identities are reported, sanitized, and never
+// allowed to block the required recipient route.
+for (const [name, value] of [
+  ['ALERT_FROM', 'DPC Operations <nick@downtownpourcollective.com>'],
+  ['ALERT_REPLY_TO', 'hello@downtownpourcollective.com'],
+]) {
+  const { out, sentEmails } = await run({}, () => {
+    process.env[name] = value;
+  });
+  check(
+    `${name} remains visible as unhealthy`,
+    out.body.ok === false,
+    out.body,
+  );
+  check(
+    `${name} still sends an ops email`,
+    out.body.alerted === true && sentEmails.length === 1,
+    out.body,
+  );
+  check(`${name} does not set alert_error`, !out.body.alert_error, out.body);
+  check(
+    `${name} is absent from the outbound message`,
+    !JSON.stringify(sentEmails[0]).includes(value),
+    sentEmails[0],
+  );
+}
+
+// Case 29: configuration is read for each invocation so an authenticated
+// post-deploy check proves which recipient the running function sees.
+{
+  const rotatedRecipient = 'rotated-ops@example.com';
+  const { out, sentEmails } = await run(
+    { keyOk: false },
+    null,
+    { authorization: 'Bearer cron-secret' },
+    () => { process.env.ALERT_TO = rotatedRecipient; },
+  );
+  check(
+    'runtime recipient change still sends',
+    out.body.alerted === true,
+    out.body,
+  );
+  check(
+    'runtime recipient change reaches the current value',
+    sentEmails[0]?.to?.length === 1 && sentEmails[0].to[0] === rotatedRecipient,
+    sentEmails[0],
+  );
+}
+
+// Case 30: malformed identities cannot reach Resend and turn a configuration
+// defect into a silent provider rejection.
+for (const [name, expected] of [
+  ['ALERT_TO', 'blocked'],
+  ['ALERT_FROM', 'fallback'],
+  ['ALERT_REPLY_TO', 'omitted'],
+]) {
+  const { out, sentEmails } = await run({}, () => {
+    process.env[name] = 'not-an-email';
+  });
+  check(
+    `${name} malformed value is reported`,
+    out.body.problems.some((problem) => problem.includes(`${name} is invalid`)),
+    out.body,
+  );
+  if (expected === 'blocked') {
+    check(
+      `${name} malformed value blocks delivery`,
+      sentEmails.length === 0,
+      out.body,
+    );
+  } else {
+    check(
+      `${name} malformed value preserves delivery`,
+      sentEmails.length === 1,
+      out.body,
+    );
+    check(
+      `${name} malformed value is absent from the message`,
+      sentEmails[0] && !JSON.stringify(sentEmails[0]).includes('not-an-email'),
+      sentEmails[0],
+    );
+  }
+}
+
+// Case 31: a terminal dot on the DPC domain cannot evade the prohibited
+// mailbox check.
+{
+  const { out, sentEmails } = await run({}, () => {
+    process.env.ALERT_TO = 'hello@downtownpourcollective.com.';
+  });
+  check(
+    'terminal-dot alias blocks delivery',
+    sentEmails.length === 0,
+    out.body,
+  );
+  check(
+    'terminal-dot alias is reported as prohibited',
+    out.body.problems.some((problem) =>
+      problem.includes('ALERT_TO contains a prohibited operational identity')),
+    out.body,
+  );
 }
 
 process.exit(failures ? 1 : 0);

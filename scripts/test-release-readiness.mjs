@@ -29,6 +29,11 @@ const [success, cancelled, depositorConfirmation] = await Promise.all([
   read('subscription-cancelled.html'),
   read('depositor-confirmation.html'),
 ]);
+const [healthCheckSource, envExample, readme] = await Promise.all([
+  read('api/health-check.js'),
+  read('.env.example'),
+  read('README.md'),
+]);
 
 // The launch weekend hosted Pour promotion is retired. Guard the whole concept —
 // markup, styles, and every phrasing it shipped with — not just its headline.
@@ -512,6 +517,33 @@ for (const sql of [setupSql, checkoutMigrationSql]) {
 const vercel = JSON.parse(await read('vercel.json'));
 assert.ok(vercel.crons.some((cron) => cron.path === '/api/health-check' && cron.schedule === '*/5 * * * *'));
 assert.ok(vercel.functions['api/health-check.js'].maxDuration >= 30);
+
+// Operational alerting has its own fail-closed configuration. Founding-deposit
+// and partner-intake variables remain legitimate elsewhere, but must never be
+// read by the health-check route.
+assert.doesNotMatch(
+  healthCheckSource,
+  /\b(?:NOTIFY_DEPOSIT_(?:TO|FROM)|NOTIFY_(?:TO|FROM)|AUTOACK_(?:FROM|REPLY_TO)|WELCOME_(?:FROM|REPLY_TO))\b/,
+);
+for (const name of ['ALERT_TO', 'ALERT_FROM', 'ALERT_REPLY_TO']) {
+  assert.match(healthCheckSource, new RegExp(`env\\.${name}\\b`));
+  assert.match(envExample, new RegExp(`^${name}=\\S`, 'm'));
+  assert.ok(readme.includes(`\`${name}\``));
+}
+assert.match(
+  healthCheckSource,
+  /Downtown Pour Collective Operations <support@downtownpourcollective\.com>/,
+);
+const opsEnvExample = envExample.match(/^ALERT_(?:TO|FROM|REPLY_TO)=.*$/gm)?.join('\n') || '';
+assert.doesNotMatch(opsEnvExample, /(?:nick|hello)@downtownpourcollective\.com/i);
+const healthAlertDocs = deploy.match(
+  /### 2d\. Five-minute checkout and provider health alert[\s\S]*?(?=### 2e\.)/,
+)?.[0] || '';
+assert.match(healthAlertDocs, /ALERT_TO=brandi@crownlabsllc\.com/);
+assert.match(healthAlertDocs, /ALERT_FROM=/);
+assert.match(healthAlertDocs, /ALERT_REPLY_TO=/);
+assert.doesNotMatch(healthAlertDocs, /NOTIFY_DEPOSIT_(?:TO|FROM)|(?:nick|hello)@/i);
+assert.match(healthAlertDocs, /After the deploy[\s\S]*authenticated response/);
 assert.match(deploy, /column_name in \('error_code', 'http_status', 'flow_id'\)/);
 assert.match(deploy, /join_checkout_ready/);
 assert.match(deploy, /join_checkout_departed/);
