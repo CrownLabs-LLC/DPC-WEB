@@ -526,7 +526,12 @@ async function alertsSection(stripe) {
   const [undelivered, webhookErrors] = await Promise.all([
     listUndeliveredEvents(stripe),
     supabaseConfigured()
-      ? supabaseSelect('webhook_logs?select=ts,level,message,event_id,session_id&level=eq.error&order=ts.desc&limit=25')
+      // Keep this reviewed source allowlist aligned with health-check.js.
+      ? supabaseSelect(
+        'webhook_logs?select=ts,level,message,event_id,session_id' +
+          '&level=eq.error&source=eq.stripe-webhook' +
+          '&order=ts.desc&limit=25',
+      )
       : Promise.resolve(null),
   ]);
   return { undelivered_events: undelivered, webhook_errors: webhookErrors };

@@ -29,8 +29,10 @@ const [success, cancelled, depositorConfirmation] = await Promise.all([
   read('subscription-cancelled.html'),
   read('depositor-confirmation.html'),
 ]);
-const [healthCheckSource, envExample, readme] = await Promise.all([
+const [healthCheckSource, stripeWebhookSource, envExample, readme] =
+  await Promise.all([
   read('api/health-check.js'),
+  read('api/stripe-webhook.js'),
   read('.env.example'),
   read('README.md'),
 ]);
@@ -533,6 +535,27 @@ for (const name of ['ALERT_TO', 'ALERT_FROM', 'ALERT_REPLY_TO']) {
 assert.match(
   healthCheckSource,
   /Downtown Pour Collective Operations <support@downtownpourcollective\.com>/,
+);
+for (const address of [
+  'hello@downtownpourcollective.com',
+  'nick@downtownpourcollective.com',
+]) {
+  assert.ok(
+    healthCheckSource.includes(`'${address}'`),
+    `${address} must remain explicitly prohibited for operations alerts`,
+  );
+}
+assert.match(
+  stripeWebhookSource,
+  /source:\s*['"]stripe-webhook['"]/,
+);
+assert.match(
+  healthCheckSource,
+  /source=eq\.stripe-webhook/,
+);
+assert.match(
+  dashboardApi,
+  /source=eq\.stripe-webhook/,
 );
 const opsEnvExample = envExample.match(/^ALERT_(?:TO|FROM|REPLY_TO)=.*$/gm)?.join('\n') || '';
 assert.doesNotMatch(opsEnvExample, /(?:nick|hello)@downtownpourcollective\.com/i);

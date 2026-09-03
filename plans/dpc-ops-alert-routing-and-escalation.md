@@ -418,6 +418,11 @@ sample. Persist any coverage-gap bookkeeping under
 error.
 
 Constrain the webhook-error probe to `source='stripe-webhook'` in Phase 2A.
+Make the Stripe webhook writer set that source explicitly instead of relying
+on the database default, and keep the dashboard query on the same boundary.
+Treat this as a reviewed allowlist: adding another `webhook_logs` error writer
+requires updating the writer, health probe, dashboard query, and contract test
+together.
 Phase 4 replaces its capped query with an exact count while retaining that
 source boundary. Health-check evidence and coverage bookkeeping must never
 feed the production-webhook error signal.
@@ -445,6 +450,8 @@ This is an interim reminder policy, not the Phase 4 incident lifecycle.
       `source='stripe-webhook'`.
 - [ ] A regression test proves observation and coverage-gap rows cannot be
       counted by the webhook-error probe.
+- [ ] The Stripe webhook writer sets `source='stripe-webhook'` explicitly, and
+      tests keep it aligned with both readers.
 - [ ] Thirty-day frequency, observed duration, unknown counts, and runtime
       percentiles are derivable from the per-run rows and recorded coverage.
 - [ ] Subjects contain severity, production environment, capability, and

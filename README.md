@@ -38,13 +38,10 @@ See [`.env.example`](.env.example). Required:
 - `RESEND_FOUNDING_AUDIENCE_ID` (deposit welcome email)
 - `STRIPE_SECRET_KEY` + `STRIPE_WEBHOOK_SECRET` (deposit webhook)
 - `CRON_SECRET` (scheduled health-check authentication)
-- `ALERT_TO` (required Production operations-alert recipient)
+- `ALERT_TO`, `ALERT_FROM`, and `ALERT_REPLY_TO` (required for a green
+  Production operations check)
 
 Optional (have sensible defaults):
-- `ALERT_FROM` — Production operations sender override; invalid or missing
-  values use the verified `support@downtownpourcollective.com` sender
-- `ALERT_REPLY_TO` — Production operations reply-to; omitted when invalid or
-  missing
 - `NOTIFY_TO` — comma-separated recipients
 - `NOTIFY_FROM` — verified Resend sender
 
