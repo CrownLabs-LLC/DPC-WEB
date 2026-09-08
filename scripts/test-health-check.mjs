@@ -113,6 +113,7 @@ function mockFetch({
   recentWebhookErrors = false,
   webhookQueryFails = false,
   observationInsertFails = false,
+  observationInsertDelayMs = 0,
   gapInsertFails = false,
   rejectAllWebhookInserts = false,
   latestObservationMinutesAgo = 5,
@@ -198,6 +199,12 @@ function mockFetch({
           }
           if (
             row.source === 'health-check-observation' &&
+            observationInsertDelayMs
+          ) {
+            await abortableDelay(observationInsertDelayMs, opts?.signal);
+          }
+          if (
+            row.source === 'health-check-observation' &&
             observationInsertFails
           ) {
             return new Response('insert failed', { status: 503 });
@@ -207,7 +214,9 @@ function mockFetch({
           }
           return new Response(null, { status: 201 });
         }
-        if (u.includes('source=eq.health-check-observation&')) {
+        if (u.includes(
+          'source=in.(health-check-observation,health-check-observation-gap)',
+        )) {
           stats.observationFreshnessQueries.push(u);
           if (observationFreshnessQueryFails) {
             return new Response('freshness query failed', { status: 503 });
@@ -311,6 +320,27 @@ async function run(
   }
   const elapsed = Date.now() - startedAt;
   return { out, sentEmails, stats, elapsed };
+}
+
+// Mock writes must observe opts.signal, or a budget change would be untestable:
+// supabaseInsert bounds itself with AbortSignal.timeout, and a mock that
+// ignored it would resolve however long the budget was.
+function abortableDelay(ms, signal) {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(signal.reason || new Error('aborted'));
+      return;
+    }
+    const onAbort = () => {
+      clearTimeout(timer);
+      reject(signal.reason || new Error('aborted'));
+    };
+    const timer = setTimeout(() => {
+      signal?.removeEventListener('abort', onAbort);
+      resolve();
+    }, ms);
+    signal?.addEventListener('abort', onAbort, { once: true });
+  });
 }
 
 function insertsFrom(stats, source) {
@@ -1224,9 +1254,14 @@ for (const environment of ['preview', 'development']) {
     sentEmails);
   check('freshness probe is source scoped',
     stats.observationFreshnessQueries.length === 1 &&
-      stats.observationFreshnessQueries[0]
-        .includes('source=eq.health-check-observation') &&
+      stats.observationFreshnessQueries[0].includes(
+        'source=in.(health-check-observation,health-check-observation-gap)',
+      ) &&
       stats.observationFreshnessQueries[0].includes('level=eq.info'),
+    stats.observationFreshnessQueries);
+  check('freshness probe counts coverage gaps as evidence',
+    stats.observationFreshnessQueries[0]
+      .includes('health-check-observation-gap'),
     stats.observationFreshnessQueries);
 }
 
@@ -1369,6 +1404,29 @@ for (const [label, value] of [
   check(`${label} Sentry Cron URL sends no check-in`,
     stats.sentryCheckIns.length === 0,
     stats.sentryCheckIns);
+}
+
+// Case 59: the evidence append has its own budget, wider than the 2s throttle
+// bound it used to borrow. A tail-latency write that still commits must not be
+// reported as a coverage gap or emailed as a SEV-1.
+{
+  const { out, sentEmails, stats } = await run({
+    observationInsertDelayMs: 2200,
+  });
+  check('slow evidence append still records one observation row',
+    insertsFrom(stats, 'health-check-observation').length === 1 &&
+      insertsFrom(stats, 'health-check-observation-gap').length === 0,
+    stats.webhookInserts);
+  check('slow evidence append stays healthy',
+    out.body.observations?.find((item) =>
+      item.key === 'monitoring:observation-append')?.state === 'healthy',
+    out.body);
+  check('slow evidence append sends no alert',
+    sentEmails.length === 0,
+    sentEmails);
+  check('slow evidence append is timed above the old 2s bound',
+    out.body.timings?.observation_write_ms >= 2000,
+    out.body.timings);
 }
 
 process.exit(failures ? 1 : 0);

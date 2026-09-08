@@ -232,8 +232,10 @@ independent of email and throttling. Preview and Development return results but
 write no Production evidence and send no operations email.
 
 Before writing the current row, a Production run reads the newest prior
-`health-check-observation` row at `level='info'`, matching the existing
-`(level, ts DESC)` index. A prior row less than 15 minutes old is healthy. A row
+`health-check-observation` or `health-check-observation-gap` row at
+`level='info'`, matching the existing `(level, ts DESC)` index. A gap row
+carries the same observations under a fallback source, so it counts as evidence
+and must not be read as missing coverage. A prior row less than 15 minutes old is healthy. A row
 at least 15 minutes old is a SEV-1 coverage problem, which surfaces failed or
 missing observation writes even when another incident has already used the
 invocation's one-email budget. No prior row, or a failed freshness query, is
@@ -333,10 +335,29 @@ Known limitations:
    Retain it through the 30-day gate, then approve retention or archival before
    Phase 4 adds more operational writers.
 5. Persisted `total_ms` ends immediately before the bounded observation insert.
-   For conservative 30-second-cap headroom, add the 2-second insert budget; the
+   For conservative 30-second-cap headroom, add the 5-second insert budget; the
    row timestamp minus `checked_at` also measures time through database arrival.
    Sentry's final check-in duration is the full Phase 3 invocation measurement,
    including the evidence-append attempt.
+   A successful append is not timed in the row it writes, but is exact from the
+   row itself — `ts - detail.checked_at - detail.timings.total_ms`. Use it to
+   watch the append budget for drift:
+
+   ```sql
+   select ts,
+          round(extract(epoch from (ts - (detail->>'checked_at')::timestamptz))
+                * 1000)::int
+            - (detail->'timings'->>'total_ms')::int as append_ms
+   from webhook_logs
+   where source = 'health-check-observation'
+     and ts >= now() - interval '24 hours'
+   order by append_ms desc
+   limit 20;
+   ```
+
+   A failed append reports `observation_write_ms` directly on its gap row. The
+   insert is ~25ms at p50 in Production; a run past `OBSERVATION_WRITE_WARN_MS`
+   (1.5s) also logs `health-check: slow observation append`.
 6. An unset or unrecognized `VERCEL_ENV` alerts as an ambiguous environment but
    writes no row labeled Production. Explicit Preview and Development remain
    suppressed.
