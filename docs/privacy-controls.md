@@ -85,26 +85,34 @@ dependency symlink are verification artifacts, not source changes to stage.
 
 ## Before activating Meta (separate approval/release)
 
-1. Counsel's 4.8 response supplies the amended advertising text. Confirm its
-   effective date, who receives the Section 15 advance notice, how that notice
-   is delivered, and the earliest date advertising may start. Preserve the
-   existing published text/version until that rollout is authorized.
-2. Coordinate website policy publication and checkout's legal-version tuple.
-3. Confirm Meta Automatic Advanced Matching is OFF in Events Manager; do not
+1. Counsel's response permits flexible notice. DPC's selected no-email plan is
+   an in-App notice on next open as the primary method, reinforced by a
+   temporary website-footer notice and the policy's actual publication date.
+   Section 15 will state fourteen days for future changes, while this first
+   Meta rollout voluntarily waits thirty full days after notice.
+2. Treat the policy update as notice, not forced re-consent. Do not change the
+   member legal-currentness gate in a way that blocks existing logins. New
+   signup acceptance evidence and existing-member notice must be designed as
+   separate server-owned states before the published privacy version changes.
+3. On the rollout day, set the actual Last Updated date, publish the policy and
+   both notice surfaces, and record the timestamp. That timestamp starts the
+   thirty-day Meta hold. Preserve the existing published text/version until
+   the coordinated rollout is authorized.
+4. Confirm Meta Automatic Advanced Matching is OFF in Events Manager; do not
    infer its account setting from website code. Reconfirm counsel's commercial
    assumptions with the owner.
-4. Implement a separately reviewed, restricted marketing-page integration for
+5. Implement a separately reviewed, restricted marketing-page integration for
    the supplied pixel ID `28569583012647858`. Exclude token-bearing return and
    depositor pages, admin/support and all member App activity. Decide event
    scope explicitly; do not add purchase attribution as an incidental change.
-5. Test GPC and saved opt-out before any SDK request, including repeat visits,
+6. Test GPC and saved opt-out before any SDK request, including repeat visits,
    blocked storage, unavailable controls, and privacy changes in another tab.
    Never add an unconditional noscript pixel.
-6. Avoid transmitting query strings, fragments, emails, identifiers, App data,
+7. Avoid transmitting query strings, fragments, emails, identifiers, App data,
    or location/redemption data. Verify real outgoing payloads before approval.
-7. Update the choices-page copy that currently says advertising is off, and
+8. Update the choices-page copy that currently says advertising is off, and
    rerun tests against the actual proposed integration.
-8. Obtain owner review and deployment approval. No PR, commit, push, merge, or
+9. Obtain owner review and deployment approval. No PR, commit, push, merge, or
    production configuration change is included in this local implementation.
 
 The site uses immutable caching for `/assets/*`. New controls use versioned
