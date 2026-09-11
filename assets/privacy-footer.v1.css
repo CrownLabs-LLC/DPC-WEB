@@ -1,0 +1,20 @@
+.dpc-privacy-footer {
+  margin: 0;
+  padding: 20px 24px;
+  padding-bottom: calc(20px + var(--dpc-cookie-clearance, 0px));
+  width: 100%;
+  background: #0D1B2A;
+  color: #F5F0E8;
+  text-align: center;
+  font: 400 14px/1.6 system-ui, sans-serif;
+}
+.dpc-privacy-footer a {
+  display: inline-block;
+  padding-block: 10px;
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: .2em;
+  overflow-wrap: anywhere;
+}
+.dpc-privacy-footer a:hover { color: #C4A35A; }
+.dpc-privacy-footer a:focus-visible { outline: 3px solid #C4A35A; outline-offset: 4px; }

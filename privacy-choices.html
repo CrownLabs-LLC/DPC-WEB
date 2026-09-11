@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Manage your browser’s advertising privacy choice for Downtown Pour Collective.">
+  <meta name="referrer" content="no-referrer">
+  <title>Your Privacy Choices | Downtown Pour Collective</title>
+  <link rel="canonical" href="https://www.downtownpourcollective.com/privacy-choices">
+  <script src="/assets/privacy-controls.v1.js"></script>
+  <style>
+    :root { color-scheme: light; --navy: #0D1B2A; --gold: #C4A35A; --paper: #FBF8F1; --ink: #1B2A38; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--paper); color: var(--ink); font: 17px/1.65 system-ui, sans-serif; }
+    ::selection { background: var(--gold); color: var(--navy); }
+    a { color: inherit; text-underline-offset: .2em; overflow-wrap: anywhere; }
+    a:hover { text-decoration-thickness: 2px; }
+    :focus-visible { outline: 3px solid #8A6B36; outline-offset: 5px; }
+    header { background: var(--navy); color: var(--paper); padding: 22px 24px; }
+    header a { font-weight: 650; text-decoration: none; }
+    header :focus-visible { outline-color: var(--gold); }
+    header div, main, footer { max-width: 760px; margin-inline: auto; }
+    main { padding: 56px 24px 36px; }
+    h1 { font: 700 clamp(32px, 5vw, 46px)/1.15 Georgia, serif; text-wrap: balance; margin: 0 0 24px; color: var(--navy); }
+    h2 { font-size: 20px; line-height: 1.35; margin: 0 0 12px; }
+    p { margin: 0 0 18px; }
+    section { margin-top: 32px; padding-top: 28px; border-top: 1px solid #C4A35A; }
+    #privacy-choice-status { min-height: 3.3em; }
+    button { font: inherit; font-weight: 650; padding: 13px 20px; border: 1px solid var(--navy); border-radius: 4px; background: var(--navy); color: var(--paper); cursor: pointer; text-align: left; }
+    button:hover { background: #1E3A5A; }
+    button[aria-disabled="true"] { background: transparent; color: var(--navy); cursor: default; }
+    [hidden] { display: none !important; }
+    .note { margin-top: 16px; font-size: 15px; }
+    footer { padding: 24px 24px 40px; font-size: 15px; }
+    footer nav { display: flex; flex-wrap: wrap; gap: 12px 24px; }
+    @media (max-width: 480px) { main { padding-top: 36px; } button { width: 100%; } }
+  </style>
+</head>
+<body>
+  <!-- Scoped extension of DPC’s legal surface: paper, navy and gold; no new visual identity.
+       The task is a browser-level opt-out, with status and action before explanatory details.
+       No animation, sign-in, advertising SDK, or policy-version change is part of this release. -->
+  <header><div><a href="/">Downtown Pour Collective</a></div></header>
+  <main>
+    <h1>Do Not Sell or Share My Personal Information</h1>
+    <p>You can opt out of sharing your website activity with advertising partners. No account or sign-in is needed.</p>
+    <section aria-labelledby="browser-choice">
+      <h2 id="browser-choice">Your choice for this browser</h2>
+      <p id="privacy-choice-status" role="status" aria-live="polite" aria-atomic="true">The privacy control has not loaded. Advertising tracking is currently off. Enable JavaScript and reload to save your choice, or contact <a href="mailto:privacy@downtownpourcollective.com">privacy@downtownpourcollective.com</a> for help.</p>
+      <button id="privacy-opt-out" type="button" hidden>Opt out of advertising sharing</button>
+      <p class="note">Meta/Facebook advertising tracking is not currently enabled on this website. You can still save your opt-out now.</p>
+    </section>
+    <section aria-labelledby="how-saved">
+      <h2 id="how-saved">How your choice is saved</h2>
+      <p>We use a first-party preference cookie and browser storage to remember your opt-out. It applies to this website in this browser, not to other browsers or devices. Clearing site data or using private browsing may remove it.</p>
+      <p>When your browser sends Global Privacy Control (GPC), we treat it as an opt-out automatically. You do not need to press the button. Turning GPC off later does not remove an opt-out already saved here.</p>
+      <p>We do not use App-collected data—including precise location, Check-In records, Membership Pour redemption data, or other App activity—for advertising sharing.</p>
+      <p>This advertising choice is separate from the website’s analytics-cookie choice. It does not change your membership or email preferences.</p>
+    </section>
+    <section aria-labelledby="privacy-help">
+      <h2 id="privacy-help">Need help with privacy?</h2>
+      <p>For other privacy requests, email <a href="mailto:privacy@downtownpourcollective.com">privacy@downtownpourcollective.com</a>. You can also read our <a href="/privacy">Privacy Policy</a>.</p>
+    </section>
+  </main>
+  <footer><nav aria-label="Legal and company links"><a href="/">Home</a><a href="/privacy">Privacy Policy</a><a href="/support">Support</a></nav></footer>
+</body>
+</html>
