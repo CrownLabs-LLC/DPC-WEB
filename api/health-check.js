@@ -9,6 +9,15 @@
 //   - webhook errors logged in the last 75 min
 //   - the latest production observation is at least 15 minutes old
 //
+// Append latency for a successful observation is not stored in the row it
+// measures. An approximate arrival latency is derivable, because total_ms is
+// snapshotted right before the insert:
+//   append_ms ≈ webhook_logs.ts - detail.checked_at - detail.timings.total_ms
+// (ts is transaction start, so commit and transit are excluded, and the
+// application/database clock offset is included). The client-side budget
+// number is observation_write_ms in the timings log; a failed append also
+// reports it on the gap row.
+//
 // Alerting is throttled per incident: the normalized problem set is hashed
 // into a fingerprint. SEV-0 repeats after 30 minutes; SEV-1 retains the
 // six-hour window. A new problem set alerts immediately. Fingerprints are
@@ -46,10 +55,24 @@ const JOIN_URL = 'https://www.downtownpourcollective.com/join';
 const LEGAL_VERSIONS_URL = 'https://www.downtownpourcollective.com/api/legal-versions?fresh=1';
 const LEGAL_VERSION_KEYS = ['tos', 'privacy', 'memberTerms', 'autoRenewalTerms'];
 const CHECKOUT_ENDPOINT = 'https://ebiuspbgzggrdiaswpcc.supabase.co/functions/v1/circle-checkout';
-// End-to-end budget: bounded probes run concurrently, the Sentry start overlaps
-// gathering, and the final check-in is capped at 1.5s. The immediate-tranche
-// bound remains below 15s inside the 30s function limit.
+// End-to-end budget: every probe, Stripe SDK retries included, is raced
+// against a 4s wall clock and they run concurrently; the Sentry start overlaps
+// gathering, and the final check-in is capped at 1.5s. Worst case is the
+// alerting run — gather 4s, throttle read 2s, alert send 4s, alert record 2s,
+// evidence append 5s, gap append 3s, Sentry finish 1.5s = 21.5s. The run sends
+// at most once: the evidence-failure notify is skipped whenever the main send
+// was attempted, succeeded or not. That sits inside the 30s maxDuration in
+// vercel.json with headroom, and the combined-failure contract test pins it.
 const THROTTLE_IO_TIMEOUT_MS = 2000;
+// The evidence append gets its own, larger budget. Measured in production the
+// insert is ~25ms at p50, but its tail runs into whole seconds, and the run
+// that loses the race still commits server-side — so a tight bound buys a
+// duplicate row and a SEV-1 rather than a saved second. The fallback gap write
+// stays tighter: by then the run has already spent its primary budget.
+const OBSERVATION_WRITE_TIMEOUT_MS = 5000;
+const OBSERVATION_GAP_WRITE_TIMEOUT_MS = 3000;
+// A successful append this slow is a warning that the budget above is eroding.
+const OBSERVATION_WRITE_WARN_MS = 1500;
 const ALERT_SEND_TIMEOUT_MS = 4000;
 const SENTRY_START_TIMEOUT_MS = 1000;
 const SENTRY_FINISH_TIMEOUT_MS = 1500;
@@ -593,9 +616,12 @@ async function gatherProblems(
   if (supabaseConfigured()) {
     if (checkObservationFreshness) {
       jobs.push(
+        // A gap row carries the same observations under a fallback source, so
+        // it is evidence for freshness. Counting only the primary source would
+        // raise a second SEV-1 for evidence that is in fact on disk.
         supabaseSelect(
           'webhook_logs?select=ts' +
-            '&source=eq.health-check-observation' +
+            '&source=in.(health-check-observation,health-check-observation-gap)' +
             '&level=eq.info' +
             '&order=ts.desc&limit=1',
         )
@@ -1032,6 +1058,10 @@ export default async function handler(req, res) {
     ? highestSeverity(alertableProblems)
     : null;
   let alerted = false;
+  // Set on any send attempt, successful or not. The evidence-failure notify
+  // below keys off this rather than `alerted`, so a stalled Resend costs one
+  // 4s send per run, never two.
+  let alertAttempted = false;
   let throttled = false;
   let alertError = '';
   const alertDeliveryIssues = [
@@ -1059,6 +1089,7 @@ export default async function handler(req, res) {
     ))) {
       throttled = true;
     } else {
+      alertAttempted = true;
       try {
         await timed(
           'alert_send_ms',
@@ -1115,9 +1146,15 @@ export default async function handler(req, res) {
         () => supabaseInsert(
           'webhook_logs',
           evidence,
-          THROTTLE_IO_TIMEOUT_MS,
+          OBSERVATION_WRITE_TIMEOUT_MS,
         ),
       );
+      if (timings.observation_write_ms >= OBSERVATION_WRITE_WARN_MS) {
+        console.warn(
+          'health-check: slow observation append',
+          timings.observation_write_ms,
+        );
+      }
     } catch (err) {
       states.set('monitoring:observation-append', { state: 'unknown' });
       const observationProblem = {
@@ -1148,7 +1185,7 @@ export default async function handler(req, res) {
           () => supabaseInsert(
             'webhook_logs',
             gap,
-            THROTTLE_IO_TIMEOUT_MS,
+            OBSERVATION_GAP_WRITE_TIMEOUT_MS,
           ),
         );
       } catch (gapError) {
@@ -1158,8 +1195,11 @@ export default async function handler(req, res) {
         );
       }
       // The primary evidence store cannot safely deduplicate its own failure.
-      // Notify statelessly after the gap attempt rather than hide the outage.
-      if (!alerted && !alertDeliveryIssues.length) {
+      // Notify statelessly after the gap attempt rather than hide the outage —
+      // unless this run already spent its send budget: a second attempt
+      // against a provider that just stalled would only spend the deadline.
+      if (!alertAttempted && !alertDeliveryIssues.length) {
+        alertAttempted = true;
         try {
           await timed(
             'observation_alert_send_ms',

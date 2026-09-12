@@ -573,7 +573,7 @@ assert.doesNotMatch(
 );
 assert.match(
   healthCheckSource,
-  /source=eq\.health-check-observation['"]\s*\+\s*\n\s*['"]&level=eq\.info/,
+  /source=in\.\(health-check-observation,health-check-observation-gap\)['"]\s*\+\s*\n\s*['"]&level=eq\.info/,
 );
 assert.match(
   dashboardApi,
