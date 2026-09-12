@@ -63,8 +63,20 @@ export async function supabaseInsert(table, row, timeoutMs = PROBE_TIMEOUT_MS) {
 
 // Stripe's own record of events it has not (yet) successfully delivered to a
 // webhook endpoint — catches outages even when our own logging is down.
+// Stripe's per-request `timeout` is per attempt, and the SDK retries network
+// failures (maxNetworkRetries defaults to 2), so on its own it bounds nothing:
+// a hung endpoint costs three attempts plus backoff, ~13s. Every Stripe probe
+// is therefore also raced against a wall-clock deadline. Retries stay on so a
+// fast transient failure can still recover inside the bound.
+function boundedStripe(label, probe) {
+  return withTimeout(probe(), PROBE_TIMEOUT_MS, label);
+}
+
 export async function listUndeliveredEvents(stripe, limit = 20) {
-  const page = await stripe.events.list({ delivery_success: false, limit }, { timeout: PROBE_TIMEOUT_MS });
+  const page = await boundedStripe(
+    'stripe.events.list(undelivered)',
+    () => stripe.events.list({ delivery_success: false, limit }, { timeout: PROBE_TIMEOUT_MS }),
+  );
   return page.data.map((e) => ({
     id: e.id,
     type: e.type,
@@ -112,7 +124,7 @@ export async function healthChecks(stripe, resend) {
     ['Stripe key can read events', () => stripe.events.list({ limit: 1 }, { timeout: PROBE_TIMEOUT_MS })],
   ];
   const results = await Promise.allSettled([
-    ...stripeProbes.map(([, probe]) => probe()),
+    ...stripeProbes.map(([name, probe]) => boundedStripe(name, probe)),
     withTimeout(resend.domains.list(), PROBE_TIMEOUT_MS, 'resend.domains.list'),
     supabaseConfigured() ? supabaseSelect('site_events?select=id&limit=1') : Promise.resolve(null),
   ]);

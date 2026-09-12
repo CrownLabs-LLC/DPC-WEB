@@ -244,8 +244,10 @@ without sending a false stale alert. Preview, Development, and an unknown
 runtime environment never query Production observation freshness.
 
 If reads work but observation inserts fail, an otherwise healthy invocation
-sends one stateless evidence-failure email. A run that already sent its main
-incident email does not send a second email for the evidence failure. Because
+sends one stateless evidence-failure email. A run that already attempted its
+main incident email — delivered or not — does not send a second email for the
+evidence failure; a second attempt against a provider that just stalled would
+only spend the function deadline. Because
 the write fault also prevents a durable throttle marker, the stateless warning
 may repeat on the next five-minute invocation until writes recover.
 
@@ -339,9 +341,14 @@ Known limitations:
    row timestamp minus `checked_at` also measures time through database arrival.
    Sentry's final check-in duration is the full Phase 3 invocation measurement,
    including the evidence-append attempt.
-   A successful append is not timed in the row it writes, but is exact from the
-   row itself — `ts - detail.checked_at - detail.timings.total_ms`. Use it to
-   watch the append budget for drift:
+   A successful append is not timed in the row it writes. An approximate
+   arrival latency is derivable from the row itself —
+   `ts - detail.checked_at - detail.timings.total_ms` — with the caveats that
+   `ts` defaults to PostgreSQL `now()` (transaction start, so execution, commit,
+   and response transit are excluded) and that it carries the application/
+   database clock offset. It is good for spotting drift in the tail, not for
+   sizing the client-side budget; for that, read `observation_write_ms` from
+   the `health-check: timings` runtime log. Drift query:
 
    ```sql
    select ts,
@@ -356,8 +363,9 @@ Known limitations:
    ```
 
    A failed append reports `observation_write_ms` directly on its gap row. The
-   insert is ~25ms at p50 in Production; a run past `OBSERVATION_WRITE_WARN_MS`
-   (1.5s) also logs `health-check: slow observation append`.
+   arrival latency above is ~25ms at p50 in Production; a successful append
+   past `OBSERVATION_WRITE_WARN_MS` (1.5s) also logs
+   `health-check: slow observation append`.
 6. An unset or unrecognized `VERCEL_ENV` alerts as an ambiguous environment but
    writes no row labeled Production. Explicit Preview and Development remain
    suppressed.

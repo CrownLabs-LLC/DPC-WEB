@@ -66,11 +66,24 @@ function mockStripeHttps({
   keyOk = true,
   staleEvent = false,
   staleEventType = 'checkout.session.completed',
+  hangStripe = false,
+  stripeAttempts = null,
 } = {}) {
   return (options) => {
     const req = new PassThrough();
-    req.setTimeout = () => req;
     req.abort = () => {};
+    if (stripeAttempts) stripeAttempts.push(String(options.path || ''));
+    if (hangStripe) {
+      // Never respond, but honour the SDK's per-attempt timeout so its real
+      // retry loop runs: this is the ~13s gather the wall clock must bound.
+      req.setTimeout = (ms, onTimeout) => {
+        const timer = setTimeout(onTimeout, ms);
+        if (timer.unref) timer.unref();
+        return req;
+      };
+      return req;
+    }
+    req.setTimeout = () => req;
     const path = String(options.path || '').split('?')[0];
     process.nextTick(() => {
       const res = new PassThrough();
@@ -114,6 +127,9 @@ function mockFetch({
   webhookQueryFails = false,
   observationInsertFails = false,
   observationInsertDelayMs = 0,
+  gapInsertDelayMs = 0,
+  throttleReadDelayMs = 0,
+  sentryFinishDelayMs = 0,
   gapInsertFails = false,
   rejectAllWebhookInserts = false,
   latestObservationMinutesAgo = 5,
@@ -143,6 +159,9 @@ function mockFetch({
       if (body.status === 'in_progress' && sentryInProgressDelayMs) {
         await new Promise((resolve) =>
           setTimeout(resolve, sentryInProgressDelayMs));
+      }
+      if (body.status !== 'in_progress' && sentryFinishDelayMs) {
+        await abortableDelay(sentryFinishDelayMs, opts?.signal);
       }
       stats.events.push(`sentry:${body.status}:finished`);
       if (
@@ -183,6 +202,7 @@ function mockFetch({
       return new Response(JSON.stringify({ data: { data: [] } }), { status: 200, headers: { 'content-type': 'application/json' } });
     }
     if (u.includes('api.resend.com/emails')) {
+      stats.emailAttempts += 1;
       if (hangEmail) return new Promise(() => {}); // stalled Resend: never settles
       sentEmails.push(JSON.parse(opts.body));
       return new Response(JSON.stringify({ id: 'email_mock' }), { status: 200, headers: { 'content-type': 'application/json' } });
@@ -202,6 +222,9 @@ function mockFetch({
             observationInsertDelayMs
           ) {
             await abortableDelay(observationInsertDelayMs, opts?.signal);
+          }
+          if (row.source === 'health-check-observation-gap' && gapInsertDelayMs) {
+            await abortableDelay(gapInsertDelayMs, opts?.signal);
           }
           if (
             row.source === 'health-check-observation' &&
@@ -235,6 +258,9 @@ function mockFetch({
         }
         if (u.includes('source=eq.health-check&')) {
           stats.throttleReads += 1;
+          if (throttleReadDelayMs) {
+            await abortableDelay(throttleReadDelayMs, opts?.signal);
+          }
           const requested = u.match(/fingerprint=eq\.([0-9a-f]+)/)?.[1];
           const sinceText = u.match(/ts=gte\.([^&]+)/)?.[1];
           const since = sinceText
@@ -286,6 +312,8 @@ async function run(
   const sentEmails = [];
   const stats = {
     throttleReads: 0,
+    emailAttempts: 0,
+    stripeAttempts: [],
     legalVersionsUrls: [],
     webhookInserts: [],
     webhookErrorQueries: [],
@@ -297,7 +325,10 @@ async function run(
   const origHttps = https.request;
   const origAllSettled = Promise.allSettled;
   globalThis.fetch = mockFetch(mockOpts, sentEmails, stats);
-  https.request = mockStripeHttps(mockOpts);
+  https.request = mockStripeHttps({
+    ...mockOpts,
+    stripeAttempts: stats.stripeAttempts,
+  });
   const handler = await fresh();
   if (postImportEnvTweaks) postImportEnvTweaks();
   if (mockOpts.gatherFails) {
@@ -308,7 +339,7 @@ async function run(
   const { res, out } = mockRes();
   // withTimeout/AbortSignal timers are unref'ed; socketless mocks would let
   // the event loop drain before they fire, so hold the loop open.
-  const keepAlive = setTimeout(() => {}, 20000);
+  const keepAlive = setTimeout(() => {}, 40000);
   const startedAt = Date.now();
   try {
     await handler({ method: 'GET', headers: reqHeaders }, res);
@@ -1427,6 +1458,45 @@ for (const [label, value] of [
   check('slow evidence append is timed above the old 2s bound',
     out.body.timings?.observation_write_ms >= 2000,
     out.body.timings);
+}
+
+// Case 60: the review scenario for the wider write budgets — every dependency
+// stalls at once. Stripe hangs through the SDK's own retry loop, the throttle
+// read and both evidence writes time out, Resend never answers, and the
+// terminal Sentry check-in is slow. The invocation must still reach that
+// check-in well inside the 30s maxDuration, with one email attempt, not two.
+{
+  const { out, stats, elapsed } = await run({
+    hangStripe: true,
+    throttleReadDelayMs: 30000,
+    observationInsertDelayMs: 30000,
+    gapInsertDelayMs: 30000,
+    hangEmail: true,
+    sentryFinishDelayMs: 30000,
+  });
+  check('combined failure finishes inside the function deadline',
+    out.status === 200 && elapsed < 25000,
+    { elapsed, timings: out.body.timings });
+  check('combined failure bounds gather despite Stripe SDK retries',
+    out.body.timings?.gather_ms < 6000,
+    out.body.timings);
+  check('combined failure reports every Stripe probe as timed out',
+    out.body.problems.filter((text) => /Stripe key can read/.test(text))
+      .length === 3 &&
+      out.body.problems.some((text) => /timed out/.test(text)),
+    out.body.problems);
+  check('combined failure attempts exactly one email',
+    stats.emailAttempts === 1 &&
+      /timed out/.test(out.body.alert_error || ''),
+    { emailAttempts: stats.emailAttempts, alert_error: out.body.alert_error });
+  check('combined failure records the append failure',
+    out.body.observations?.find((item) =>
+      item.key === 'monitoring:observation-append')?.state === 'unknown' &&
+      insertsFrom(stats, 'health-check-observation-gap').length === 1,
+    out.body.observations);
+  check('combined failure still starts the terminal Sentry check-in',
+    stats.sentryCheckIns.some((body) => body.status === 'ok'),
+    stats.sentryCheckIns);
 }
 
 process.exit(failures ? 1 : 0);
