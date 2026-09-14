@@ -18,7 +18,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Barlow+Condensed:wght@600;700&family=Barlow:ital,wght@0,400;0,500;1,400" rel="stylesheet">
-<script id="turnstile-api-script" src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
+<script id="turnstile-api-script" src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer onerror="this.dataset.loadFailed='true'"></script>
 <style>
 :root {
   --navy: #0D1B2A; --liquid: #1E3A5A; --gold: #C4A35A; --gold-hover: #D4B370;
@@ -933,7 +933,6 @@ window.DPC_JOIN = {
   var createDiagnostics = window.DPCJoinDiagnostics || noDiagnostics;
   var legalDiagnostics = createDiagnostics('legal_versions');
   var turnstileDiagnostics = createDiagnostics('turnstile');
-  var turnstileScriptFailed = false;
   var turnstileWidgetId = null;
   var turnstileToken = '';
   var turnstileUnavailable = false;
@@ -1335,7 +1334,6 @@ window.DPC_JOIN = {
     if (retryButton) {
       retryButton.addEventListener('click', function () {
         turnstileDiagnostics.begin('retry');
-        turnstileScriptFailed = false;
         turnstileUnavailable = false;
         turnstileLoadAttempts = 0;
         turnstileFailureTracked = false;
@@ -1389,7 +1387,8 @@ window.DPC_JOIN = {
     if (!window.turnstile) {
       turnstileLoadAttempts += 1;
       if (turnstileLoadAttempts >= TURNSTILE_MAX_LOAD_ATTEMPTS) {
-        showTurnstileUnavailable(turnstileScriptFailed ? 'script_error' : 'script_timeout');
+        var securityScript = document.getElementById(TURNSTILE_SCRIPT_ID);
+        showTurnstileUnavailable(securityScript && securityScript.dataset.loadFailed === 'true' ? 'script_error' : 'script_timeout');
         return;
       }
       setTimeout(renderTurnstile, 200);
@@ -1575,8 +1574,6 @@ window.DPC_JOIN = {
 
   refreshPrices();
   turnstileDiagnostics.begin('script_load');
-  var securityScript = document.getElementById(TURNSTILE_SCRIPT_ID);
-  if (securityScript) securityScript.addEventListener('error', function () { turnstileScriptFailed = true; });
   renderTurnstile();
   loadLegalVersions();
   if (window.DPCAnalytics) DPCAnalytics.init({ page: 'join' });

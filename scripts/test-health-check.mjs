@@ -1215,7 +1215,7 @@ for (const [name, expected] of [
 for (const fixture of [{ optionsStatus: 503 }, { invalidStatus: 503 }, { invalidStatus: 429 }]) {
   const { out, stats } = await run(fixture);
   const state = (key) => out.body.observations.find((item) => item.key === 'checkout-canary:' + key);
-  check('provider outage is an availability incident', state('availability')?.state === 'unhealthy' && state('availability')?.severity === 'SEV-1', out.body);
+  check('provider outage is an availability incident with existing SEV-0 urgency', state('availability')?.state === 'unhealthy' && state('availability')?.severity === 'SEV-0', out.body);
   check('unavailable probe does not assert a broken contract', state(fixture.optionsStatus ? 'cors' : 'validation')?.state === 'unknown', out.body);
   const evidence = insertsFrom(stats, 'health-check-observation')[0];
   const probes = evidence?.detail?.probe_diagnostics;

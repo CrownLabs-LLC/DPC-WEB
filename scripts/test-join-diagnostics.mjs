@@ -11,6 +11,14 @@ const safe = { component: 'legal_versions', stage: 'initial_load', failure_kind:
 const unsafe = { ...safe, message: 'private@example.invalid', token: 'secret', provider_code: 'private@example.invalid', episode_id: 'bad-id', attempt: -1, body_code: 'private@example.invalid' };
 assert.deepEqual(sanitizeDiagnostics(unsafe), safe);
 assert.equal(sanitizeDiagnostics([]), null);
+for (const code of ['PGRST301', 'PGRST000', 'PGRST001', 'PGRST003', 'PGRSTX00', '57014', '53300', '08006', 'P0001', 'BOOT_ERROR', 'FUTURE_PROVIDER_FAILURE']) {
+  assert.equal(sanitizeDiagnostics({ body_code: code }).body_code, code);
+}
+for (const code of ['private@example.invalid', 'error with spaces', 'a'.repeat(100), 'x\nPGRST000', 'PGRST1234', 'A'.repeat(41), 57014]) {
+  assert.equal(sanitizeDiagnostics({ body_code: code }), null);
+}
+assert.deepEqual(sanitizeDiagnostics({ rpc_reason: 'legal_currentness_unavailable' }), { rpc_reason: 'legal_currentness_unavailable' });
+assert.equal(sanitizeDiagnostics({ rpc_reason: 'private_identifier' }), null);
 
 function response() {
   return { headers: {}, setHeader(k, v) { this.headers[k.toLowerCase()] = v; }, status(code) { this.code = code; return this; }, json(body) { this.body = body; return this; } };
@@ -36,7 +44,7 @@ try {
   for (const [kind, reply] of [
     ['timeout', () => { throw new DOMException('private@example.invalid', 'TimeoutError'); }],
     ['network', () => { throw new TypeError('private@example.invalid'); }],
-    ['rpc', () => new Response(JSON.stringify({ code: 'PGRST202', message: 'private@example.invalid' }), { status: 404, headers: { 'sb-request-id': id } })],
+    ['http', () => new Response(JSON.stringify({ code: 'PGRST202', message: 'private@example.invalid' }), { status: 404, headers: { 'sb-request-id': id } })],
     ['invalid_json', () => new Response('private@example.invalid', { status: 200 })],
     ['incomplete_tuple', () => new Response('{}', { status: 200 })],
   ]) {
@@ -49,13 +57,32 @@ try {
     assert.equal(logs.at(-1).request_id, res.headers['x-dpc-request-id']);
     assert.equal(logs.at(-1).failure_kind, kind);
     assert.equal(Number.isInteger(logs.at(-1).elapsed_ms), true);
-    if (kind === 'rpc') {
+    if (kind === 'http') {
       assert.equal(logs.at(-1).provider_request_id, id);
       assert.equal(logs.at(-1).body_code, 'PGRST202');
       assert.equal(logs.at(-1).http_status, 404);
     }
   }
+  // The same HTTP error must not change meaning based on HTML versus JSON.
+  for (const [status, raw, expected] of [
+    [500, '<h1>gateway failure</h1>', {}],
+    [500, '{"error":"private@example.invalid"}', {}],
+    [503, '{"code":"PGRST000"}', { body_code: 'PGRST000' }],
+    [503, '{"code":"53300"}', { body_code: '53300' }],
+    [400, '{"code":"P0001","message":"legal_currentness_unavailable"}', { body_code: 'P0001', rpc_reason: 'legal_currentness_unavailable' }],
+    [400, '{"code":"P0001","message":"private_identifier"}', { body_code: 'P0001' }],
+  ]) {
+    globalThis.fetch = async () => new Response(raw, { status });
+    const res = response();
+    await legalVersions({ method: 'GET', query: {} }, res);
+    const entry = logs.at(-1);
+    assert.equal(res.headers['x-dpc-failure-kind'], 'http');
+    assert.equal(entry.http_status, status);
+    assert.equal(entry.body_code, expected.body_code);
+    assert.equal(entry.rpc_reason, expected.rpc_reason);
+  }
   assert.equal(JSON.stringify(logs).includes('private@example.invalid'), false);
+  assert.equal(JSON.stringify(logs).includes('private_identifier'), false);
 } finally {
   globalThis.fetch = originalFetch;
   console.error = originalError;

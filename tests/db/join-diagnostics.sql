@@ -20,7 +20,7 @@ end $$;
 grant select, insert, update, delete on site_events to anon;
 grant usage, select on sequence site_events_id_seq to anon;
 set role anon;
-insert into site_events(event, diagnostics) values ('join_recovery', '{"outcome":"retry_started","attempt":2}');
+insert into site_events(event, diagnostics) values ('join_error', '{"body_code":"P0001","rpc_reason":"legal_currentness_unavailable","attempt":2}');
 do $$ begin
   if exists(select 1 from site_events) then raise exception 'Anonymous read permitted'; end if;
 end $$;

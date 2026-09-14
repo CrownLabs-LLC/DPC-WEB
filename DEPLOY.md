@@ -706,9 +706,13 @@ flips to `partner-waitlist-2026` so submissions are segmentable in Resend.
 ## Join diagnostics rollout (September 2026)
 
 Apply `db/20260914_join_diagnostics.sql` to the website's telemetry database
-**before** deploying this website release. It adds the nullable `diagnostics`
+**before merging this PR**: Vercel deploys `main` automatically on merge.
+It adds the nullable `diagnostics`
 JSON column and the `join_recovery` event. Existing rows remain valid; the
 migration and `db/setup.sql` can both be reapplied after recovery events exist.
+The migration bounds lock acquisition to five seconds, bounds each statement
+to thirty seconds, and notifies PostgREST to reload its schema cache at commit.
+Verify the column and PostgREST insert-column recognition before merging.
 Deploying the writer first would reject diagnostic inserts. The authenticated
 dashboard reports a missing migration separately from its other sections.
 The Join page versions both script URLs to bypass the existing one-year
@@ -727,8 +731,15 @@ events without diagnostics are explicitly labeled as such.
 For legal lookups, match the dashboard's request UUID to the structured
 `legal-versions: lookup` Vercel log. Failures return `X-DPC-Request-Id` and
 `X-DPC-Failure-Kind` with the existing uncached 503 response. Logs distinguish
-timeout, network, RPC, malformed JSON, incomplete tuple and configuration
-failure, and include the upstream status/request ID when available. Success
+timeout, network, HTTP failure, malformed JSON, incomplete tuple and configuration
+failure, and include the upstream status/request ID when available. `http` means
+a received non-2xx response, whether HTML or JSON; `invalid_json` means an
+otherwise successful response that cannot be parsed. `body_code` retains bounded
+PostgREST, SQLSTATE and symbolic machine-code shapes instead of enumerating
+known failures. A generic `P0001` additionally retains `rpc_reason` only for the
+known `legal_currentness_unavailable` reason; arbitrary message text is dropped.
+See the [PostgREST error format](https://docs.postgrest.org/en/stable/references/errors.html).
+Success
 responses keep the existing cache policy; a cached response's request UUID
 identifies the origin lookup, not a unique visitor request. Fresh submit-time
 reads and the four-second RPC deadline are unchanged.
@@ -739,7 +750,10 @@ OPTIONS and malformed-request probe, with elapsed time, response status, safe
 body code and available request/execution IDs. A three-second monitor timeout
 records `failure_kind=timeout` and unknown eligibility/contract states; it does
 not prove the underlying request failed. A 429/5xx checkout probe is an
-availability incident (SEV-1), with the affected CORS/validation state unknown.
+availability incident (SEV-0), with the affected CORS/validation state unknown.
+This preserves the previous paging urgency and 30-minute reminder cadence;
+the change improves classification without downgrading these checkout failures.
+Stateful severity escalation remains a separate reviewed policy change.
 A received response that violates the actual contract still raises SEV-0.
 The four probes run concurrently within the existing monitor budget.
 

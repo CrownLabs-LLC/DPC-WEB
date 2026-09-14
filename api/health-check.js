@@ -117,7 +117,9 @@ const POLICY = Object.freeze({
     action: 'Inspect the production join page',
   },
   'checkout-canary:availability': {
-    severity: 'SEV-1', capability: 'CHECKOUT',
+    // Preserve the existing urgency for failed checkout OPTIONS/validation.
+    // Stateful severity escalation is a separate, reviewed policy slice.
+    severity: 'SEV-0', capability: 'CHECKOUT',
     title: 'Checkout service is temporarily unavailable',
     action: 'Inspect checkout availability and provider request evidence',
   },

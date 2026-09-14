@@ -7,6 +7,9 @@ const ENUMS = {
   outcome: ['retry_started', 'recovered'],
 };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+// PostgREST (including its X/internal group), SQLSTATE, and bounded symbolic
+// machine codes. Do not enumerate failures: newly surfaced codes are evidence.
+const BODY_CODE = /^(?:PGRST(?:\d{3}|X\d{2})|[0-9A-Z]{5}|[A-Z_]{3,40})$/;
 
 export function sanitizeDiagnostics(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
@@ -23,9 +26,12 @@ export function sanitizeDiagnostics(value) {
   if (typeof value.provider_code === 'string' && /^\d{6}$/.test(value.provider_code)) {
     out.provider_code = value.provider_code;
   }
-  if (['INVALID_REQUEST', 'CHECKOUT_NOT_ENABLED', 'BOOT_ERROR', 'WORKER_LIMIT', 'PGRST202', '42501', 'P0001'].includes(value.body_code)) {
+  if (typeof value.body_code === 'string' && BODY_CODE.test(value.body_code)) {
     out.body_code = value.body_code;
   }
+  // P0001 is generic RAISE. Keep this known business reason separately,
+  // without accepting arbitrary message text or arbitrary snake_case values.
+  if (value.rpc_reason === 'legal_currentness_unavailable') out.rpc_reason = value.rpc_reason;
   return Object.keys(out).length ? out : null;
 }
 

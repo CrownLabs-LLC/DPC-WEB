@@ -26,6 +26,9 @@ try {
   }
   assert.ok(ready, 'Local PostgreSQL did not become ready');
   sql(read('db/setup.sql'));
+  // Exercise the actual upgrade from a schema without diagnostic storage or
+  // recovery events, as well as clean setup and repeated application below.
+  sql("alter table site_events drop column diagnostics; alter table site_events drop constraint site_events_event_check; alter table site_events add constraint site_events_event_check check (event <> 'join_recovery');");
   sql("insert into site_events(event) values ('join_error');");
   sql(read('db/20260914_join_diagnostics.sql'));
   sql("insert into site_events(event,diagnostics) values ('join_recovery','{\"component\":\"legal_versions\",\"outcome\":\"recovered\"}');");

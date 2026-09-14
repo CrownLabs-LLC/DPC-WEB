@@ -86,10 +86,15 @@ async function readLegalVersions(context) {
   const raw = await resp.text();
   let body;
   try { body = JSON.parse(raw); } catch {
-    throw Object.assign(new Error('invalid_json'), { kind: resp.ok ? 'invalid_json' : 'http' });
+    if (resp.ok) throw Object.assign(new Error('invalid_json'), { kind: 'invalid_json' });
   }
-  Object.assign(context, sanitizeDiagnostics({ body_code: body?.code }));
-  if (!resp.ok) throw Object.assign(new Error('rpc'), { kind: 'rpc' });
+  Object.assign(context, sanitizeDiagnostics({
+    body_code: body?.code,
+    rpc_reason: body?.code === 'P0001' ? body?.message : undefined,
+  }));
+  // HTTP failure describes the response, regardless of its encoding or which
+  // upstream layer produced it. body_code/rpc_reason carry the finer evidence.
+  if (!resp.ok) throw Object.assign(new Error('http'), { kind: 'http' });
   return body;
 }
 

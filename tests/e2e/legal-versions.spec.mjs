@@ -49,22 +49,38 @@ test('Turnstile diagnostics retain the provider code and report recovery once', 
 });
 
 for (const initialDelivery of ['blocked', 'pending']) {
-  test(`Turnstile ${initialDelivery} script delivery records failure and recovers on reload`, async ({ page }) => {
+  test(`Turnstile ${initialDelivery} script delivery records failure and recovers on reload`, async ({ page, browserName }) => {
     const state = await setup(page);
     await page.unroute('https://challenges.cloudflare.com/turnstile/**');
+    let analyticsRoute;
+    // WebKit defers resource-error callbacks while a parser-blocking script
+    // waits. Both engines get an immediate abort; Chromium also proves the
+    // head handler captures it before the body initializer can run.
+    const holdBodyInitializer = initialDelivery === 'blocked' && browserName === 'chromium';
+    if (holdBodyInitializer) {
+      // Hold parsing before the body initializer: the head tag must capture
+      // failure even when no bottom-of-body listener exists yet.
+      await page.route('**/assets/analytics.js*', (route) => { analyticsRoute = route; });
+    }
     let calls = 0;
     await page.route('https://challenges.cloudflare.com/turnstile/**', async (route) => {
       calls += 1;
       if (calls === 1) {
-        // Leave one request pending beyond the UI's ten-second bound, or
-        // deliver an explicit network failure after the error listener exists.
+        // Fail immediately, including before the body script can attach any
+        // listeners, or leave delivery pending beyond the ten-second bound.
         if (initialDelivery === 'pending') return;
-        await new Promise((resolve) => setTimeout(resolve, 200));
         return route.abort();
       }
       await route.fulfill({ contentType: 'text/javascript', body: `window.turnstile={render:function(_,o){setTimeout(function(){o.callback('test-token')},0);return 'widget'},remove:function(){},reset:function(){}};` });
     });
-    await page.goto('/join', { waitUntil: 'domcontentloaded' });
+    const navigation = page.goto('/join', { waitUntil: 'domcontentloaded' });
+    if (holdBodyInitializer) {
+      await expect.poll(() => Boolean(analyticsRoute)).toBe(true);
+      await expect.poll(() => page.evaluate(() => document.getElementById('turnstile-api-script')?.dataset.loadFailed)).toBe('true');
+      expect(await page.evaluate(() => typeof window.DPCJoinDiagnostics)).toBe('undefined');
+      await analyticsRoute.continue();
+    }
+    await navigation;
     const retry = page.locator('#turnstile-retry');
     await expect(retry).toBeVisible({ timeout: 12000 });
     await expect.poll(() => state.trackPayloads.some((p) => p.error_code === 'turnstile_unavailable')).toBe(true);
