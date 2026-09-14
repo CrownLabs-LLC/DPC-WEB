@@ -12,8 +12,84 @@ const CHECKOUT_URL = 'https://checkout.stripe.com/c/pay/cs_test_legal_versions';
 const CURRENT = { tos: '3.0', privacy: '4.2', memberTerms: '3.0', autoRenewalTerms: '3.0' };
 const BUMPED = { ...CURRENT, privacy: '4.3' };
 
+test('Join diagnostics correlate a failed lookup with a successful manual retry', async ({ page }) => {
+  const requestId = 'a0000000-0000-4000-8000-000000000001';
+  const state = await setup(page, { serveLegalVersions: (_url, index) => index === 0
+    ? { status: 503, headers: { 'x-dpc-request-id': requestId, 'x-dpc-failure-kind': 'timeout' } }
+    : { status: 200, body: CURRENT } });
+  await page.goto('/join');
+  await expect(page.locator('#submit-btn')).toBeDisabled();
+  await expect.poll(() => state.trackPayloads.filter((p) => p.event === 'join_error').length).toBe(1);
+  const failure = state.trackPayloads.find((p) => p.event === 'join_error');
+  expect(failure).toMatchObject({ error_code: 'legal_versions_unavailable', http_status: 503, diagnostics: { component: 'legal_versions', stage: 'initial_load', failure_kind: 'timeout', request_id: requestId, attempt: 1 } });
+  expect(failure.diagnostics.episode_id).toMatch(/^[0-9a-f-]{36}$/);
+  await page.locator('#legal-versions-retry').click();
+  await expect(page.locator('#submit-btn')).toBeEnabled();
+  await expect.poll(() => state.trackPayloads.filter((p) => p.event === 'join_recovery').length).toBe(2);
+  const recoveries = state.trackPayloads.filter((p) => p.event === 'join_recovery');
+  expect(recoveries.map((p) => p.diagnostics.outcome)).toEqual(['retry_started', 'recovered']);
+  for (const recovery of recoveries) expect(recovery.diagnostics).toMatchObject({ episode_id: failure.diagnostics.episode_id, attempt: 2, stage: 'retry' });
+  expect(state.checkoutPayloads).toHaveLength(0);
+});
+
+test('Turnstile diagnostics retain the provider code and report recovery once', async ({ page }) => {
+  const state = await setup(page, { turnstileScript: `window.turnstile={render:function(_,o){window.testWidget=o;return 'widget'},remove:function(){},reset:function(){}};` });
+  await page.goto('/join');
+  await expect.poll(() => page.evaluate(() => Boolean(window.testWidget))).toBe(true);
+  await page.evaluate(() => { window.testWidget['error-callback']('300030'); window.testWidget['error-callback']('300030'); });
+  await expect.poll(() => state.trackPayloads.filter((p) => p.event === 'join_error').length).toBe(1);
+  const failure = state.trackPayloads.find((p) => p.event === 'join_error');
+  expect(failure.diagnostics).toMatchObject({ component: 'turnstile', stage: 'script_load', failure_kind: 'widget_error', provider_code: '300030', attempt: 1 });
+  await page.locator('#turnstile-retry').click();
+  await page.evaluate(() => { window.testWidget.callback('recovered-test-token'); window.testWidget.callback('recovered-test-token'); });
+  await expect.poll(() => state.trackPayloads.filter((p) => p.event === 'join_recovery').length).toBe(2);
+  const recovered = state.trackPayloads.find((p) => p.diagnostics?.outcome === 'recovered');
+  expect(recovered.diagnostics).toMatchObject({ episode_id: failure.diagnostics.episode_id, stage: 'retry', attempt: 2 });
+  expect(JSON.stringify(state.trackPayloads)).not.toContain('recovered-test-token');
+});
+
+for (const initialDelivery of ['blocked', 'pending']) {
+  test(`Turnstile ${initialDelivery} script delivery records failure and recovers on reload`, async ({ page }) => {
+    const state = await setup(page);
+    await page.unroute('https://challenges.cloudflare.com/turnstile/**');
+    let calls = 0;
+    await page.route('https://challenges.cloudflare.com/turnstile/**', async (route) => {
+      calls += 1;
+      if (calls === 1) {
+        // Leave one request pending beyond the UI's ten-second bound, or
+        // deliver an explicit network failure after the error listener exists.
+        if (initialDelivery === 'pending') return;
+        await new Promise((resolve) => setTimeout(resolve, 200));
+        return route.abort();
+      }
+      await route.fulfill({ contentType: 'text/javascript', body: `window.turnstile={render:function(_,o){setTimeout(function(){o.callback('test-token')},0);return 'widget'},remove:function(){},reset:function(){}};` });
+    });
+    await page.goto('/join', { waitUntil: 'domcontentloaded' });
+    const retry = page.locator('#turnstile-retry');
+    await expect(retry).toBeVisible({ timeout: 12000 });
+    await expect.poll(() => state.trackPayloads.some((p) => p.error_code === 'turnstile_unavailable')).toBe(true);
+    const failure = state.trackPayloads.find((p) => p.error_code === 'turnstile_unavailable');
+    expect(failure.diagnostics.failure_kind).toBe(initialDelivery === 'pending' ? 'script_timeout' : 'script_error');
+    await retry.click();
+    await expect(retry).toBeHidden();
+    await expect.poll(() => state.trackPayloads.some((p) => p.diagnostics?.outcome === 'recovered')).toBe(true);
+    const recovery = state.trackPayloads.find((p) => p.diagnostics?.outcome === 'recovered');
+    expect(recovery.diagnostics).toMatchObject({ component: 'turnstile', stage: 'retry', episode_id: failure.diagnostics.episode_id, attempt: 2 });
+    expect(calls).toBe(2);
+    expect(state.checkoutPayloads).toHaveLength(0);
+  });
+}
+
+test('missing diagnostic script retains basic failure telemetry and fail-closed consent', async ({ page }) => {
+  const state = await setup(page, { serveLegalVersions: () => ({ status: 503 }) });
+  await page.route('**/assets/join-diagnostics.js*', (route) => route.abort());
+  await page.goto('/join');
+  await expect(page.locator('#submit-btn')).toBeDisabled();
+  await expect.poll(() => state.trackPayloads.some((p) => p.error_code === 'legal_versions_unavailable' && p.http_status === 503)).toBe(true);
+});
+
 // serveLegalVersions: (requestUrl, callIndex) => ({status, body}) | null
-async function setup(page, { serveLegalVersions, checkout } = {}) {
+async function setup(page, { serveLegalVersions, checkout, turnstileScript } = {}) {
   const state = { legalVersionUrls: [], checkoutPayloads: [], trackPayloads: [] };
 
   // Make telemetry observable through Playwright's request routing in both
@@ -26,7 +102,7 @@ async function setup(page, { serveLegalVersions, checkout } = {}) {
     await route.fulfill({
       contentType: 'text/javascript',
       // reset() re-issues a token, as the real non-interactive widget does.
-      body: `window.turnstile=(function(){var o;return{render:function(_,opts){o=opts;setTimeout(function(){o.callback('test-token')},0);return 'test-widget'},reset:function(){setTimeout(function(){o&&o.callback('test-token')},0)}}})();`,
+      body: turnstileScript || `window.turnstile=(function(){var o;return{render:function(_,opts){o=opts;setTimeout(function(){o.callback('test-token')},0);return 'test-widget'},reset:function(){setTimeout(function(){o&&o.callback('test-token')},0)}}})();`,
     });
   });
   await page.route('**/api/track', async (route) => {

@@ -159,6 +159,12 @@ details.tableview summary { cursor: pointer; color: var(--text-secondary); font-
 .err { color: var(--status-critical); font-size: 13px; min-height: 18px; }
 .loading { opacity: .45; transition: opacity .2s; }
 .stack { display: grid; gap: 12px; }
+.join-diagnostic { padding: 12px 0; border-bottom: 1px solid var(--grid-line); }
+.join-diagnostic:last-child { border-bottom: 0; padding-bottom: 0; }
+.join-diagnostic p { margin: 4px 0; color: var(--text-secondary); }
+.join-diagnostic code { overflow-wrap: anywhere; }
+.join-diagnostic time { display: block; color: var(--text-secondary); font-size: 12px; }
+#join-diagnostics > p { color: var(--text-secondary); margin: 0 0 8px; }
 </style>
 </head>
 <body>
@@ -246,6 +252,10 @@ details.tableview summary { cursor: pointer; color: var(--text-secondary); font-
         <div id="blocked-history"></div>
       </div>
       <div class="kpis" id="acquisition-kpis"></div>
+      <details class="tableview">
+        <summary>Recent Join diagnostics</summary>
+        <div class="card" id="join-diagnostics"></div>
+      </details>
       <div class="card">
         <h2>Homepage and Join page views per day</h2>
         <div class="legend" id="line-legend"></div>
@@ -359,10 +369,61 @@ details.tableview summary { cursor: pointer; color: var(--text-secondary); font-
     renderEntrances(d);
     renderBlockedHistory(d);
     renderAcquisitionKpis(d);
+    renderJoinDiagnostics(d);
     renderCharts(d);
     renderDailyTable(d);
     renderHealth(d);
     renderAlerts(d);
+  }
+
+  function renderJoinDiagnostics(d) {
+    var box = $('join-diagnostics');
+    box.replaceChildren();
+    var section = d.join_diagnostics;
+    if (!section || !section.configured || section.error) {
+      box.appendChild(el('p', '', section && section.error || 'Join diagnostics are not available yet.'));
+      return;
+    }
+    var events = section.events || [];
+    box.appendChild(el('p', '', (section.truncated ? 'Latest 50 recorded events' : 'Recorded events')
+      + ' in the selected window. Recovery means the blocked step succeeded; it does not confirm a paid membership.'));
+    if (!events.length) {
+      box.appendChild(el('p', '', 'No Join failures or recovery events recorded in this window.'));
+      return;
+    }
+    events.forEach(function (event) {
+      var detail = event.diagnostics || {};
+      var row = el('div', 'join-diagnostic');
+      var when = event.ts ? new Date(event.ts) : null;
+      var time = el('time', '', when && !isNaN(when.getTime())
+        ? when.toLocaleString('en-US', { timeZone: 'America/Los_Angeles', timeZoneName: 'short' }) : 'Time unavailable');
+      if (when && !isNaN(when.getTime())) time.dateTime = when.toISOString();
+      row.appendChild(time);
+      var label = event.event === 'join_recovery'
+        ? (detail.outcome === 'recovered' ? 'Step recovered' : detail.outcome === 'retry_started' ? 'Retry started' : 'Recovery event')
+        : event.error_code || 'Join error';
+      row.appendChild(el('strong', '', label));
+      if (!Object.keys(detail).length) {
+        row.appendChild(el('p', '', 'Diagnostic details were not recorded for this event.'));
+      }
+      var facts = [];
+      if (detail.component) facts.push(detail.component.replace(/_/g, ' '));
+      if (detail.stage) facts.push(detail.stage.replace(/_/g, ' '));
+      if (detail.failure_kind) facts.push(detail.failure_kind.replace(/_/g, ' '));
+      if (detail.attempt) facts.push('Attempt ' + detail.attempt);
+      if (Number.isInteger(detail.elapsed_ms)) facts.push(detail.elapsed_ms.toLocaleString() + ' ms');
+      var status = event.http_status || detail.http_status;
+      if (status) facts.push('HTTP ' + status);
+      if (detail.provider_code) facts.push('Provider code ' + detail.provider_code);
+      if (facts.length) row.appendChild(el('p', '', facts.join(' · ')));
+      [['episode_id', 'Episode'], ['request_id', 'Request']].forEach(function (field) {
+        if (!detail[field[0]]) return;
+        var line = el('p', '', field[1] + ': ');
+        line.appendChild(el('code', '', detail[field[0]]));
+        row.appendChild(line);
+      });
+      box.appendChild(row);
+    });
   }
 
   function renderBanner(d) {

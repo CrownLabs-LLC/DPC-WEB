@@ -703,6 +703,70 @@ flips to `partner-waitlist-2026` so submissions are segmentable in Resend.
 
 ---
 
+## Join diagnostics rollout (September 2026)
+
+Apply `db/20260914_join_diagnostics.sql` to the website's telemetry database
+**before** deploying this website release. It adds the nullable `diagnostics`
+JSON column and the `join_recovery` event. Existing rows remain valid; the
+migration and `db/setup.sql` can both be reapplied after recovery events exist.
+Deploying the writer first would reject diagnostic inserts. The authenticated
+dashboard reports a missing migration separately from its other sections.
+The Join page versions both script URLs to bypass the existing one-year
+immutable asset cache for returning visitors. Bump these versions whenever
+either diagnostics script changes in a future release.
+
+After deployment, use **Acquisition signals → Recent Join diagnostics** with
+the selected date window. The latest 50 failure/recovery events show the stage,
+attempt, duration, HTTP status, and available provider code. An episode UUID
+links a failure to its manual retries and recovery within the open page. It is
+kept only in memory, resets for a new lookup after success, and does not identify
+a member or persist across reloads. Recovery means that lookup/challenge
+succeeded; it does not establish checkout completion or payment. Historical
+events without diagnostics are explicitly labeled as such.
+
+For legal lookups, match the dashboard's request UUID to the structured
+`legal-versions: lookup` Vercel log. Failures return `X-DPC-Request-Id` and
+`X-DPC-Failure-Kind` with the existing uncached 503 response. Logs distinguish
+timeout, network, RPC, malformed JSON, incomplete tuple and configuration
+failure, and include the upstream status/request ID when available. Success
+responses keep the existing cache policy; a cached response's request UUID
+identifies the origin lookup, not a unique visitor request. Fresh submit-time
+reads and the four-second RPC deadline are unchanged.
+
+Each durable production `health-check-observation` (or coverage-gap) row now
+includes `detail.probe_diagnostics`: one bounded record per Join-page, legal,
+OPTIONS and malformed-request probe, with elapsed time, response status, safe
+body code and available request/execution IDs. A three-second monitor timeout
+records `failure_kind=timeout` and unknown eligibility/contract states; it does
+not prove the underlying request failed. A 429/5xx checkout probe is an
+availability incident (SEV-1), with the affected CORS/validation state unknown.
+A received response that violates the actual contract still raises SEV-0.
+The four probes run concurrently within the existing monitor budget.
+
+Diagnostics are first-party only and excluded from GA4 even after consent.
+Client collection and server projection exclude names, emails, tokens,
+response bodies and arbitrary provider messages. The API projects the same
+allowlist again when reading anonymous events for the dashboard. Turnstile
+codes use the six-digit format supplied to its
+[error callback](https://developers.cloudflare.com/turnstile/troubleshooting/client-side-errors/).
+Telemetry remains best-effort and does not block consent, challenge recovery
+or checkout. No diagnostic client is added to the token-bearing depositor
+confirmation page.
+
+Verification: `npm test -- --runInBand`; `npm run test:db` (Docker, disposable
+PostgreSQL with no network or exposed ports); and `npm run test:e2e --
+tests/e2e/legal-versions.spec.mjs tests/e2e/dashboard-subscriptions.spec.mjs`.
+The database test uses the pinned Supabase PostgreSQL image and deletes its
+temporary container in a `finally` block.
+
+For the post-deploy smoke check, read `/api/legal-versions?fresh=1` and confirm
+the tuple, no-store header and request UUID, inspect a scheduled production
+health-check observation for all four probe records, and verify the diagnostic
+panel loads. Exercise failure/recovery using mocked provider responses in a
+local/preview browser, rather than injecting a production outage. To roll back,
+revert the website release and leave the additive database migration in place;
+the previous writer works with it and recorded evidence stays available.
+
 ## 8. Eventual WordPress migration
 
 When the full site launches:

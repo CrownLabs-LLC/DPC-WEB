@@ -5,6 +5,8 @@
 //
 // Always responds 202: telemetry must never surface an error to the site.
 
+import { sanitizeDiagnostics } from './lib/join-diagnostics.js';
+
 const ALLOWED_EVENTS = new Set([
   'page_view',
   'deposit_click',
@@ -17,6 +19,7 @@ const ALLOWED_EVENTS = new Set([
   'join_checkout_fallback_clicked',
   'join_checkout_stalled',
   'join_error',
+  'join_recovery',
   'membership_checkout_complete',
   'membership_checkout_cancelled',
   'partner_subscription_checkout_submitted',
@@ -129,6 +132,9 @@ export default async function handler(req, res) {
     if (event === 'join_error') {
       payload.error_code = errorCode(body?.error_code);
       payload.http_status = httpStatus(body?.http_status);
+    }
+    if (event === 'join_error' || event === 'join_recovery') {
+      payload.diagnostics = sanitizeDiagnostics(body?.diagnostics);
     }
     const resp = await fetch(`${supabaseUrl}/rest/v1/site_events`, {
       method: 'POST',

@@ -112,6 +112,34 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
+test('Join diagnostic history shows correlation, recovery and legacy gaps', async ({ page }, testInfo) => {
+  await page.unroute('**/api/dashboard-data?**');
+  await page.route('**/api/dashboard-data?**', async (route) => {
+    const payload = dashboardPayload();
+    payload.join_diagnostics = { configured: true, truncated: true, events: [
+      { ts: '2026-09-14T20:00:02Z', event: 'join_recovery', diagnostics: { component: 'legal_versions', stage: 'retry', outcome: 'recovered', attempt: 2, elapsed_ms: 183, episode_id: 'a0000000-0000-4000-8000-000000000001' } },
+      { ts: '2026-09-14T20:00:00Z', event: 'join_error', error_code: 'legal_versions_unavailable', http_status: 503, diagnostics: { component: 'legal_versions', stage: 'initial_load', failure_kind: 'timeout', attempt: 1, elapsed_ms: 4006, episode_id: 'a0000000-0000-4000-8000-000000000001', request_id: 'b0000000-0000-4000-8000-000000000001' } },
+      { ts: '2026-09-14T19:00:00Z', event: 'join_error', error_code: 'turnstile_unavailable', diagnostics: null },
+    ] };
+    await route.fulfill({ contentType: 'application/json', body: JSON.stringify(payload) });
+  });
+  await page.goto('/dashboard');
+  await page.getByText('Recent Join diagnostics', { exact: true }).click();
+  const box = page.locator('#join-diagnostics');
+  await expect(box).toContainText('Latest 50 recorded events');
+  await expect(box).toContainText('Step recovered');
+  await expect(box).toContainText('HTTP 503');
+  await expect(box).toContainText('4,006 ms');
+  await expect(box).toContainText('Diagnostic details were not recorded');
+  await expect(box.locator('code')).toHaveCount(3);
+  await expect(box).toContainText('PDT');
+  await expect(box).toContainText('does not confirm a paid membership');
+  expect(await box.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
+  await box.screenshot({ path: testInfo.outputPath('join-diagnostics-mobile.png') });
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await box.screenshot({ path: testInfo.outputPath('join-diagnostics-desktop.png') });
+});
+
 test('subscription operations lead the dashboard without deposit or member PII views', async ({ page }) => {
   await page.goto('/dashboard');
 

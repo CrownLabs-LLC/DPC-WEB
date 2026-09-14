@@ -29,6 +29,7 @@
 // sends `Authorization: Bearer $CRON_SECRET` on cron invocations; manual runs
 // may use the dashboard token instead.
 import Stripe from 'stripe';
+import { sanitizeDiagnostics, responseDiagnostics } from './lib/join-diagnostics.js';
 import { Resend } from 'resend';
 import { timingSafeEqual, createHash, randomUUID } from 'node:crypto';
 import {
@@ -114,6 +115,11 @@ const POLICY = Object.freeze({
     severity: 'SEV-1', capability: 'CHECKOUT',
     title: 'Checkout recovery path is unhealthy',
     action: 'Inspect the production join page',
+  },
+  'checkout-canary:availability': {
+    severity: 'SEV-1', capability: 'CHECKOUT',
+    title: 'Checkout service is temporarily unavailable',
+    action: 'Inspect checkout availability and provider request evidence',
   },
   'checkout-canary:cors': {
     severity: 'SEV-0', capability: 'CHECKOUT',
@@ -377,6 +383,30 @@ async function gatherProblems(
   const problems = [];
   const warnings = [];
   const states = new Map();
+  const probeDiagnostics = [];
+  async function readProbe(url, options, component, stage, label) {
+    const started = performance.now();
+    const detail = { component, stage };
+    try {
+      const result = await withTimeout(
+        fetch(url, options).then(async (response) => {
+          Object.assign(detail, responseDiagnostics(response));
+          Object.assign(detail, sanitizeDiagnostics({ failure_kind: response.headers.get('x-dpc-failure-kind') }));
+          return { response, body: await response.text() };
+        }), CANARY_TIMEOUT_MS, label,
+      );
+      try {
+        const parsed = JSON.parse(result.body);
+        Object.assign(detail, sanitizeDiagnostics({ body_code: parsed?.error?.code || parsed?.code }));
+      } catch { /* Raw bodies are never diagnostic evidence. */ }
+      return result;
+    } catch (err) {
+      detail.failure_kind = String(err?.message).includes('timed out after') ? 'timeout' : 'network';
+      throw err;
+    } finally {
+      probeDiagnostics.push(sanitizeDiagnostics({ ...detail, elapsed_ms: Math.round(performance.now() - started) }));
+    }
+  }
   const stripeKey = process.env.STRIPE_SECRET_KEY;
   const resendKey = process.env.RESEND_API_KEY;
   const observe = (key, state, severity) => {
@@ -404,11 +434,9 @@ async function gatherProblems(
   // 200 fails checkout exactly as hard as a 503 does.
   jobs.push((async () => {
     try {
-      const { response, body } = await withTimeout(
-        fetch(LEGAL_VERSIONS_URL, { headers: { accept: 'application/json' } })
-          .then(async (res) => ({ response: res, body: await res.text() })),
-        CANARY_TIMEOUT_MS,
-        'legal-versions canary'
+      const { response, body } = await readProbe(
+        LEGAL_VERSIONS_URL, { headers: { accept: 'application/json' } },
+        'legal_versions', 'initial_load', 'legal-versions canary',
       );
       if (!response.ok) {
         add(
@@ -456,18 +484,18 @@ async function gatherProblems(
   // checkout intent can be created.
   jobs.push((async () => {
     try {
-      const fetchText = (url, options, label) => withTimeout(
-        fetch(url, options).then(async (response) => ({ response, body: await response.text() })),
-        CANARY_TIMEOUT_MS,
-        label
-      );
-      const [joinProbe, optionsProbe, invalidProbe] = await Promise.all([
-        fetchText(JOIN_URL, { headers: { 'cache-control': 'no-cache' } }, 'join page canary'),
-        fetchText(CHECKOUT_ENDPOINT, { method: 'OPTIONS' }, 'checkout OPTIONS canary'),
-        fetchText(CHECKOUT_ENDPOINT, {
+      // Settle every bounded probe so one fast failure cannot discard the
+      // other probes' diagnostic evidence from this run.
+      const probeResults = await Promise.allSettled([
+        readProbe(JOIN_URL, { headers: { 'cache-control': 'no-cache' } }, 'checkout', 'join_page', 'join page canary'),
+        readProbe(CHECKOUT_ENDPOINT, { method: 'OPTIONS' }, 'checkout', 'options', 'checkout OPTIONS canary'),
+        readProbe(CHECKOUT_ENDPOINT, {
           method: 'POST', headers: { 'content-type': 'application/json' }, body: '{',
-        }, 'checkout invalid-request canary'),
+        }, 'checkout', 'validation', 'checkout invalid-request canary'),
       ]);
+      const failed = probeResults.find((result) => result.status === 'rejected');
+      if (failed) throw failed.reason;
+      const [joinProbe, optionsProbe, invalidProbe] = probeResults.map((result) => result.value);
       const joinRes = joinProbe.response;
       const markup = joinProbe.body;
       const markers = ['id="checkout-fallback"', '.btn[hidden]', 'join_checkout_stalled', 'window.location.assign'];
@@ -482,8 +510,17 @@ async function gatherProblems(
         observe('checkout-canary:join', 'healthy');
       }
       const optionsRes = optionsProbe.response;
+      const unavailable = (response) => response.status >= 500 || response.status === 429;
+      if (unavailable(optionsRes) || unavailable(invalidProbe.response)) {
+        add(problems, 'checkout-canary:availability',
+          `Checkout service unavailable (OPTIONS HTTP ${optionsRes.status}; validation HTTP ${invalidProbe.response.status})`);
+      } else {
+        observe('checkout-canary:availability', 'healthy');
+      }
       const methods = optionsRes.headers.get('access-control-allow-methods') || '';
-      if (!optionsRes.ok || !methods.includes('POST')) {
+      if (unavailable(optionsRes)) {
+        observe('checkout-canary:cors', 'unknown');
+      } else if (!optionsRes.ok || !methods.includes('POST')) {
         add(
           problems,
           'checkout-canary:cors',
@@ -495,7 +532,9 @@ async function gatherProblems(
       }
       const invalidRes = invalidProbe.response;
       const invalidBody = invalidProbe.body;
-      if (invalidRes.status !== 400 || !invalidBody.includes('INVALID_REQUEST')) {
+      if (unavailable(invalidRes)) {
+        observe('checkout-canary:validation', 'unknown');
+      } else if (invalidRes.status !== 400 || !invalidBody.includes('INVALID_REQUEST')) {
         add(
           problems,
           'checkout-canary:validation',
@@ -507,6 +546,7 @@ async function gatherProblems(
       }
       observe('checkout-canary:unreachable', 'healthy');
     } catch (err) {
+      observe('checkout-canary:availability', 'unknown');
       observe('checkout-canary:join', 'unknown');
       observe('checkout-canary:cors', 'unknown');
       observe('checkout-canary:validation', 'unknown');
@@ -725,7 +765,7 @@ async function gatherProblems(
   await Promise.allSettled(jobs);
   problems.sort((a, b) => (a.key < b.key ? -1 : 1));
   warnings.sort((a, b) => (a.key < b.key ? -1 : 1));
-  return { problems, warnings, states };
+  return { problems, warnings, states, probeDiagnostics };
 }
 
 function fingerprintOf(problems) {
@@ -1009,7 +1049,7 @@ export default async function handler(req, res) {
       ...(cronMonitor ? { cron_monitor: cronMonitor } : {}),
     });
   }
-  const { problems, warnings, states } = gathered;
+  const { problems, warnings, states, probeDiagnostics } = gathered;
   if (productionRun) {
     const key = 'env:SENTRY_CRON_CHECKIN_URL';
     if (sentryConfig.issue) {
@@ -1137,6 +1177,7 @@ export default async function handler(req, res) {
         checked_at: new Date(now).toISOString(),
         environment: 'production',
         observations: publicObservations(states),
+        probe_diagnostics: probeDiagnostics,
         timings: integerTimings(timings),
       },
     };
@@ -1176,6 +1217,7 @@ export default async function handler(req, res) {
           checked_at: new Date(now).toISOString(),
           environment: 'production',
           observations: publicObservations(states),
+          probe_diagnostics: probeDiagnostics,
           timings: integerTimings(timings),
         },
       };
@@ -1240,6 +1282,7 @@ export default async function handler(req, res) {
     problems: problems.map((p) => p.text),
     warnings: warnings.map((warning) => warning.text),
     observations: publicObservations(states),
+    probe_diagnostics: probeDiagnostics,
     fingerprint,
     alerted,
     throttled,

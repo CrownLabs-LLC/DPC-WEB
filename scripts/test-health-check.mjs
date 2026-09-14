@@ -142,6 +142,8 @@ function mockFetch({
   joinCanaryBroken = false,
   legalVersionsStatus = 200,
   legalVersionsBody = null,
+  optionsStatus = 204,
+  invalidStatus = 400,
   stalledHandoff = false,
   stalledHandoffCount = 1,
   fallbackHandoff = false,
@@ -188,8 +190,9 @@ function mockFetch({
     }
     if (u.includes('/functions/v1/circle-checkout')) {
       if (canaryDelayMs) await new Promise((resolve) => setTimeout(resolve, canaryDelayMs));
-      if (opts?.method === 'OPTIONS') return new Response(null, { status: 204, headers: { 'access-control-allow-methods': 'POST, OPTIONS' } });
-      return new Response(JSON.stringify({ success: false, error: { code: 'INVALID_REQUEST' } }), { status: 400, headers: { 'content-type': 'application/json' } });
+      const headers = { 'sb-request-id': 'a0000000-0000-4000-8000-000000000001', 'x-deno-execution-id': 'b0000000-0000-4000-8000-000000000001' };
+      if (opts?.method === 'OPTIONS') return new Response(null, { status: optionsStatus, headers: { ...headers, 'access-control-allow-methods': 'POST, OPTIONS' } });
+      return new Response(JSON.stringify({ success: false, error: { code: invalidStatus === 503 ? 'BOOT_ERROR' : 'INVALID_REQUEST', message: 'secret provider diagnostic' } }), { status: invalidStatus, headers: { ...headers, 'content-type': 'application/json' } });
     }
     if (u.includes('api.resend.com/domains')) {
       if (hangResendDomains) return new Promise(() => {});
@@ -495,6 +498,16 @@ let brokenJoinFingerprint = null;
   const { out, elapsed } = await run({ canaryDelayMs: 300 });
   check('parallel canary remains healthy', out.body.ok === true, out.body);
   check('parallel canary completes within one probe window', elapsed < 700, `took ${elapsed}ms`);
+}
+
+// A monitor deadline is not proof of an endpoint outage. Late responses must
+// not rewrite the evidence snapshot after the observation row was assembled.
+{
+  const { out, stats } = await run({ canaryDelayMs: 3100 });
+  const probes = insertsFrom(stats, 'health-check-observation')[0]?.detail?.probe_diagnostics;
+  check('probe timeouts persist one timing record per probe', probes?.length === 4 && probes.every((p) => p.failure_kind === 'timeout' && p.elapsed_ms >= 2900), probes);
+  check('probe timeouts never invent response status or request identity', probes.every((p) => p.http_status === undefined && p.request_id === undefined && p.provider_request_id === undefined), probes);
+  check('timed-out contract check is unknown rather than broken', out.body.observations.some((o) => o.key === 'checkout-canary:validation' && o.state === 'unknown'), out.body.observations);
 }
 
 // Case 9: preview failures are visible but never page production operators
@@ -891,7 +904,7 @@ for (const [name, expected] of [
   check(
     'observation detail has only allowlisted top-level fields',
     JSON.stringify(Object.keys(row?.detail || {}).sort()) ===
-      JSON.stringify(['checked_at', 'environment', 'observations', 'timings']),
+      JSON.stringify(['checked_at', 'environment', 'observations', 'probe_diagnostics', 'timings']),
     row,
   );
   check(
@@ -1196,6 +1209,24 @@ for (const [name, expected] of [
   check('observation evidence excludes arbitrary provider text',
     !JSON.stringify(evidence).includes('Invalid API Key'),
     evidence);
+}
+
+// Provider outages must not masquerade as broken application contracts.
+for (const fixture of [{ optionsStatus: 503 }, { invalidStatus: 503 }, { invalidStatus: 429 }]) {
+  const { out, stats } = await run(fixture);
+  const state = (key) => out.body.observations.find((item) => item.key === 'checkout-canary:' + key);
+  check('provider outage is an availability incident', state('availability')?.state === 'unhealthy' && state('availability')?.severity === 'SEV-1', out.body);
+  check('unavailable probe does not assert a broken contract', state(fixture.optionsStatus ? 'cors' : 'validation')?.state === 'unknown', out.body);
+  const evidence = insertsFrom(stats, 'health-check-observation')[0];
+  const probes = evidence?.detail?.probe_diagnostics;
+  const probe = probes?.find((item) => item.stage === (fixture.optionsStatus ? 'options' : 'validation'));
+  check('durable probe evidence carries status, timing and correlation', probes?.length === 4 && probe?.http_status === (fixture.optionsStatus || fixture.invalidStatus) && Number.isInteger(probe.elapsed_ms) && probe.provider_request_id === 'a0000000-0000-4000-8000-000000000001', probes);
+  check('durable probe evidence omits raw provider messages', !JSON.stringify(evidence).includes('secret provider diagnostic'), evidence);
+  if (fixture.invalidStatus === 503) check('durable probe evidence includes bounded body code', probe.body_code === 'BOOT_ERROR', probe);
+}
+{
+  const { out } = await run({ invalidStatus: 200 });
+  check('invalid-request contract regression remains SEV-0', out.body.observations.some((item) => item.key === 'checkout-canary:validation' && item.state === 'unhealthy' && item.severity === 'SEV-0'), out.body);
 }
 
 // Case 48: missing audience sync configuration is dashboard-only SEV-2.

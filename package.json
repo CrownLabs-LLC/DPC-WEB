@@ -9,8 +9,9 @@
   },
   "scripts": {
     "start": "vercel dev",
-    "test": "node scripts/test-stripe-webhook-paths.mjs && node scripts/test-dashboard-endpoints.mjs && node scripts/test-health-check.mjs && node scripts/test-legal-versions.mjs && node scripts/test-release-readiness.mjs && node scripts/test-depositor-confirmation.mjs && node scripts/test-admin-support.mjs",
-    "test:e2e": "playwright test"
+    "test": "node scripts/test-stripe-webhook-paths.mjs && node scripts/test-dashboard-endpoints.mjs && node scripts/test-health-check.mjs && node scripts/test-legal-versions.mjs && node scripts/test-join-diagnostics.mjs && node scripts/test-release-readiness.mjs && node scripts/test-depositor-confirmation.mjs && node scripts/test-admin-support.mjs",
+    "test:e2e": "playwright test",
+    "test:db": "node scripts/test-join-diagnostics-db.mjs"
   },
   "dependencies": {
     "resend": "^4.0.0",
