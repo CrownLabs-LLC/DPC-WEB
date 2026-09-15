@@ -22,6 +22,7 @@ create table if not exists public.site_events (
 alter table public.site_events add column if not exists error_code text;
 alter table public.site_events add column if not exists http_status integer;
 alter table public.site_events add column if not exists flow_id text;
+alter table public.site_events add column if not exists diagnostics jsonb;
 
 alter table public.site_events drop constraint if exists site_events_event_check;
 alter table public.site_events add constraint site_events_event_check check (
@@ -37,6 +38,7 @@ alter table public.site_events add constraint site_events_event_check check (
     'join_checkout_fallback_clicked',
     'join_checkout_stalled',
     'join_error',
+    'join_recovery',
     'membership_checkout_complete',
     'membership_checkout_cancelled',
     'partner_subscription_checkout_submitted',
@@ -57,6 +59,19 @@ alter table public.site_events add constraint site_events_http_status_check chec
 alter table public.site_events drop constraint if exists site_events_flow_id_check;
 alter table public.site_events add constraint site_events_flow_id_check check (
   flow_id is null or flow_id ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+);
+
+alter table public.site_events drop constraint if exists site_events_diagnostics_check;
+alter table public.site_events add constraint site_events_diagnostics_check check (
+  diagnostics is null or (
+    jsonb_typeof(diagnostics) = 'object'
+    and octet_length(diagnostics::text) <= 2048
+    and diagnostics - array[
+      'component','stage','failure_kind','outcome','episode_id','request_id',
+      'provider_request_id','execution_id','elapsed_ms','attempt','http_status',
+      'provider_code','body_code','rpc_reason'
+    ]::text[] = '{}'::jsonb
+  )
 );
 
 create index if not exists site_events_event_ts_idx on public.site_events (event, ts desc);

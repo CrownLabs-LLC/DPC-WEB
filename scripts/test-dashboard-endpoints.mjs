@@ -632,4 +632,40 @@ process.env.SUPABASE_SERVICE_ROLE_KEY = 'service_test_key';
   ), { older: older.length, omitted: f?.blocked_omitted });
 }
 
+// Diagnostic reads have their own failure boundary and sanitize anonymous data.
+process.env.DASHBOARD_TOKEN = 'sekret-token';
+for (const missingMigration of [false, true]) {
+  const origFetch = globalThis.fetch, origHttps = https.request;
+  const baseFetch = mockDashboardFetch();
+  globalThis.fetch = async (url, opts) => {
+    if (String(url).includes('select=ts,event,error_code,http_status,diagnostics')) {
+      if (missingMigration) return new Response('private schema error', { status: 400 });
+      check('diagnostic read is bounded and follows the selected window', String(url).includes('limit=51') && String(url).includes('event=in.(join_error,join_recovery)') && String(url).includes('ts=gte.'), String(url));
+      const rows = Array.from({ length: 51 }, (_, index) => ({
+        ts: new Date().toISOString(), event: index ? 'join_error' : 'join_recovery',
+        error_code: index ? 'legal_versions_unavailable' : 'private@example.invalid',
+        http_status: 503,
+        diagnostics: index === 1 ? null : { component: 'legal_versions', outcome: 'recovered', request_id: 'a0000000-0000-4000-8000-000000000001', message: 'private@example.invalid', token: 'secret', provider_code: 'unsafe text' },
+      }));
+      return new Response(JSON.stringify(rows));
+    }
+    return baseFetch(url, opts);
+  };
+  https.request = mockStripeHttps();
+  const { res, out } = mockRes();
+  try {
+    const handler = await fresh('../api/dashboard-data.js');
+    await handler({ method: 'GET', headers: { authorization: 'Bearer sekret-token' }, query: { days: '7' } }, res);
+  } finally { globalThis.fetch = origFetch; https.request = origHttps; }
+  const section = out.body.join_diagnostics;
+  check('diagnostic availability never blanks the funnel', out.status === 200 && Boolean(out.body.funnel.totals), out.body);
+  check('diagnostic response excludes arbitrary text', !/private@example|private schema|unsafe text|secret/.test(JSON.stringify(section)), section);
+  if (missingMigration) check('missing diagnostics migration is explicit', Boolean(section.error), section);
+  else {
+    check('diagnostics read caps and marks truncated results', section.truncated && section.events.length === 50, section);
+    check('diagnostics retain legacy rows without inventing detail', section.events[1].diagnostics === null, section.events[1]);
+    check('diagnostic recovery is preserved', section.events[0].event === 'join_recovery' && section.events[0].error_code === null, section.events[0]);
+  }
+}
+
 process.exit(failures ? 1 : 0);

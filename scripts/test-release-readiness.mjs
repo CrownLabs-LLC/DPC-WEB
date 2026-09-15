@@ -364,9 +364,12 @@ assert.match(privacy, /Effective Date: August 1, 2026/);
 assert.doesNotMatch(privacy, /Effective Date: \[DATE\]/);
 
 assert.match(join, /TURNSTILE_MAX_LOAD_ATTEMPTS = 50/);
-assert.match(join, /error_code: 'turnstile_unavailable'/);
+// /assets is immutable for a year: returning visitors must load the new writer.
+assert.match(join, /assets\/analytics\.js\?v=20260914/);
+assert.match(join, /assets\/join-diagnostics\.js\?v=20260914/);
+assert.match(join, /turnstileDiagnostics\.failure\('turnstile_unavailable'/);
 assert.match(join, /error_code: 'turnstile_incomplete'/);
-assert.match(join, /'error-callback': showTurnstileUnavailable/);
+assert.match(join, /'error-callback': function \(code\) \{ showTurnstileUnavailable\('widget_error', String\(code\)\)/);
 assert.match(join, /id="turnstile-retry"/);
 assert.match(join, /turnstileLoadAttempts = 0/);
 assert.match(join, /renderTurnstile\(\)/);
@@ -375,7 +378,7 @@ assert.match(join, /function reloadTurnstileScript\(\)/);
 assert.match(join, /document\.createElement\('script'\)/);
 assert.match(join, /existing\.remove\(\)/);
 assert.match(join, /TURNSTILE_SCRIPT_SRC \+ '&retry=' \+ Date\.now\(\)/);
-assert.match(join, /script\.onerror = function \(\) \{ complete\(showTurnstileUnavailable\); \}/);
+assert.match(join, /script\.onerror = function \(\) \{ complete\(function \(\) \{ showTurnstileUnavailable\('script_error'\); \}\); \}/);
 assert.match(join, /TURNSTILE_MAX_LOAD_ATTEMPTS \* 200/);
 assert.match(join, /<p role="status"[^>]*>Loading security check…<\/p>/);
 assert.match(join, /id="checkout-handoff" role="status" hidden/);

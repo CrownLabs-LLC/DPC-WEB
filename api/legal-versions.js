@@ -30,6 +30,8 @@
 // Fails closed in every failure mode: no baked-in fallback tuple, ever. A
 // fallback would reintroduce exactly the staleness bug this endpoint exists
 // to remove.
+import { randomUUID } from 'node:crypto';
+import { responseDiagnostics, sanitizeDiagnostics } from './lib/join-diagnostics.js';
 import { supabaseConfigured } from './lib/ops-checks.js';
 
 const RPC_NAME = 'current_checkout_legal_versions';
@@ -68,16 +70,10 @@ function completeTuple(value) {
   return tuple;
 }
 
-// Deliberately not ops-checks.js's shared supabaseRpc(): that helper throws on
-// a non-ok response without reading the body, which would discard the very
-// detail this endpoint needs to log — a permission-denied (grant regression)
-// and a raised legal_currentness_unavailable (missing singleton) are the two
-// failures worth telling apart in production, and both are invisible from the
-// status code alone.
-async function readLegalVersions() {
+// A failure carries only bounded diagnostics, never the provider's raw text.
+async function readLegalVersions(context) {
   const resp = await fetch(`${process.env.SUPABASE_URL}/rest/v1/rpc/${RPC_NAME}`, {
-    method: 'POST',
-    signal: AbortSignal.timeout(RPC_TIMEOUT_MS),
+    method: 'POST', signal: AbortSignal.timeout(RPC_TIMEOUT_MS),
     headers: {
       apikey: process.env.SUPABASE_SERVICE_ROLE_KEY,
       authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
@@ -85,16 +81,21 @@ async function readLegalVersions() {
     },
     body: '{}',
   });
+  Object.assign(context, responseDiagnostics(resp));
+  // Preserve the website request ID; the provider has its separate field.
   const raw = await resp.text();
-  if (!resp.ok) {
-    let detail = raw.slice(0, 300);
-    try {
-      const parsed = JSON.parse(raw);
-      detail = parsed?.message || parsed?.error || detail;
-    } catch { /* non-JSON error body: the raw text is the detail */ }
-    throw new Error(`${RPC_NAME} returned ${resp.status}: ${detail}`);
+  let body;
+  try { body = JSON.parse(raw); } catch {
+    if (resp.ok) throw Object.assign(new Error('invalid_json'), { kind: 'invalid_json' });
   }
-  return JSON.parse(raw);
+  Object.assign(context, sanitizeDiagnostics({
+    body_code: body?.code,
+    rpc_reason: body?.code === 'P0001' ? body?.message : undefined,
+  }));
+  // HTTP failure describes the response, regardless of its encoding or which
+  // upstream layer produced it. body_code/rpc_reason carry the finer evidence.
+  if (!resp.ok) throw Object.assign(new Error('http'), { kind: 'http' });
+  return body;
 }
 
 export default async function handler(req, res) {
@@ -103,31 +104,34 @@ export default async function handler(req, res) {
     res.setHeader('Cache-Control', UNCACHED);
     return res.status(405).json({ error: 'GET required' });
   }
-
-  const fresh = wantsFresh(req);
-
-  if (!supabaseConfigured()) {
-    console.error('legal-versions: Supabase not configured — refusing to serve a tuple');
+  const requestId = randomUUID();
+  const started = performance.now();
+  const context = { component: 'legal_versions' };
+  res.setHeader('X-DPC-Request-Id', requestId);
+  const log = (kind) => {
+    const detail = sanitizeDiagnostics({
+      ...context, request_id: requestId,
+      elapsed_ms: Math.round(performance.now() - started),
+      ...(kind ? { failure_kind: kind } : {}),
+    });
+    (kind ? console.error : console.info)('legal-versions: lookup', JSON.stringify(detail));
+  };
+  const unavailable = (kind) => {
+    log(kind);
+    res.setHeader('X-DPC-Failure-Kind', kind);
     res.setHeader('Cache-Control', UNCACHED);
     return res.status(503).json({ error: 'legal versions unavailable' });
-  }
-
+  };
+  if (!supabaseConfigured()) return unavailable('configuration');
   let tuple;
   try {
-    tuple = completeTuple(await readLegalVersions());
+    tuple = completeTuple(await readLegalVersions(context));
   } catch (err) {
-    // A transient RPC blip must never be cached and replayed as a false outage.
-    console.error('legal-versions: RPC failed', String(err?.message || err));
-    res.setHeader('Cache-Control', UNCACHED);
-    return res.status(503).json({ error: 'legal versions unavailable' });
+    return unavailable(err?.name === 'TimeoutError' || err?.name === 'AbortError'
+      ? 'timeout' : err?.kind || 'network');
   }
-
-  if (!tuple) {
-    console.error('legal-versions: RPC returned a structurally incomplete tuple');
-    res.setHeader('Cache-Control', UNCACHED);
-    return res.status(503).json({ error: 'legal versions unavailable' });
-  }
-
-  res.setHeader('Cache-Control', fresh ? UNCACHED : CACHED);
+  if (!tuple) return unavailable('incomplete_tuple');
+  log();
+  res.setHeader('Cache-Control', wantsFresh(req) ? UNCACHED : CACHED);
   return res.status(200).json(tuple);
 }

@@ -18,7 +18,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Barlow+Condensed:wght@600;700&family=Barlow:ital,wght@0,400;0,500;1,400" rel="stylesheet">
-<script id="turnstile-api-script" src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
+<script id="turnstile-api-script" src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer onerror="this.dataset.loadFailed='true'"></script>
 <style>
 :root {
   --navy: #0D1B2A; --liquid: #1E3A5A; --gold: #C4A35A; --gold-hover: #D4B370;
@@ -912,7 +912,8 @@ window.DPC_JOIN = {
   }
 };
 </script>
-<script src="assets/analytics.js"></script>
+<script src="assets/analytics.js?v=20260914"></script>
+<script src="assets/join-diagnostics.js?v=20260914"></script>
 <script>
 (function () {
   var cfg = window.DPC_JOIN || {};
@@ -925,6 +926,13 @@ window.DPC_JOIN = {
   var summaryEl = document.getElementById('order-summary');
   var fineEl = document.getElementById('offer-fineprint');
   var turnstileSlot = document.getElementById('turnstile-slot');
+  // A blocked diagnostics asset must not block joining.
+  var noDiagnostics = function () { return { begin: function () {}, failure: function (code, details) {
+    track('join_error', { error_code: code, http_status: details && details.status });
+  }, recovered: function () {} }; };
+  var createDiagnostics = window.DPCJoinDiagnostics || noDiagnostics;
+  var legalDiagnostics = createDiagnostics('legal_versions');
+  var turnstileDiagnostics = createDiagnostics('turnstile');
   var turnstileWidgetId = null;
   var turnstileToken = '';
   var turnstileUnavailable = false;
@@ -1045,27 +1053,35 @@ window.DPC_JOIN = {
     return Number.isFinite(dateMs) ? Math.max(0, dateMs - Date.now()) : null;
   }
 
-  function fetchLegalVersions(fresh) {
+  function fetchLegalVersions(fresh, stage) {
+    legalDiagnostics.begin(stage || (fresh ? 'submit_check' : 'initial_load'));
+    var requestId = null;
     /* The on-load read may use the CDN-cached path; submit-time and
        post-rejection reads must not. Never conflate the two. */
     var url = fresh ? LEGAL_VERSIONS_ENDPOINT + '?fresh=1' : LEGAL_VERSIONS_ENDPOINT;
     return fetch(url, { headers: { accept: 'application/json' } }).then(function (res) {
+      requestId = res.headers.get('x-dpc-request-id');
       if (!res.ok) {
         var error = new Error('legal versions unavailable');
         error.status = res.status;
+        error.failure_kind = res.headers.get('x-dpc-failure-kind') || 'http';
+        error.request_id = res.headers.get('x-dpc-request-id');
         if (res.status === 429) error.retryAfterMs = retryAfterMs(res);
         throw error;
       }
-      return res.json();
+      return res.json().catch(function () {
+        throw { status: res.status, failure_kind: 'invalid_json', request_id: res.headers.get('x-dpc-request-id') };
+      });
     }).then(function (body) {
       var tuple = {};
       for (var i = 0; i < LEGAL_VERSION_KEYS.length; i++) {
         var key = LEGAL_VERSION_KEYS[i];
         if (!body || typeof body[key] !== 'string' || !body[key]) {
-          throw new Error('legal versions incomplete');
+          throw { status: 200, failure_kind: 'incomplete_tuple', request_id: requestId };
         }
         tuple[key] = body[key];
       }
+      legalDiagnostics.recovered();
       return tuple;
     });
   }
@@ -1132,7 +1148,6 @@ window.DPC_JOIN = {
     clearLegalRetryTimer();
     legalRetryBtn.hidden = false;
     setError('Too many attempts. Please wait a moment and try again.', true);
-    track('join_error', { error_code: 'legal_versions_rate_limited', http_status: 429 });
     updateLegalRetryCountdown();
   }
 
@@ -1156,10 +1171,14 @@ window.DPC_JOIN = {
       legalRetryBtn.textContent = 'Try again';
     }
     setError('We could not confirm the current terms. Select Try again below, or email hello@downtownpourcollective.com for help.', true);
-    track('join_error', { error_code: 'legal_versions_unavailable' });
   }
 
   function handleLegalVersionsFailure(error, recovery) {
+    legalDiagnostics.failure(error && error.status === 429 ? 'legal_versions_rate_limited' : 'legal_versions_unavailable', {
+      failure_kind: error && error.failure_kind || 'network',
+      status: error && error.status,
+      request_id: error && error.request_id
+    });
     if (error && error.status === 429) {
       legalVersionsRateLimited(error, recovery);
       return;
@@ -1190,7 +1209,7 @@ window.DPC_JOIN = {
     legalRetryInFlight = true;
     legalRetryBtn.disabled = true;
     legalRetryBtn.textContent = 'Checking…';
-    fetchLegalVersions(true).then(function (versions) {
+    fetchLegalVersions(true, 'retry').then(function (versions) {
       resetLegalRetryUi();
       recovery(versions);
     }).catch(function (error) {
@@ -1302,7 +1321,7 @@ window.DPC_JOIN = {
     }
   }
 
-  function showTurnstileUnavailable() {
+  function showTurnstileUnavailable(kind, providerCode) {
     if (turnstileWidgetId != null && window.turnstile && typeof window.turnstile.remove === 'function') {
       try { window.turnstile.remove(turnstileWidgetId); } catch (e) {}
     }
@@ -1314,6 +1333,7 @@ window.DPC_JOIN = {
     var retryButton = document.getElementById('turnstile-retry');
     if (retryButton) {
       retryButton.addEventListener('click', function () {
+        turnstileDiagnostics.begin('retry');
         turnstileUnavailable = false;
         turnstileLoadAttempts = 0;
         turnstileFailureTracked = false;
@@ -1329,7 +1349,7 @@ window.DPC_JOIN = {
     }
     if (!turnstileFailureTracked) {
       turnstileFailureTracked = true;
-      track('join_error', { error_code: 'turnstile_unavailable' });
+      turnstileDiagnostics.failure('turnstile_unavailable', { failure_kind: kind || 'unknown', provider_code: providerCode });
     }
   }
 
@@ -1350,10 +1370,10 @@ window.DPC_JOIN = {
     script.defer = true;
     script.src = TURNSTILE_SCRIPT_SRC + '&retry=' + Date.now();
     script.onload = function () { complete(renderTurnstile); };
-    script.onerror = function () { complete(showTurnstileUnavailable); };
+    script.onerror = function () { complete(function () { showTurnstileUnavailable('script_error'); }); };
     timeout = setTimeout(function () {
       if (script.parentNode) script.remove();
-      complete(showTurnstileUnavailable);
+      complete(function () { showTurnstileUnavailable('script_timeout'); });
     }, TURNSTILE_MAX_LOAD_ATTEMPTS * 200);
     document.head.appendChild(script);
   }
@@ -1367,7 +1387,8 @@ window.DPC_JOIN = {
     if (!window.turnstile) {
       turnstileLoadAttempts += 1;
       if (turnstileLoadAttempts >= TURNSTILE_MAX_LOAD_ATTEMPTS) {
-        showTurnstileUnavailable();
+        var securityScript = document.getElementById(TURNSTILE_SCRIPT_ID);
+        showTurnstileUnavailable(securityScript && securityScript.dataset.loadFailed === 'true' ? 'script_error' : 'script_timeout');
         return;
       }
       setTimeout(renderTurnstile, 200);
@@ -1381,14 +1402,18 @@ window.DPC_JOIN = {
         theme: 'dark',
         callback: function (token) {
           turnstileToken = token || '';
+          if (turnstileToken) {
+            turnstileDiagnostics.recovered();
+            turnstileFailureTracked = false;
+          }
           turnstileUnavailable = false;
           clearChallengeError();
         },
         'expired-callback': function () { turnstileToken = ''; },
-        'error-callback': showTurnstileUnavailable
+        'error-callback': function (code) { showTurnstileUnavailable('widget_error', String(code)); }
       });
     } catch (error) {
-      showTurnstileUnavailable();
+      showTurnstileUnavailable('render_exception');
     }
   }
 
@@ -1497,7 +1522,7 @@ window.DPC_JOIN = {
           /* The genuine race: a version bump landed between our submit-time
              re-read and the server's validation. Re-read, clear consent, make
              the member re-accept. Never auto-resubmit. */
-          fetchLegalVersions(true).then(function (current) {
+          fetchLegalVersions(true, 'post_rejection').then(function (current) {
             promptLegalReaccept(current, true);
           }).catch(function (error) {
             handleLegalVersionsFailure(error, function (current) {
@@ -1548,6 +1573,7 @@ window.DPC_JOIN = {
   });
 
   refreshPrices();
+  turnstileDiagnostics.begin('script_load');
   renderTurnstile();
   loadLegalVersions();
   if (window.DPCAnalytics) DPCAnalytics.init({ page: 'join' });

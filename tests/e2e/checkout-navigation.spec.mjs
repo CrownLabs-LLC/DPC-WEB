@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 const CHECKOUT_ENDPOINT = 'https://ebiuspbgzggrdiaswpcc.supabase.co/functions/v1/circle-checkout';
 const CHECKOUT_URL = 'https://checkout.stripe.test/c/pay/cs_test_navigation_gate';
 
-test('a successful checkout handoff reaches Stripe with correlated lifecycle events', async ({ page, context }) => {
+test('a successful checkout handoff reaches Stripe with correlated lifecycle events', async ({ page, context, baseURL }) => {
 
   await page.route('https://challenges.cloudflare.com/turnstile/**', async (route) => {
     await route.fulfill({
@@ -59,7 +59,7 @@ test('a successful checkout handoff reaches Stripe with correlated lifecycle eve
   await expect(page.getByRole('heading', { name: 'Stripe Checkout reached' })).toBeVisible();
   const lifecycleEvents = async () => {
     const state = await context.storageState();
-    const origin = state.origins.find((item) => item.origin === 'http://127.0.0.1:4173');
+    const origin = state.origins.find((item) => item.origin === new URL(baseURL).origin);
     const stored = origin?.localStorage.find((item) => item.name === '__dpc_e2e_events')?.value || '[]';
     return JSON.parse(stored);
   };

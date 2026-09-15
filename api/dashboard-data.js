@@ -1,3 +1,4 @@
+import { sanitizeDiagnostics } from './lib/join-diagnostics.js';
 // Data source for /dashboard. Token-protected (DASHBOARD_TOKEN env var,
 // Bearer auth). Aggregates:
 //   - site funnel (Supabase site_events, written by /api/track)
@@ -537,6 +538,26 @@ async function alertsSection(stripe) {
   return { undelivered_events: undelivered, webhook_errors: webhookErrors };
 }
 
+// Separate from the funnel budget and failure boundary. Legacy rows remain
+// readable; missing migration never blanks the existing dashboard sections.
+async function joinDiagnosticsSection(days, now) {
+  if (!supabaseConfigured()) return { configured: false };
+  const since = new Date(now - days * DAY_MS).toISOString();
+  const rows = await supabaseSelect(
+    `site_events?select=ts,event,error_code,http_status,diagnostics&event=in.(join_error,join_recovery)&ts=gte.${since}&order=ts.desc&limit=51`,
+  );
+  return {
+    configured: true, truncated: rows.length > 50,
+    events: rows.slice(0, 50).map((row) => ({
+      ts: Number.isFinite(Date.parse(row.ts)) ? new Date(row.ts).toISOString() : null,
+      event: row.event === 'join_recovery' ? 'join_recovery' : 'join_error',
+      error_code: JOIN_ERROR_CODES.has(row.error_code) ? row.error_code : null,
+      http_status: Number.isInteger(row.http_status) && row.http_status >= 100 && row.http_status <= 599 ? row.http_status : null,
+      diagnostics: sanitizeDiagnostics(row.diagnostics),
+    })),
+  };
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
     res.setHeader('Allow', 'GET');
@@ -557,12 +578,13 @@ export default async function handler(req, res) {
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
   const resend = new Resend(process.env.RESEND_API_KEY);
 
-  const [funnel, subscriptionOverview, memberSetupFeeOverview, alerts, health] = await Promise.allSettled([
+  const [funnel, subscriptionOverview, memberSetupFeeOverview, alerts, health, joinDiagnostics] = await Promise.allSettled([
     funnelSection(days, now),
     subscriptionOverviewSection(now),
     memberSetupFeeOverviewSection(now),
     alertsSection(stripe),
     healthChecks(stripe, resend),
+    joinDiagnosticsSection(days, now),
   ]);
   const unwrap = (settled, label) =>
     settled.status === 'fulfilled' ? settled.value : { error: `${label}: ${String(settled.reason?.message || settled.reason)}` };
@@ -572,6 +594,7 @@ export default async function handler(req, res) {
     generated_at: new Date(now).toISOString(),
     days,
     funnel: unwrap(funnel, 'funnel'),
+    join_diagnostics: joinDiagnostics.status === 'fulfilled' ? joinDiagnostics.value : { error: 'Join diagnostics unavailable. Check the telemetry migration and database connectivity.' },
     subscription_overview: unwrap(subscriptionOverview, 'subscription overview'),
     member_setup_fee_overview: unwrap(memberSetupFeeOverview, 'setup fee overview'),
     alerts: unwrap(alerts, 'alerts'),

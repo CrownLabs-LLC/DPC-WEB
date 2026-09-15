@@ -13,7 +13,8 @@
 
   // First-party ops beacon (feeds the /dashboard funnel). Anonymous — event
   // name, page label, path, referrer, sanitized join failure code/status, and
-  // a random one-attempt flow ID only — so it is not consent-gated the way GA4 is. Fire-and-forget: never
+  // temporary correlation IDs and bounded technical diagnostics. This is not
+  // consent-gated the way GA4 is. Fire-and-forget: never
   // throws, never blocks navigation.
   function sendEvent(event, params) {
     params = params || {};
@@ -26,7 +27,8 @@
         referrer: document.referrer || '',
         error_code: typeof params.error_code === 'string' ? params.error_code.slice(0, 100) : null,
         http_status: Number.isInteger(status) && status >= 100 && status <= 599 ? status : null,
-        flow_id: typeof params.flow_id === 'string' ? params.flow_id.slice(0, 36) : null
+        flow_id: typeof params.flow_id === 'string' ? params.flow_id.slice(0, 36) : null,
+        diagnostics: params.diagnostics || null
       });
       if (navigator.sendBeacon) {
         navigator.sendBeacon(TRACK_ENDPOINT, new Blob([payload], { type: 'application/json' }));
@@ -88,7 +90,11 @@
     if (event === 'join_checkout_fallback_clicked') sendEvent('join_checkout_fallback_clicked', params);
     if (event === 'join_checkout_stalled') sendEvent('join_checkout_stalled', params);
     if (event === 'join_error') sendEvent('join_error', params);
-    if (window.gtag) window.gtag('event', event, params || {});
+    if (event === 'join_recovery') sendEvent('join_recovery', params);
+    // Operational correlation IDs stay first-party, even with GA consent.
+    var gaParams = Object.assign({}, params || {});
+    delete gaParams.diagnostics;
+    if (window.gtag && event !== 'join_recovery') window.gtag('event', event, gaParams);
   }
 
   function bootAnalytics() {

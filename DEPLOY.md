@@ -703,6 +703,97 @@ flips to `partner-waitlist-2026` so submissions are segmentable in Resend.
 
 ---
 
+## Join diagnostics rollout (September 2026)
+
+**Production migration completed September 14, 2026.**
+`db/20260914_join_diagnostics.sql` was applied to telemetry project
+`ebiuspbgzggrdiaswpcc`. Verification at 22:04–22:05 UTC confirmed the nullable
+`diagnostics` JSONB column, constraints accepting `rpc_reason` and
+`join_recovery`, and PostgREST insert-column recognition. The rejected probe
+created no event row. The database prerequisite for the website rollout is met.
+
+For any environment without this migration, apply it **before deploying the
+diagnostics writer**: Vercel deploys `main` automatically on merge.
+It adds the nullable `diagnostics` JSONB column and the `join_recovery` event.
+Existing rows remain valid; the migration and `db/setup.sql` can both be
+reapplied after recovery events exist.
+The migration bounds lock acquisition to five seconds, bounds each statement
+to thirty seconds, and notifies PostgREST to reload its schema cache at commit.
+Verify the column and PostgREST insert-column recognition before merging.
+Deploying the writer first would reject diagnostic inserts. The authenticated
+dashboard reports a missing migration separately from its other sections.
+The Join page versions both script URLs to bypass the existing one-year
+immutable asset cache for returning visitors. Bump these versions whenever
+either diagnostics script changes in a future release.
+
+The Turnstile script tag in the document head uses an inline `onerror` handler
+to capture load failures before the body initializer runs. Any future Content
+Security Policy must account for that handler or replace it with an allowed
+early listener. Re-run the immediate script-abort browser tests when introducing
+CSP so a blocked script still reports `script_error` rather than `script_timeout`.
+
+After deployment, use **Acquisition signals → Recent Join diagnostics** with
+the selected date window. The latest 50 failure/recovery events show the stage,
+attempt, duration, HTTP status, and available provider code. An episode UUID
+links a failure to its manual retries and recovery within the open page. It is
+kept only in memory, resets for a new lookup after success, and does not identify
+a member or persist across reloads. Recovery means that lookup/challenge
+succeeded; it does not establish checkout completion or payment. Historical
+events without diagnostics are explicitly labeled as such.
+
+For legal lookups, match the dashboard's request UUID to the structured
+`legal-versions: lookup` Vercel log. Failures return `X-DPC-Request-Id` and
+`X-DPC-Failure-Kind` with the existing uncached 503 response. Logs distinguish
+timeout, network, HTTP failure, malformed JSON, incomplete tuple and configuration
+failure, and include the upstream status/request ID when available. `http` means
+a received non-2xx response, whether HTML or JSON; `invalid_json` means an
+otherwise successful response that cannot be parsed. `body_code` retains bounded
+PostgREST, SQLSTATE and symbolic machine-code shapes instead of enumerating
+known failures. A generic `P0001` additionally retains `rpc_reason` only for the
+known `legal_currentness_unavailable` reason; arbitrary message text is dropped.
+See the [PostgREST error format](https://docs.postgrest.org/en/stable/references/errors.html).
+Success
+responses keep the existing cache policy; a cached response's request UUID
+identifies the origin lookup, not a unique visitor request. Fresh submit-time
+reads and the four-second RPC deadline are unchanged.
+
+Each durable production `health-check-observation` (or coverage-gap) row now
+includes `detail.probe_diagnostics`: one bounded record per Join-page, legal,
+OPTIONS and malformed-request probe, with elapsed time, response status, safe
+body code and available request/execution IDs. A three-second monitor timeout
+records `failure_kind=timeout` and unknown eligibility/contract states; it does
+not prove the underlying request failed. A 429/5xx checkout probe is an
+availability incident (SEV-0), with the affected CORS/validation state unknown.
+This preserves the previous paging urgency and 30-minute reminder cadence;
+the change improves classification without downgrading these checkout failures.
+Stateful severity escalation remains a separate reviewed policy change.
+A received response that violates the actual contract still raises SEV-0.
+The four probes run concurrently within the existing monitor budget.
+
+Diagnostics are first-party only and excluded from GA4 even after consent.
+Client collection and server projection exclude names, emails, tokens,
+response bodies and arbitrary provider messages. The API projects the same
+allowlist again when reading anonymous events for the dashboard. Turnstile
+codes use the six-digit format supplied to its
+[error callback](https://developers.cloudflare.com/turnstile/troubleshooting/client-side-errors/).
+Telemetry remains best-effort and does not block consent, challenge recovery
+or checkout. No diagnostic client is added to the token-bearing depositor
+confirmation page.
+
+Verification: `npm test -- --runInBand`; `npm run test:db` (Docker, disposable
+PostgreSQL with no network or exposed ports); and `npm run test:e2e --
+tests/e2e/legal-versions.spec.mjs tests/e2e/dashboard-subscriptions.spec.mjs`.
+The database test uses the pinned Supabase PostgreSQL image and deletes its
+temporary container in a `finally` block.
+
+For the post-deploy smoke check, read `/api/legal-versions?fresh=1` and confirm
+the tuple, no-store header and request UUID, inspect a scheduled production
+health-check observation for all four probe records, and verify the diagnostic
+panel loads. Exercise failure/recovery using mocked provider responses in a
+local/preview browser, rather than injecting a production outage. To roll back,
+revert the website release and leave the additive database migration in place;
+the previous writer works with it and recorded evidence stays available.
+
 ## 8. Eventual WordPress migration
 
 When the full site launches:
