@@ -89,11 +89,24 @@ for (const width of [320, 1280]) {
       await page.goto(path);
       await expect(page.locator('#cookie-banner')).toBeVisible();
       const privacyLink = page.getByRole('link', { name: 'Do Not Sell or Share My Personal Information', exact: true });
-      await privacyLink.evaluate(element => {
+      const geometry = await privacyLink.evaluate(element => {
         document.documentElement.style.setProperty('scroll-behavior', 'auto', 'important');
-        element.scrollIntoView({ block: 'center' });
+        element.scrollIntoView({ block: 'center', behavior: 'instant' });
+        const link = element.getBoundingClientRect();
+        const banner = document.querySelector('#cookie-banner').getBoundingClientRect();
+        return {
+          linkTop: link.top,
+          linkBottom: link.bottom,
+          bannerTop: banner.top,
+          viewportHeight: window.innerHeight,
+        };
       });
-      await privacyLink.click();
+      expect(geometry.linkTop).toBeGreaterThanOrEqual(0);
+      expect(geometry.linkBottom).toBeLessThanOrEqual(geometry.viewportHeight);
+      expect(geometry.linkBottom).toBeLessThanOrEqual(geometry.bannerTop);
+      await privacyLink.focus();
+      await expect(privacyLink).toBeFocused();
+      await privacyLink.press('Enter');
       await expect(page).toHaveURL(/\/privacy-choices$/);
       expect(await page.evaluate(() => localStorage.getItem('dpc_cookie_consent'))).toBeNull();
     }
