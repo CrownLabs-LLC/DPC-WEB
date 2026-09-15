@@ -705,11 +705,18 @@ flips to `partner-waitlist-2026` so submissions are segmentable in Resend.
 
 ## Join diagnostics rollout (September 2026)
 
-Apply `db/20260914_join_diagnostics.sql` to the website's telemetry database
-**before merging this PR**: Vercel deploys `main` automatically on merge.
-It adds the nullable `diagnostics`
-JSON column and the `join_recovery` event. Existing rows remain valid; the
-migration and `db/setup.sql` can both be reapplied after recovery events exist.
+**Production migration completed September 14, 2026.**
+`db/20260914_join_diagnostics.sql` was applied to telemetry project
+`ebiuspbgzggrdiaswpcc`. Verification at 22:04–22:05 UTC confirmed the nullable
+`diagnostics` JSONB column, constraints accepting `rpc_reason` and
+`join_recovery`, and PostgREST insert-column recognition. The rejected probe
+created no event row. The database prerequisite for the website rollout is met.
+
+For any environment without this migration, apply it **before deploying the
+diagnostics writer**: Vercel deploys `main` automatically on merge.
+It adds the nullable `diagnostics` JSONB column and the `join_recovery` event.
+Existing rows remain valid; the migration and `db/setup.sql` can both be
+reapplied after recovery events exist.
 The migration bounds lock acquisition to five seconds, bounds each statement
 to thirty seconds, and notifies PostgREST to reload its schema cache at commit.
 Verify the column and PostgREST insert-column recognition before merging.
@@ -718,6 +725,12 @@ dashboard reports a missing migration separately from its other sections.
 The Join page versions both script URLs to bypass the existing one-year
 immutable asset cache for returning visitors. Bump these versions whenever
 either diagnostics script changes in a future release.
+
+The Turnstile script tag in the document head uses an inline `onerror` handler
+to capture load failures before the body initializer runs. Any future Content
+Security Policy must account for that handler or replace it with an allowed
+early listener. Re-run the immediate script-abort browser tests when introducing
+CSP so a blocked script still reports `script_error` rather than `script_timeout`.
 
 After deployment, use **Acquisition signals → Recent Join diagnostics** with
 the selected date window. The latest 50 failure/recovery events show the stage,
