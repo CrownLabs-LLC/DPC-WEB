@@ -88,7 +88,12 @@ for (const width of [320, 1280]) {
     for (const path of ['/', '/partners', '/join', '/reserved-confirmation', '/subscription-success', '/subscription-cancelled', '/partner-subscription-success', '/partner-subscription-cancelled']) {
       await page.goto(path);
       await expect(page.locator('#cookie-banner')).toBeVisible();
-      await page.getByRole('link', { name: 'Do Not Sell or Share My Personal Information', exact: true }).click();
+      const privacyLink = page.getByRole('link', { name: 'Do Not Sell or Share My Personal Information', exact: true });
+      await privacyLink.evaluate(element => {
+        document.documentElement.style.setProperty('scroll-behavior', 'auto', 'important');
+        element.scrollIntoView({ block: 'center' });
+      });
+      await privacyLink.click();
       await expect(page).toHaveURL(/\/privacy-choices$/);
       expect(await page.evaluate(() => localStorage.getItem('dpc_cookie_consent'))).toBeNull();
     }
