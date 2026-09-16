@@ -151,6 +151,10 @@ async function setup(page, { serveLegalVersions, checkout, turnstileScript } = {
   await page.route(CHECKOUT_ENDPOINT, async (route) => {
     state.checkoutPayloads.push(JSON.parse(route.request().postData() || '{}'));
     const reply = checkout ? checkout(state.checkoutPayloads.length - 1) : null;
+    if (reply?.networkError) {
+      await route.abort('failed');
+      return;
+    }
     await route.fulfill({
       status: reply?.status ?? 200,
       contentType: 'application/json',
@@ -168,6 +172,49 @@ async function fillForm(page) {
   await page.locator('#lastName').fill('Versions');
   await page.locator('#email').fill('legal-versions@example.invalid');
   await page.locator('label.check').click();
+}
+
+for (const failure of [
+  { code: 'SIGN_IN_REQUIRED', status: 409, message: 'Please sign in through the app.' },
+  { code: 'RATE_LIMITED', status: 429, message: 'Too many attempts.' },
+  { code: 'CHECKOUT_NOT_ENABLED', status: 503, message: 'Membership checkout is temporarily unavailable.' },
+  { code: 'network', networkError: true, message: 'Network error. Check your connection and try again.' },
+  { code: 'CHALLENGE_FAILED', status: 403, message: 'Security check failed.', clearsOnRenewal: true },
+]) {
+  test(`Join ${failure.clearsOnRenewal ? 'clears' : 'preserves'} ${failure.code} recovery instructions after token renewal`, async ({ page }) => {
+    const state = await setup(page, {
+      checkout: (index) => index === 0 ? {
+        status: failure.status,
+        networkError: failure.networkError,
+        body: { success: false, error: { code: failure.code } },
+      } : null,
+      turnstileScript: `window.turnstile={render:function(_,o){window.testWidget=o;setTimeout(function(){o.callback('initial-token')},0);return 'widget'},reset:function(){window.testReset=true}};`,
+    });
+    await page.goto('/join');
+    await fillForm(page);
+    await page.locator('#submit-btn').click();
+    await expect.poll(() => page.evaluate(() => window.testReset)).toBe(true);
+    await expect(page.locator('#form-error')).toContainText(failure.message);
+
+    // A reset renews only the challenge; it does not resolve a checkout error.
+    await page.evaluate(() => window.testWidget.callback('renewed-token'));
+    if (failure.clearsOnRenewal) {
+      await expect(page.locator('#form-error')).toHaveText('');
+    } else {
+      await expect(page.locator('#form-error')).toContainText(failure.message);
+    }
+    await expect(page.locator('#submit-btn')).toBeEnabled();
+    expect(state.checkoutPayloads).toHaveLength(1);
+
+    const clearedOnSubmit = await page.locator('#join-form').evaluate((form) => {
+      form.requestSubmit();
+      return document.getElementById('form-error').textContent;
+    });
+    expect(clearedOnSubmit).toBe('');
+    await page.waitForURL('https://checkout.stripe.com/**');
+    expect(state.checkoutPayloads).toHaveLength(2);
+    expect(state.checkoutPayloads[1].challengeToken).toBe('renewed-token');
+  });
 }
 
 const RECOVERY_PAGES = [

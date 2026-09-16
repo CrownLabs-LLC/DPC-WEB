@@ -1545,14 +1545,14 @@ window.DPC_JOIN = {
           MEMBER_NOT_ELIGIBLE: 'Checkout is unavailable for this account. Email hello@downtownpourcollective.com for help.',
           DEPOSITOR_CONFIRMATION_INVALID: 'This deposit confirmation cannot be used. Check your invite email or contact us.'
         };
-        setError(messages[code] || err.message || 'Checkout could not be started. Please try again.');
+        setError(messages[code] || err.message || 'Checkout could not be started. Please try again.', code !== 'CHALLENGE_FAILED');
         submitting = false;
         submitBtn.disabled = false;
         submitBtn.textContent = 'Continue to Checkout';
         resetTurnstile();
       }).catch(function () {
         track('join_error', { error_code: 'network', flow_id: flowId });
-        setError('Network error. Check your connection and try again.');
+        setError('Network error. Check your connection and try again.', true);
         submitting = false;
         submitBtn.disabled = false;
         submitBtn.textContent = 'Continue to Checkout';
