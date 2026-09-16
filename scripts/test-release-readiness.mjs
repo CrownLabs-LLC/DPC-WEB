@@ -106,8 +106,8 @@ assert.doesNotMatch(home, /Pause feature|add (?:another|more) anytime|Welcome Ki
 assert.match(home, /THE COASTER PASSPORT/);
 assert.match(home, /data-screen-label="05 Coaster Passport"/);
 assert.doesNotMatch(home, /public launch checkout supports one Circle|between now and launch|Full launch August 1/);
-// Standard signup carries the membership charge plus the one-time Member Setup
-// Fee, and no Founding Slot Deposit. The founding branch stays in the price
+// Standard signup starts with membership alone and offers an optional kit.
+// There is no required fee. The founding branch stays in the price
 // table as dead-but-documented history, so this checks the fine print the page
 // actually renders rather than the whole file.
 const joinFineprint = join.match(/<p class="fine" id="offer-fineprint">([\s\S]*?)<\/p>/);
@@ -168,55 +168,30 @@ assert.match(
 // already carries the same loop plus an explicit annual:null guard further down,
 // and a second `const standardPrices` in module scope is a SyntaxError.
 
-// Retired launch-era phrasings. The live charge is the Member Setup Fee, so the
-// older bare "ONE-TIME $49 WELCOME KIT" wording stays blocked. "Welcome Kit fee"
-// stays blocked for a different reason now: the fee covers account creation, and
-// naming it after the Kit re-sells the glassware as the thing being paid for.
-assert.doesNotMatch(join, /add more anytime|Welcome Kit fee|ONE-TIME \$49 WELCOME KIT/);
-
-// The Member Setup Fee is a real one-time $49 line on standard checkout, so it
-// has to be disclosed before payment, in the approved words: "one-time $49
-// Member Setup Fee, including your Member Welcome Kit". The fee covers account
-// creation. It is NOT the Founding Slot Deposit (a different, retired product),
-// it is NOT optional or a future add-on, and the Kit is included rather than
-// separately purchased. Guard the disclosure, the naming, and the framing.
+// Standard checkout begins with membership alone. The kit is an explicit,
+// removable one-time choice made on Stripe, with no added kit tax.
 for (const [page, markup] of [['index.html', home], ['join.html', join]]) {
-  assert.match(
-    markup,
-    /one-time \$49 Member Setup Fee/i,
-    `${page} must disclose the one-time $49 Member Setup Fee`,
-  );
-  assert.match(
-    markup,
-    /Member Setup Fee, including your Member Welcome Kit/i,
-    `${page} must carry the approved Setup Fee disclosure naming the Kit`,
-  );
-  assert.doesNotMatch(
-    markup,
-    /Member Welcome Kit charge|Welcome Kit is a separate|separate one-time \$49/i,
-    `${page} sells the Member Welcome Kit as its own charge; it is included in the Setup Fee`,
-  );
-  assert.doesNotMatch(
-    markup,
-    /Member Setup Fee[^.]{0,60}(?:optional|add-on|add on|coming soon|later this year)/i,
-    `${page} frames the Member Setup Fee as optional or deferred; it is neither`,
-  );
-  assert.doesNotMatch(
-    markup,
-    /Member Setup Fee[^.]{0,40}Founding Slot Deposit|Founding Slot Deposit[^.]{0,40}Member Setup Fee/i,
-    `${page} conflates the Member Setup Fee with the Founding Slot Deposit`,
-  );
+  assert.doesNotMatch(markup, /Member Setup Fee|Welcome Kit fee|add more anytime/i,
+    `${page} must not advertise the retired mandatory setup fee`);
+  assert.match(markup, /optional Member Welcome Kit/i,
+    `${page} must describe the kit as optional`);
+  assert.match(markup, /one-time \$49, with no added kit tax/i,
+    `${page} must disclose the one-time non-taxable $49 kit price`);
+  assert.doesNotMatch(markup, /When you join, you receive the Member Welcome Kit|Kit is included with/i,
+    `${page} must not imply every new membership includes a kit`);
 }
-// The charge is per account, not per membership term or per Circle.
-assert.match(join, /charged once per member account/i);
-// The once-per-account note is Setup Fee wording. If it is appended outside
-// the standard branch, the founding summary names a Founding Slot Deposit and
-// then explains the Setup Fee. Dead code post-cutoff, still wrong.
-assert.match(
-  join,
-  /var oneTimeNote = isFounding\s*\n\s*\? ''/,
-  'the once-per-account note must be scoped to the Welcome Kit branch',
-);
+assert.match(home, /<h3 class="kit__label">OPTIONAL MEMBER WELCOME KIT<\/h3>/);
+assert.match(join, /You can remove it before paying/);
+assert.match(joinFineprint[1], /OPTIONAL \$49 WELCOME KIT/);
+// Parse structured data as consumers do so a stale FAQ cannot silently disagree.
+const homeStructuredData = [...home.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)]
+  .map(match => JSON.parse(match[1]));
+const homeFaq = homeStructuredData.find(data => data['@type'] === 'FAQPage');
+assert.ok(homeFaq, 'homepage must retain its FAQ structured data');
+for (const question of homeFaq.mainEntity.filter(item => /cost|included/.test(item.name))) {
+  assert.match(question.acceptedAnswer.text, /optional Member Welcome Kit/);
+  assert.match(question.acceptedAnswer.text, /one-time \$49, with no added kit tax/);
+}
 // Events are separately coordinated, not membership entitlements. They may be
 // described; they may not be sold as included or promised as invitations.
 assert.doesNotMatch(home, /MEMBER EVENTS INCLUDED/i);
@@ -225,28 +200,24 @@ assert.doesNotMatch(
   /invitation to every member event|Your invitations arrive by email|Members are also invited to/i,
   'homepage sells separately coordinated events as a membership entitlement',
 );
-// The depositor footnote sits on a page that now also discloses a $49 Member
-// Setup Fee. Without the founding-window qualifier a reader meets two different
-// $49 charges with nothing separating them.
+// Keep the historical founding deposit separate from the optional kit purchase.
 assert.match(join, /\$49 Founding Slot Deposit during the founding window/);
-// Only a timely converted deposit satisfies the Setup Fee. A non-converter was
-// refunded and owes the fee, so the footnote must never waive it on the strength
-// of a historical payment, and must not send a refunded depositor down the
-// private conversion path, which no longer exists.
+// A converted deposit retains its Kit entitlement; a refunded deposit does not.
+// Neither changes the membership-only default for a new standard signup.
 assert.match(
   join,
   /converted to a membership before the window closed/i,
-  'the depositor footnote must condition the waiver on conversion, not on payment',
+  'the depositor footnote must condition historical kit entitlement on conversion',
 );
 assert.match(
   join,
   /if your deposit was refunded/i,
-  'the depositor footnote must tell a refunded depositor the fee still applies',
+  'the depositor footnote must explain that a refunded deposit carries no kit entitlement',
 );
 assert.doesNotMatch(
   join,
   /won.?t be charged it again|deposit is already recorded|private membership-confirmation link|don.?t use this public checkout/i,
-  'the depositor footnote waives the Setup Fee on historical payment or routes refunded depositors to a private path',
+  'the depositor footnote must not grant entitlement on historical payment or route refunded depositors to a private path',
 );
 
 // Five Pours is the promise, not a ceiling. "Up to five" and supply caveats
