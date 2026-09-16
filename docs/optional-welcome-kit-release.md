@@ -7,6 +7,10 @@ merged as `c32fb9607791ada52193bbb7fb24974c426325e0`. Its production kit Price
 constant remains null and optional-kit flag remains false. A website PR may be
 reviewed now, but **its merge must wait for the coordinated release gate**.
 
+The original catalog investigation and local verification below are dated
+preparation records. See the PR #55 follow-up at the end for the completed live
+catalog action, CI failures, responsive repair and current release holds.
+
 ## Why the website merge is a release action
 
 [README](../README.md#deployment) and [DEPLOY](../DEPLOY.md#5-vercel--git-integrated-deploy)
@@ -194,7 +198,7 @@ future backend activation slice. Physical-device/Vercel preview checks, where
 required by the deployment checklist, are release evidence to collect after the
 website PR is approved for opening; emulation is not a physical-device claim.
 
-## Website verification recorded September 16, 2026
+## Historical website verification at `0133785` — September 16, 2026
 
 - `npm test`: PASS, all nine configured offline suites, including signup
   diagnostics, legal versions, release readiness and privacy controls.
@@ -210,8 +214,9 @@ website PR is approved for opening; emulation is not a physical-device claim.
   total after native form restoration. The `pageshow` recalculation fixes it;
   both Chromium variants and WebKit passed the subsequent full relevant run.
 - The design detector returned no regex findings but reported missing parser
-  dependencies; it did not measure computed contrast. Existing CSS is unchanged.
-- GitHub CI has not run for this unpushed branch. The existing website workflow
+  dependencies; it did not measure computed contrast. CSS was unchanged at this
+  revision; the subsequent responsive repair changes renewal-note wrapping.
+- GitHub CI had not run when this local record was prepared. The existing website workflow
   runs offline and browser checks when a PR is opened. Physical-device/Vercel
   preview and production gates above remain release work, not claimed passes.
 
@@ -230,3 +235,60 @@ Source evidence SHA-256 (full sanitized outputs accompany the PR):
 | Offline test output | `e267b049f641668b825aa8237c93202489d7d4a10e5bc8b5703b9ac7fc1ac9cb` |
 | Browser regression output | `155e64c532c88b8fd512fececea7f49d6d498fb645ca4d2408adf324f77fc032` |
 | Read-only production catalog snapshot | `6dfebdeb631737a28bd6c9b564cd94d716b17d2dbbd9fd9a31d2c3a218b7ca9b` |
+
+## PR #55 CI follow-up and responsive repair — September 16, 2026
+
+[Website PR #55](https://github.com/CrownLabs-LLC/DPC-WEB/pull/55) was opened with
+Brandi's approval and remains **HOLD MERGE**. The prior Vercel preview succeeded;
+it does not establish hosted-flow or physical-device validation.
+
+The coordinator created and independently verified live Product
+`prod_VGzmS9ohrhuXc2` and Price `price_1UGRnCCtQ9S99QuEA7IcpJzM` at 22:59 UTC:
+active/live, one-time USD4900, inclusive behavior, Nontaxable
+`txcd_00000000`, correct Product binding, and no recurring component. The
+historical Setup Fee Product was unchanged. Creation used the Stripe connector
+after approved permission reconsent; its response did not expose the creation API
+version, so no CLI version pin is claimed. The backend Price follow-up at
+`150300d03c96ca08a89c9fc12d9f4a2be610fff6` and its frozen P/A/B source artifacts
+passed independent review but still require their normal opening, merge and
+deployment gates. Optional production creation remains off.
+
+CI history at the original website head `0133785` is preserved:
+
+- Attempt 1 failed an unchanged health-check timing assertion: 3999ms versus a
+  4000ms minimum. This remains a separate deterministic-test hardening item.
+- [Attempt 2](https://github.com/CrownLabs-LLC/DPC-WEB/actions/runs/35161478202/attempts/2)
+  passed offline checks but finished **194 browser passes / 1 failure**, including
+  a failed retry. At 320px, clicking Annual timed out while the header, cookie
+  notice and interval card intercepted the automatic click/scroll sequence.
+- Trace inspection showed a 326px mobile layout inside the configured 320px
+  viewport. A wider-font reproduction isolated overflow to the billing cards;
+  ordinary clicks could fail even after centering their labels. The non-wrapping
+  renewal note imposed an excessive minimum grid width.
+
+The product repair changes only `.interval-opt__note` from `white-space: nowrap`
+to `normal`. The note can wrap when space is limited and stays on one line when
+space permits. The tests click the visible associated labels, assert their radio
+states, switch Monthly to Annual at 320px, and check document/card as well as
+disclosure bounds. The cookie notice stays visible and consent stays unset.
+Click actionability, timeouts, privacy behavior and larger-layout structure are
+preserved.
+
+Repair verification:
+
+| Check | Result |
+| --- | --- |
+| New regression against old CSS | Expected failure: document width 365px in a 320px viewport |
+| Repaired geometry/interaction cases | 9 passed across desktop Chromium, mobile Chromium and mobile WebKit |
+| Full browser suite with CI settings and retries disabled | 198 passed |
+| `npm test` | All nine offline suites passed |
+| `git diff --check` | Passed |
+| Visual/geometry probe with wider text | Document 320px, no horizontal overflow; normal switching with cookie visible and consent unset |
+
+These are local results for the repair. Earlier 153-case results and screenshots
+belong to the historical head above. New-head independent clearance, GitHub CI
+and preview readback remain necessary before considering merge. Backend scoped
+deployment, actual signed shared-webhook proof, the approved paused/open source
+artifacts, hosted-flow/device evidence, and coordinated website/backend cutover
+remain release gates. No production payment, merge or deployment is authorized
+by this addendum.

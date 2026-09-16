@@ -39,8 +39,12 @@ async function setup(page, context, baseURL) {
 }
 
 async function choose(page, circle, interval) {
-  await page.getByText(circle.label, { exact: true }).click();
-  await page.getByText(interval === 'annual' ? 'Annual' : 'Monthly', { exact: true }).click();
+  const circleInput = page.locator(`input[name="circle"][value="${circle.key}"]`);
+  const intervalInput = page.locator(`input[name="billingInterval"][value="${interval}"]`);
+  await page.locator('label.circle-opt').filter({ has: circleInput }).click();
+  await expect(circleInput).toBeChecked();
+  await page.locator('label.interval-opt').filter({ has: intervalInput }).click();
+  await expect(intervalInput).toBeChecked();
 }
 
 async function fillDetails(page) {
@@ -126,22 +130,42 @@ test('home copy and FAQ describe an optional one-time kit; success makes no kit 
   await expect(page.locator('.confirm__body')).toContainText('confirming your membership');
 });
 
-for (const width of [320, 1280]) {
-  test(`optional kit disclosure and total fit at ${width}px without accepting cookies`, async ({ page, context, baseURL }) => {
+for (const { width, fallbackFonts = false } of [
+  { width: 320 },
+  { width: 1280 },
+  { width: 320, fallbackFonts: true },
+]) {
+  test(`optional kit disclosure and total fit at ${width}px${fallbackFonts ? ' with wider fallback text' : ''} without accepting cookies`, async ({ page, context, baseURL }) => {
     await setup(page, context, baseURL);
     await page.setViewportSize({ width, height: 900 });
     await page.goto('/join');
+    if (fallbackFonts) {
+      // Font fallback and larger text must not let the renewal note widen the
+      // mobile layout. The cookie notice and all click actionability remain on.
+      await page.addStyleTag({ content: `
+        :root { --support: Verdana, sans-serif; --body: Verdana, sans-serif; }
+        .interval-opt__note { font-size: 14px; }
+      ` });
+    }
+    await expect(page.locator('#cookie-banner')).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+    await choose(page, CIRCLES[2], 'monthly');
+    await expect(page.locator('#order-summary')).toContainText('Due today: $79.');
     await choose(page, CIRCLES[2], 'annual');
     await expect(page.locator('#order-summary')).toContainText('Due today: $790.');
-    for (const selector of ['#order-summary', '.deposit-explainer', '#offer-fineprint']) {
-      const bounds = await page.locator(selector).evaluate(el => {
+    for (const selector of ['.interval-opt', '.interval-opt__card', '#order-summary', '.deposit-explainer', '#offer-fineprint']) {
+      const boxes = await page.locator(selector).evaluateAll(elements => elements.map(el => {
         const rect = el.getBoundingClientRect();
         return { left: rect.left, right: rect.right, scroll: el.scrollWidth, width: el.clientWidth };
-      });
-      expect(bounds.left).toBeGreaterThanOrEqual(0);
-      expect(bounds.right).toBeLessThanOrEqual(width);
-      expect(bounds.scroll).toBeLessThanOrEqual(bounds.width + 1);
+      }));
+      for (const bounds of boxes) {
+        expect(bounds.left).toBeGreaterThanOrEqual(0);
+        expect(bounds.right).toBeLessThanOrEqual(width);
+        expect(bounds.scroll).toBeLessThanOrEqual(bounds.width + 1);
+      }
     }
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+    await expect(page.locator('#cookie-banner')).toBeVisible();
     expect(await page.evaluate(() => localStorage.getItem('dpc_cookie_consent'))).toBeNull();
   });
 }
