@@ -937,6 +937,7 @@ window.DPC_JOIN = {
   var legalDiagnostics = createDiagnostics('legal_versions');
   var turnstileDiagnostics = createDiagnostics('turnstile');
   var turnstileWidgetId = null;
+  var turnstileWidgetSize = null;
   var turnstileToken = '';
   var turnstileUnavailable = false;
   var turnstileLoadAttempts = 0;
@@ -1394,11 +1395,13 @@ window.DPC_JOIN = {
       return;
     }
     turnstileSlot.innerHTML = '';
+    turnstileWidgetSize = turnstileSlot.clientWidth >= 300 ? 'normal' : 'compact';
     try {
       turnstileWidgetId = window.turnstile.render(turnstileSlot, {
         sitekey: key,
         action: cfg.turnstileAction || 'circle_checkout',
         theme: 'dark',
+        size: turnstileWidgetSize,
         callback: function (token) {
           turnstileToken = token || '';
           if (turnstileToken) {
@@ -1414,6 +1417,28 @@ window.DPC_JOIN = {
     } catch (error) {
       showTurnstileUnavailable('render_exception');
     }
+  }
+
+  function resizeTurnstile() {
+    if (turnstileWidgetId == null || !window.turnstile) return;
+    var size = turnstileSlot.clientWidth >= 300 ? 'normal' : 'compact';
+    if (size === turnstileWidgetSize) return;
+    // Only replace the widget when its supported size changes. A replacement
+    // must complete its own check before another checkout can be submitted.
+    turnstileToken = '';
+    try {
+      window.turnstile.remove(turnstileWidgetId);
+      turnstileWidgetId = null;
+      renderTurnstile();
+    } catch (error) {
+      showTurnstileUnavailable('resize_exception');
+    }
+  }
+
+  if (window.ResizeObserver) {
+    new ResizeObserver(resizeTurnstile).observe(turnstileSlot);
+  } else {
+    window.addEventListener('resize', resizeTurnstile);
   }
 
   form.addEventListener('change', function (e) {
