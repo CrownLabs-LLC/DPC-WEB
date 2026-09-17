@@ -18,7 +18,17 @@ async function setup(page, context, baseURL) {
   });
   await page.route('https://challenges.cloudflare.com/turnstile/**', route => route.fulfill({
     contentType: 'text/javascript',
-    body: `window.turnstile={render:function(_,o){setTimeout(function(){o.callback('test-token')},0);return 'widget'},reset:function(){}};`,
+    // Keep the provider's documented dimensions: an empty stub masks overflow
+    // from its normal 300px widget inside the 246px panel at a 320px viewport.
+    body: `window.turnstile={render:function(slot,o){
+      var widget=document.createElement('div');
+      widget.dataset.testid='turnstile-widget';
+      widget.style.width=(o.size==='compact'?150:300)+'px';
+      widget.style.height=(o.size==='compact'?140:65)+'px';
+      slot.appendChild(widget);
+      setTimeout(function(){o.callback('test-token')},0);
+      return 'widget';
+    },reset:function(){}};`,
   }));
   await page.route('**/api/legal-versions*', route => route.fulfill({
     contentType: 'application/json',
@@ -139,6 +149,7 @@ for (const { width, fallbackFonts = false } of [
     await setup(page, context, baseURL);
     await page.setViewportSize({ width, height: 900 });
     await page.goto('/join');
+    await expect(page.getByTestId('turnstile-widget')).toBeVisible();
     if (fallbackFonts) {
       // Font fallback and larger text must not let the renewal note widen the
       // mobile layout. The cookie notice and all click actionability remain on.
@@ -153,7 +164,7 @@ for (const { width, fallbackFonts = false } of [
     await expect(page.locator('#order-summary')).toContainText('Due today: $79.');
     await choose(page, CIRCLES[2], 'annual');
     await expect(page.locator('#order-summary')).toContainText('Due today: $790.');
-    for (const selector of ['.interval-opt', '.interval-opt__card', '#order-summary', '.deposit-explainer', '#offer-fineprint']) {
+    for (const selector of ['.interval-opt', '.interval-opt__card', '#order-summary', '.deposit-explainer', '#offer-fineprint', '#turnstile-slot']) {
       const boxes = await page.locator(selector).evaluateAll(elements => elements.map(el => {
         const rect = el.getBoundingClientRect();
         return { left: rect.left, right: rect.right, scroll: el.scrollWidth, width: el.clientWidth };
@@ -169,3 +180,23 @@ for (const { width, fallbackFonts = false } of [
     expect(await page.evaluate(() => localStorage.getItem('dpc_cookie_consent'))).toBeNull();
   });
 }
+
+test('rendered bot check still fits when the viewport shrinks to 320px', async ({ page, context, baseURL }) => {
+  const submissions = await setup(page, context, baseURL);
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto('/join');
+  await expect(page.getByTestId('turnstile-widget')).toBeVisible();
+  await page.setViewportSize({ width: 320, height: 900 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
+  const bounds = await page.locator('#turnstile-slot').evaluate(slot => ({
+    width: slot.clientWidth, scroll: slot.scrollWidth,
+    height: slot.clientHeight, widgetHeight: slot.firstElementChild.getBoundingClientRect().height,
+  }));
+  expect(bounds.scroll).toBeLessThanOrEqual(bounds.width);
+  expect(bounds.height).toBeGreaterThanOrEqual(bounds.widgetHeight);
+  await choose(page, CIRCLES[0], 'monthly');
+  await fillDetails(page);
+  await page.locator('#submit-btn').click();
+  await expect(page).toHaveURL(CHECKOUT_URL);
+  expect(submissions).toHaveLength(1);
+});

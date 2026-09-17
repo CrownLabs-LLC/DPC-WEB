@@ -1399,6 +1399,7 @@ window.DPC_JOIN = {
         sitekey: key,
         action: cfg.turnstileAction || 'circle_checkout',
         theme: 'dark',
+        size: 'compact',
         callback: function (token) {
           turnstileToken = token || '';
           if (turnstileToken) {
