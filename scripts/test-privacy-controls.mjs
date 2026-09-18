@@ -122,11 +122,14 @@ check('all public pages expose a static opt-out link and load controls before an
   for (const file of files) {
     const html = readFileSync(new URL(file, root), 'utf8');
     assert.match(html, /privacy-controls\.v1\.js/);
+    if (file !== 'privacy-choices.html') assert.match(html, /privacy-footer\.v2\.css/);
     if (file !== 'privacy-choices.html') assert.match(html, /<a href="\/privacy-choices">Do Not Sell or Share My Personal Information<\/a>/);
     const analytics = html.indexOf('src="assets/analytics.js"');
     if (analytics !== -1) assert.ok(html.indexOf('privacy-controls.v1.js') < analytics);
     assert.doesNotMatch(html, /connect\.facebook\.net|facebook\.com\/tr[?]|fbq\s*\(/);
   }
+  const footerCss = readFileSync(new URL('assets/privacy-footer.v2.css', root), 'utf8');
+  assert.match(footerCss, /\.dpc-policy-notice\s*\{/);
   assert.doesNotMatch(source, /fetch\s*\(|sendBeacon|createElement\s*\(|fbq\s*\(/);
 });
 check('choices page states the counsel-approved App-data exclusion', () => {
