@@ -37,6 +37,10 @@ import { supabaseConfigured } from './lib/ops-checks.js';
 const RPC_NAME = 'current_checkout_legal_versions';
 const RPC_TIMEOUT_MS = 4000;
 const TUPLE_KEYS = ['tos', 'privacy', 'memberTerms', 'autoRenewalTerms'];
+// This deploy publishes Privacy Policy 4.9 at the canonical /privacy URL.
+// Until the membership-owned checkout tuple is also 4.9, checkout must pause
+// rather than record acceptance of 4.2 against the newly displayed policy.
+const PUBLISHED_PRIVACY_VERSION = '4.9';
 
 // s-maxage is load-bearing: Vercel caches a Function response only when
 // Cache-Control carries s-maxage. A bare max-age would still look like a cache
@@ -131,6 +135,7 @@ export default async function handler(req, res) {
       ? 'timeout' : err?.kind || 'network');
   }
   if (!tuple) return unavailable('incomplete_tuple');
+  if (tuple.privacy !== PUBLISHED_PRIVACY_VERSION) return unavailable('policy_version_mismatch');
   log();
   res.setHeader('Cache-Control', wantsFresh(req) ? UNCACHED : CACHED);
   return res.status(200).json(tuple);

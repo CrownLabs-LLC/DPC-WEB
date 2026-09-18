@@ -18,3 +18,8 @@
 }
 .dpc-privacy-footer a:hover { color: #C4A35A; }
 .dpc-privacy-footer a:focus-visible { outline: 3px solid #C4A35A; outline-offset: 4px; }
+.dpc-policy-notice {
+  display: block;
+  margin-bottom: 8px;
+  color: #F5F0E8;
+}

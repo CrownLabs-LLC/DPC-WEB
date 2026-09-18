@@ -330,8 +330,21 @@ assert.match(terms, /September 1, 2026 at 12:00 AM Pacific Time/);
 assert.match(terms, /will not be charged again/);
 assert.match(terms, /Membership Pause is not currently available/);
 assert.doesNotMatch(terms, /Welcome Kit and Activation Fee|fourteen \(14\) calendar days|\[INSERT IN APP ROADMAP FOR CANCELLATION\]|Founding Annual memberships/);
-assert.match(privacy, /Version 4\.2/);
-assert.match(privacy, /Effective Date: August 1, 2026/);
+assert.match(privacy, /Version 4\.9/);
+assert.match(privacy, /Last Updated: September 18, 2026/);
+assert.match(privacy, /Material changes will be communicated at least fourteen \(14\) days/);
+assert.doesNotMatch(privacy, /Effective Date: August 1, 2026/);
+assert.match(privacy, /This sharing is limited to data collected through the Site/);
+assert.match(privacy, /does not include the precise geolocation data, Check-In records, Membership Pour redemption data, or any other App-collected data/);
+assert.match(privacy, /DPC honors GPC as a valid opt-out preference signal/);
+assert.doesNotMatch(privacy, /VENDOR NOTE/);
+for (const [page, markup] of [
+  ['index.html', home], ['join.html', join], ['privacy.html', privacy],
+  ['terms.html', terms], ['partners.html', partners],
+]) {
+  assert.match(markup, /Our Privacy Policy was updated on September 18, 2026/,
+    `${page} is missing the temporary notice`);
+}
 assert.doesNotMatch(privacy, /Effective Date: \[DATE\]/);
 
 assert.match(join, /TURNSTILE_MAX_LOAD_ATTEMPTS = 50/);
