@@ -2,18 +2,20 @@ import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import vm from 'node:vm';
 
-const source = readFileSync(new URL('../assets/privacy-controls.v1.js', import.meta.url), 'utf8');
+const source = readFileSync(new URL('../assets/privacy-controls.v2.js', import.meta.url), 'utf8');
 const KEY = 'dpc_advertising_opt_out';
 let checks = 0;
 function check(name, run) { run(); checks++; console.log('PASS:', name); }
 
-function browser({ gpc = false, local = new Map(), cookies = new Map(), blockLocal = false, blockCookie = false, cookieThrows = false, host = 'www.downtownpourcollective.com' } = {}) {
+function browser({ gpc = false, advertisingEnabled = false, local = new Map(), cookies = new Map(), blockLocal = false, blockCookie = false, cookieThrows = false, host = 'www.downtownpourcollective.com' } = {}) {
   const listeners = {};
   const button = { attrs: {}, hidden: true, setAttribute(k,v) { this.attrs[k] = v; }, getAttribute(k) { return this.attrs[k]; }, addEventListener(k,v) { this[k] = v; } };
   const status = {};
+  const note = {};
   const document = {
     readyState: 'complete',
-    getElementById(id) { return id === 'privacy-opt-out' ? button : id === 'privacy-choice-status' ? status : null; },
+    querySelector(selector) { return selector === 'meta[name="dpc-advertising-enabled"]' ? { getAttribute() { return advertisingEnabled ? 'true' : 'false'; } } : null; },
+    getElementById(id) { return id === 'privacy-opt-out' ? button : id === 'privacy-choice-status' ? status : id === 'advertising-status-note' ? note : null; },
     get cookie() { if (cookieThrows) throw Error('storage denied'); return [...cookies].map(([k,v]) => k + '=' + v).join('; '); },
     set cookie(value) { this.lastCookie = value; if (cookieThrows) throw Error('storage denied'); if (!blockCookie) { const [k,v] = value.split(';')[0].split('='); cookies.set(k,v); } }
   };
@@ -24,7 +26,7 @@ function browser({ gpc = false, local = new Map(), cookies = new Map(), blockLoc
     addEventListener(k,v) { listeners[k] = v; }, dispatchEvent() {}
   };
   vm.runInNewContext(source, { window, document });
-  return { api: window.DPCPrivacy, window, document, button, status, listeners, local, cookies };
+  return { api: window.DPCPrivacy, window, document, button, status, note, listeners, local, cookies };
 }
 
 check('default is unselected and advertising is hard-disabled', () => {
@@ -34,12 +36,23 @@ check('default is unselected and advertising is hard-disabled', () => {
   assert.equal(b.api.getState().advertisingEnabled, false);
   assert.equal(b.button.hidden, false);
 });
-check('legacy analytics acceptance never grants advertising permission', () => {
+check('analytics acceptance is separate from the reviewed advertising opt-out model', () => {
   for (const key of ['dpc_cookie_consent', 'dpc_partner_cookie_consent']) {
-    const b = browser({ local: new Map([[key, '1']]) });
-    assert.equal(b.api.canLoadAdvertising(), false);
+    const b = browser({ advertisingEnabled: true, local: new Map([[key, '1']]) });
+    assert.equal(b.api.canLoadAdvertising(), true);
     assert.equal(b.api.getState().optedOut, false);
   }
+});
+check('the explicit launch switch enables advertising only when no privacy signal blocks it', () => {
+  const open = browser({ advertisingEnabled: true });
+  assert.equal(open.api.canLoadAdvertising(), true);
+  assert.equal(open.api.getState().advertisingEnabled, true);
+  assert.match(open.status.textContent, /may occur on eligible website pages/);
+  assert.match(open.note.textContent, /enabled only on eligible website pages/);
+
+  assert.equal(browser({ advertisingEnabled: true, gpc: true }).api.canLoadAdvertising(), false);
+  assert.equal(browser({ advertisingEnabled: true, local: new Map([[KEY, '1']]) }).api.canLoadAdvertising(), false);
+  assert.equal(browser({ advertisingEnabled: true, blockLocal: true, cookieThrows: true }).api.canLoadAdvertising(), false);
 });
 check('manual opt-out persists in cookie and local storage without changing analytics', () => {
   const b = browser({ local: new Map([['dpc_cookie_consent', '1']]) });
@@ -119,15 +132,26 @@ check('all public pages expose a static opt-out link and load controls before an
   const root = new URL('../', import.meta.url);
   const files = readdirSync(root).filter(f => f.endsWith('.html') && !['dashboard.html','google92d1118acab8f389.html'].includes(f));
   files.push('stripe-connect/return.html', 'stripe-connect/refresh.html');
+  const pixelPages = new Set(['index.html', 'join.html', 'subscription-success.html']);
   for (const file of files) {
     const html = readFileSync(new URL(file, root), 'utf8');
-    assert.match(html, /privacy-controls\.v1\.js/);
+    assert.match(html, /privacy-controls\.v2\.js/);
+    assert.doesNotMatch(html, /privacy-controls\.v1\.js/);
     if (file !== 'privacy-choices.html') assert.match(html, /privacy-footer\.v2\.css/);
     if (file !== 'privacy-choices.html') assert.match(html, /<a href="\/privacy-choices">Do Not Sell or Share My Personal Information<\/a>/);
     const analytics = html.indexOf('src="assets/analytics.js"');
-    if (analytics !== -1) assert.ok(html.indexOf('privacy-controls.v1.js') < analytics);
+    if (analytics !== -1) assert.ok(html.indexOf('privacy-controls.v2.js') < analytics);
+    if (pixelPages.has(file)) {
+      assert.match(html, /<meta name="dpc-advertising-enabled" content="false">/);
+      assert.match(html, /<script src="\/assets\/meta-pixel\.v1\.js"><\/script>/);
+      assert.ok(html.indexOf('privacy-controls.v2.js') < html.indexOf('meta-pixel.v1.js'));
+    } else {
+      assert.doesNotMatch(html, /meta-pixel\.v1\.js/);
+    }
     assert.doesNotMatch(html, /connect\.facebook\.net|facebook\.com\/tr[?]|fbq\s*\(/);
   }
+  const choices = readFileSync(new URL('privacy-choices.html', root), 'utf8');
+  assert.match(choices, /<meta name="dpc-advertising-enabled" content="false">/);
   const footerCss = readFileSync(new URL('assets/privacy-footer.v2.css', root), 'utf8');
   assert.match(footerCss, /\.dpc-policy-notice\s*\{/);
   assert.doesNotMatch(source, /fetch\s*\(|sendBeacon|createElement\s*\(|fbq\s*\(/);

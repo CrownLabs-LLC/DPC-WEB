@@ -5,9 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Manage your browser’s advertising privacy choice for Downtown Pour Collective.">
   <meta name="referrer" content="no-referrer">
+  <meta name="dpc-advertising-enabled" content="false">
   <title>Your Privacy Choices | Downtown Pour Collective</title>
   <link rel="canonical" href="https://www.downtownpourcollective.com/privacy-choices">
-  <script src="/assets/privacy-controls.v1.js"></script>
+  <script src="/assets/privacy-controls.v2.js"></script>
   <style>
     :root { color-scheme: light; --navy: #0D1B2A; --gold: #C4A35A; --paper: #FBF8F1; --ink: #1B2A38; }
     * { box-sizing: border-box; }
@@ -48,7 +49,7 @@
       <h2 id="browser-choice">Your choice for this browser</h2>
       <p id="privacy-choice-status" role="status" aria-live="polite" aria-atomic="true">The privacy control has not loaded. Advertising tracking is currently off. Enable JavaScript and reload to save your choice, or contact <a href="mailto:privacy@downtownpourcollective.com">privacy@downtownpourcollective.com</a> for help.</p>
       <button id="privacy-opt-out" type="button" hidden>Opt out of advertising sharing</button>
-      <p class="note">Meta/Facebook advertising tracking is not currently enabled on this website. You can still save your opt-out now.</p>
+      <p class="note" id="advertising-status-note">Meta/Facebook advertising tracking is not currently enabled on this website. You can still save your opt-out now.</p>
     </section>
     <section aria-labelledby="how-saved">
       <h2 id="how-saved">How your choice is saved</h2>
