@@ -272,6 +272,48 @@ img, svg { display: block; max-width: 100%; }
   text-transform: uppercase;
   color: var(--gold);
 }
+.hero__strip a { color: var(--gold); text-decoration: underline; text-underline-offset: 3px; }
+.beverage-policy {
+  background: var(--navy);
+  color: var(--cream);
+  padding: 48px 24px 64px;
+  scroll-margin-top: 24px;
+}
+.beverage-policy__inner {
+  max-width: 720px;
+  margin: 0 auto;
+  padding-top: 32px;
+  border-top: 1px solid var(--gold);
+  font-size: 17px;
+  line-height: 1.65;
+}
+.beverage-policy h2 {
+  font-family: var(--display);
+  font-size: clamp(28px, 5vw, 36px);
+  line-height: 1.2;
+  margin: 0 0 16px;
+  text-wrap: balance;
+}
+.beverage-policy p { margin: 0 0 18px; }
+.beverage-policy__date { color: var(--gold); }
+.beverage-policy dl { margin: 24px 0; }
+.beverage-policy dl div { margin-bottom: 16px; }
+.beverage-policy dt { font-weight: 700; }
+.beverage-policy dd { margin: 0; }
+.beverage-policy__status {
+  padding-bottom: 24px;
+  border-bottom: 1px solid rgba(196, 163, 90, 0.34);
+}
+.beverage-policy__status a,
+.circle__policy-note a { color: var(--gold); text-decoration: underline; text-underline-offset: 3px; }
+.circle__policy-note {
+  max-width: 720px;
+  margin: 24px auto 0;
+  color: var(--cream);
+  font-size: 15px;
+  line-height: 1.65;
+  text-align: center;
+}
 .hero__headline {
   font-family: var(--display);
   font-weight: 700;
@@ -1290,7 +1332,7 @@ img, svg { display: block; max-width: 100%; }
       <text x="340" y="400" text-anchor="middle" style="font-family:'Barlow Condensed','Arial Narrow',sans-serif;font-size:9px;font-weight:600;letter-spacing:0.28em;fill:#5A6475">LIVERMORE &#183; TRI-VALLEY</text>
     </svg>
 
-    <p class="hero__strip"><strong>Membership is open.</strong> Five Pours a month, redeemed right from your phone at participating downtown spots.</p>
+    <p class="hero__strip"><strong>More choice with your Pours.</strong> New beverage policy effective September 22, 2026. App update to follow. <a href="#beverage-policy">Read the policy</a>.</p>
     <h1 class="hero__headline">Five drinks a month at downtown Livermore's best spots.</h1>
     <p class="hero__sub">Downtown Pour Collective is a members-only community for people who love going out in downtown Livermore. Each month your membership covers five Pours (your drinks) at spots we pick for you from the partner roster. Feel like a regular where they know your order, or try somewhere you have never been.</p>
 
@@ -1300,6 +1342,22 @@ img, svg { display: block; max-width: 100%; }
     </div>
   </div>
 </header>
+
+<section class="beverage-policy" id="beverage-policy" aria-labelledby="beverage-policy-title">
+  <div class="beverage-policy__inner">
+    <h2 id="beverage-policy-title">More choice with your Pours.</h2>
+    <p class="beverage-policy__date"><strong>Policy effective <time datetime="2026-09-22">September 22, 2026</time>.</strong></p>
+    <p class="beverage-policy__status"><strong>App update to follow.</strong> The app changes that support this policy are still being prepared. <a href="/support">Contact DPC with questions about your Pours</a>.</p>
+    <p>Choose eligible standard drinks the venue offers at or below your Pour&rsquo;s tier.</p>
+    <dl>
+      <div><dt>Tap Pours</dt><dd>Eligible standard beer: draft, bottle, or can.</dd></div>
+      <div><dt>Cellar Pours</dt><dd>An eligible standard glass of wine or beer.</dd></div>
+      <div><dt>Reserve Pours</dt><dd>An eligible standard cocktail, spirit pour, glass of wine, or beer.</dd></div>
+    </dl>
+    <p>Your Pour&rsquo;s tier and the venue&rsquo;s highest participating Circle set the limit; use whichever is lower. Drink options must also be offered through DPC and within the venue&rsquo;s license. Premium, top-shelf, vintage, and specialty selections remain outside the program.</p>
+    <p>Standard Pours stay at their assigned venues. Birthday Pours stay within venues eligible for their Circle. Each Pour keeps its own tier, even if you hold more than one Circle.</p>
+  </div>
+</section>
 
 <!-- ===================== SECTION 2 · WHY THIS EXISTS ===================== -->
 <section class="why" data-screen-label="02 Why This Exists">
@@ -1528,7 +1586,7 @@ img, svg { display: block; max-width: 100%; }
       <div class="circle-card">
         <p class="circle-card__tag">BEER DRINKERS</p>
         <h3 class="circle-card__eyebrow">TAP CIRCLE</h3>
-        <p class="circle-card__name">Standard draft, bottle, or can</p>
+        <p class="circle-card__name">Eligible standard beer: draft, bottle, or can</p>
         <div class="circle-card__pricing">
           <div class="circle-card__price-option">
             <p class="circle-card__price">$590 / year</p>
@@ -1542,9 +1600,9 @@ img, svg { display: block; max-width: 100%; }
         </div>
       </div>
       <div class="circle-card">
-        <p class="circle-card__tag">WINE DRINKERS</p>
+        <p class="circle-card__tag">WINE OR BEER</p>
         <h3 class="circle-card__eyebrow">CELLAR CIRCLE</h3>
-        <p class="circle-card__name">Standard glass from the regular list</p>
+        <p class="circle-card__name">An eligible standard glass of wine or beer</p>
         <div class="circle-card__pricing">
           <div class="circle-card__price-option">
             <p class="circle-card__price">$690 / year</p>
@@ -1558,9 +1616,9 @@ img, svg { display: block; max-width: 100%; }
         </div>
       </div>
       <div class="circle-card">
-        <p class="circle-card__tag">COCKTAIL &amp; SPIRITS DRINKERS</p>
+        <p class="circle-card__tag">COCKTAILS, SPIRITS, WINE OR BEER</p>
         <h3 class="circle-card__eyebrow">RESERVE CIRCLE</h3>
-        <p class="circle-card__name">Standard cocktail or spirit pour</p>
+        <p class="circle-card__name">An eligible standard cocktail, spirit pour, glass of wine, or beer</p>
         <div class="circle-card__pricing">
           <div class="circle-card__price-option">
             <p class="circle-card__price">$790 / year</p>
@@ -1574,6 +1632,8 @@ img, svg { display: block; max-width: 100%; }
         </div>
       </div>
     </div>
+
+    <p class="circle__policy-note">Drink options depend on the venue&rsquo;s participating Circles, program offerings, and license. <a href="#beverage-policy">Read the policy limits and pending app update</a>.</p>
 
     <p class="circle__fineprint">Choose monthly or annual. Annual is twelve months for the price of ten, billed once at signup. Monthly is billed each month. Add an optional Member Welcome Kit at checkout for a one-time $49, with no added kit tax. Turn off renewal anytime. An annual membership is prepaid for twelve months.</p>
 
