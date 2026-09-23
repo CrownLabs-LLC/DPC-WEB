@@ -331,7 +331,7 @@ assert.match(terms, /will not be charged again/);
 assert.match(terms, /Membership Pause is not currently available/);
 assert.doesNotMatch(terms, /Welcome Kit and Activation Fee|fourteen \(14\) calendar days|\[INSERT IN APP ROADMAP FOR CANCELLATION\]|Founding Annual memberships/);
 assert.match(privacy, /Version 4\.9/);
-assert.match(privacy, /Last Updated: September 18, 2026/);
+assert.match(privacy, /Last Updated: September 22, 2026/);
 assert.match(privacy, /Material changes will be communicated at least fourteen \(14\) days/);
 assert.doesNotMatch(privacy, /Effective Date: August 1, 2026/);
 assert.match(privacy, /This sharing is limited to data collected through the Site/);

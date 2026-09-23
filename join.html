@@ -131,31 +131,6 @@ a:focus-visible, button:focus-visible, input:focus-visible, [tabindex]:focus-vis
   margin: 0 auto 28px;
   opacity: 0.7;
 }
-.beverage-notice {
-  margin: 0 0 28px;
-  padding: 24px 0;
-  border-top: 1px solid var(--gold);
-  border-bottom: 1px solid rgba(196, 163, 90, 0.34);
-  font-size: 15px;
-  line-height: 1.6;
-  color: var(--cream);
-}
-.beverage-notice h2 {
-  font-family: var(--display);
-  font-size: 24px;
-  line-height: 1.25;
-  margin: 0 0 12px;
-}
-.beverage-notice p { margin: 0 0 12px; }
-.beverage-notice p:last-child { margin-bottom: 0; }
-.beverage-notice a,
-.panel__policy-note a { text-decoration: underline; text-underline-offset: 3px; }
-.panel__policy-note {
-  margin: 16px 0 0;
-  font-size: 14px;
-  line-height: 1.6;
-  color: var(--cream);
-}
 .depositor-note {
   font-size: 13px;
   line-height: 1.55;
@@ -742,12 +717,6 @@ body:has(.cookie:not([hidden])) .page {
     <p class="join__lede">Choose the Circle that matches what you like to drink (beer, wine, or cocktails). Start with one Circle today, pick monthly or annual, then continue to secure checkout.</p>
     <hr class="join__rule">
 
-    <aside class="beverage-notice" aria-labelledby="beverage-notice-title">
-      <h2 id="beverage-notice-title">More choice with your Pours.</h2>
-      <p><strong>Policy effective <time datetime="2026-09-22">September 22, 2026</time>.</strong> Choose eligible standard drinks the venue offers at or below your Pour&rsquo;s tier, within its participating Circles, program offerings, and license.</p>
-      <p><strong>App update to follow.</strong> The app changes that support this policy are still being prepared. <a href="/#beverage-policy">Read the full beverage policy</a>.</p>
-    </aside>
-
     <form id="join-form" novalidate>
       <div class="panel">
         <p class="panel__label">1 · Choose your Circle</p>
@@ -783,7 +752,6 @@ body:has(.cookie:not([hidden])) .page {
             </span>
           </label>
         </div>
-        <p class="panel__policy-note">Standard Pours stay at assigned venues; Birthday Pours stay within venues eligible for their Circle. Premium, top-shelf, vintage, and specialty selections remain outside the program. <a href="/#beverage-policy">See all policy limits and the pending app update</a>.</p>
       </div>
 
       <div class="panel">
