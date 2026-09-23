@@ -1,4 +1,22 @@
 import { test, expect } from '@playwright/test';
+import { readFileSync } from 'node:fs';
+
+const pixelPages = new Map([
+  ['/', readFileSync(new URL('../../index.html', import.meta.url), 'utf8')],
+  ['/join', readFileSync(new URL('../../join.html', import.meta.url), 'utf8')],
+  ['/subscription-success', readFileSync(new URL('../../subscription-success.html', import.meta.url), 'utf8')],
+]);
+const privacyControlsSource = readFileSync(new URL('../../assets/privacy-controls.v2.js', import.meta.url), 'utf8');
+const metaPixelSource = readFileSync(new URL('../../assets/meta-pixel.v1.js', import.meta.url), 'utf8');
+
+async function routeEnabledPixelAssets(page) {
+  await page.route('https://www.downtownpourcollective.com/assets/privacy-controls.v2.js', route => {
+    return route.fulfill({ status: 200, contentType: 'application/javascript', body: privacyControlsSource });
+  });
+  await page.route('https://www.downtownpourcollective.com/assets/meta-pixel.v1.js', route => {
+    return route.fulfill({ status: 200, contentType: 'application/javascript', body: metaPixelSource });
+  });
+}
 
 test.beforeEach(async ({ context }) => {
   // Local fixture tests never send browser data to production services.
@@ -77,6 +95,69 @@ test('accepting existing analytics does not activate Meta', async ({ page }) => 
   await page.locator('#cookie-accept').click();
   expect(await page.evaluate(() => window.DPCPrivacy.canLoadAdvertising())).toBe(false);
   expect(await page.evaluate(() => typeof window.fbq)).toBe('undefined');
+  expect(meta).toEqual([]);
+});
+
+test('production-disabled homepage, join and success paths make zero Meta requests', async ({ page }) => {
+  const meta = [];
+  page.on('request', request => {
+    if (/facebook\.net|facebook\.com/.test(new URL(request.url()).hostname)) meta.push(request.url());
+  });
+  for (const path of pixelPages.keys()) {
+    await page.goto(path);
+    expect(await page.evaluate(() => window.DPCMetaPixel?.getState().sdkRequested)).toBe(false);
+  }
+  expect(meta).toEqual([]);
+});
+
+test('enabled fixture sends one PageView on each allowlisted path with sanitized URLs', async ({ page }) => {
+  const meta = [];
+  await routeEnabledPixelAssets(page);
+  await page.route('https://connect.facebook.net/**', route => {
+    meta.push(route.request().url());
+    return route.fulfill({ status: 200, contentType: 'application/javascript', body: '/* inert test SDK */' });
+  });
+
+  for (const [path, source] of pixelPages) {
+    await page.route(url => url.hostname === 'www.downtownpourcollective.com' && url.pathname === path, route => {
+      return route.fulfill({
+        status: 200,
+        contentType: 'text/html',
+        body: source.replace('name="dpc-advertising-enabled" content="false"', 'name="dpc-advertising-enabled" content="true"')
+      });
+    }, { times: 1 });
+    await page.goto(`https://www.downtownpourcollective.com${path}?email=person%40example.com&utm_source=test#private-fragment`);
+    await expect.poll(() => meta.length).toBe([...pixelPages.keys()].indexOf(path) + 1);
+    expect(new URL(page.url()).search).toBe('');
+    expect(new URL(page.url()).hash).toBe('');
+    expect(await page.evaluate(() => localStorage.getItem('dpc_cookie_consent'))).toBeNull();
+    expect(await page.evaluate(() => window.fbq.queue.map(args => Array.from(args)).filter(call => call[0] === 'track'))).toEqual([['track', 'PageView']]);
+  }
+  expect(meta).toEqual(pixelPages.size === 3 ? Array(3).fill('https://connect.facebook.net/en_US/fbevents.js') : []);
+  expect(meta.join(' ')).not.toMatch(/person|example|utm|private/i);
+});
+
+test('enabled fixture honors saved opt-out and GPC before any SDK request', async ({ page }) => {
+  const source = pixelPages.get('/join').replace(
+    'name="dpc-advertising-enabled" content="false"',
+    'name="dpc-advertising-enabled" content="true"'
+  );
+  const meta = [];
+  await routeEnabledPixelAssets(page);
+  page.on('request', request => {
+    if (/facebook\.net|facebook\.com/.test(new URL(request.url()).hostname)) meta.push(request.url());
+  });
+
+  await page.addInitScript(() => localStorage.setItem('dpc_advertising_opt_out', '1'));
+  await page.route(url => url.hostname === 'www.downtownpourcollective.com' && url.pathname === '/join', route => route.fulfill({ status: 200, contentType: 'text/html', body: source }), { times: 1 });
+  await page.goto('https://www.downtownpourcollective.com/join');
+  expect(await page.evaluate(() => window.DPCMetaPixel.getState().sdkRequested)).toBe(false);
+
+  await page.evaluate(() => localStorage.removeItem('dpc_advertising_opt_out'));
+  await page.addInitScript(() => Object.defineProperty(navigator, 'globalPrivacyControl', { value: true, configurable: true }));
+  await page.route(url => url.hostname === 'www.downtownpourcollective.com' && url.pathname === '/join', route => route.fulfill({ status: 200, contentType: 'text/html', body: source }), { times: 1 });
+  await page.goto('https://www.downtownpourcollective.com/join');
+  expect(await page.evaluate(() => window.DPCMetaPixel.getState().sdkRequested)).toBe(false);
   expect(meta).toEqual([]);
 });
 
