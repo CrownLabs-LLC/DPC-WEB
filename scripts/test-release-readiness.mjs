@@ -55,6 +55,9 @@ for (const [page, markup] of [
 }
 
 assert.match(home, /Join The Collective/);
+// Brandi retired the availability strip; guard its markup and styles together.
+assert.doesNotMatch(home, /hero__strip/,
+  'homepage must not restore the retired membership availability strip');
 // The $49 Founding Slot Deposit is not sold to new members after the window
 // closed, and join.html already stops disclosing it on the standard offer. The
 // homepage must not advertise a charge the checkout no longer discloses.
@@ -322,6 +325,14 @@ assert.match(cancelled, /remain held for up to 24 hours/);
 assert.match(terms, /September 1, 2026 at 12:00 AM Pacific Time/);
 assert.match(terms, /will not be charged again/);
 assert.match(terms, /Membership Pause is not currently available/);
+// Privacy delegates beverage eligibility to this specific Terms section.
+assert.match(terms, /<h3\b[^>]*\bid="redemption-mechanics"[^>]*><span class="lg-sub__n">4\.5<\/span> Redemption Mechanics<\/h3>/,
+  'Terms Section 4.5 must retain the target of the Privacy Circle-definition link');
+assert.match(privacy, /href="\/terms#redemption-mechanics"/,
+  'Privacy must link to Terms Section 4.5 for beverage eligibility');
+// Pin the reviewed draft, not legal approval of its version or notice handling.
+assert.match(terms, /The following beverage eligibility rules apply beginning September 22, 2026 at 12:00 AM Pacific Time\./,
+  'the reviewed beverage clause must preserve the full-day business start');
 assert.doesNotMatch(terms, /Welcome Kit and Activation Fee|fourteen \(14\) calendar days|\[INSERT IN APP ROADMAP FOR CANCELLATION\]|Founding Annual memberships/);
 assert.match(privacy, /Version 4\.9/);
 assert.match(privacy, /Last Updated: September 22, 2026/);
