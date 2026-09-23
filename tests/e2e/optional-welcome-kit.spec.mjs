@@ -68,6 +68,8 @@ async function fillDetails(page) {
   await page.locator('#lastName').fill('Kit');
   await page.locator('#email').fill('optional-kit@example.invalid');
   await page.locator('label.check').click();
+  // Normal checkout submissions require the asynchronously rendered challenge.
+  await expect(page.getByTestId('turnstile-widget')).toHaveAttribute('data-solved', 'true');
 }
 
 for (const circle of CIRCLES) {

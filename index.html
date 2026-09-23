@@ -95,7 +95,7 @@
       "name": "How much does the Downtown Pour Collective membership cost?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Membership is $590 per year (or $59 per month) for the Tap Circle (beer), $690 per year (or $69 per month) for the Cellar Circle (wine), and $790 per year (or $79 per month) for the Reserve Circle (cocktails and spirits). Paying annually is twelve months for the price of ten, which works out to about $49, $58, and $66 a month. Add an optional Member Welcome Kit at checkout for a one-time $49, with no added kit tax. Choose monthly or annual. You can turn off renewal at any time, and an annual membership is prepaid for twelve months."
+        "text": "Membership is $590 per year (or $59 per month) for the Tap Circle (beer), $690 per year (or $69 per month) for the Cellar Circle (wine or beer), and $790 per year (or $79 per month) for the Reserve Circle (cocktails, spirits, wine, or beer). Paying annually is twelve months for the price of ten, which works out to about $49, $58, and $66 a month. Add an optional Member Welcome Kit at checkout for a one-time $49, with no added kit tax. Choose monthly or annual. You can turn off renewal at any time, and an annual membership is prepaid for twelve months."
       }
     },
     {
@@ -251,27 +251,6 @@ img, svg { display: block; max-width: 100%; }
   height: auto;
   margin: 0 auto 30px;
 }
-.hero__strip {
-  font-family: var(--body);
-  font-weight: 400;
-  font-size: 15px;
-  line-height: 1.5;
-  color: rgba(245, 240, 232, 0.88);
-  margin: 0 auto 16px;
-  max-width: 660px;
-  padding: 10px 20px;
-  border: 1px solid rgba(196, 163, 90, 0.34);
-  border-radius: 4px;
-  background: rgba(196, 163, 90, 0.07);
-  text-wrap: pretty;
-}
-.hero__strip strong {
-  font-family: var(--support);
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--gold);
-}
 .hero__headline {
   font-family: var(--display);
   font-weight: 700;
@@ -345,6 +324,8 @@ img, svg { display: block; max-width: 100%; }
   text-wrap: pretty;
 }
 .why__body p:last-child { margin-bottom: 0; }
+.why__body a { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
+.why__body a:focus-visible { outline: 2px solid currentColor; outline-offset: 4px; }
 
 /* ============ SECTION 3 · IS THIS FOR YOU ============ */
 .foryou {
@@ -1142,7 +1123,6 @@ img, svg { display: block; max-width: 100%; }
   .hero__lockup { width: 76px; }
   .hero__headline { font-size: 36px; }
   .hero__sub { font-size: 16px; }
-  .hero__strip { font-size: 13px; padding: 9px 14px; margin-bottom: 22px; }
   .hero__border { inset: 14px; }
   .hero__accent { width: 220px; height: 220px; }
 
@@ -1223,7 +1203,6 @@ img, svg { display: block; max-width: 100%; }
 @media (max-width: 480px) {
   .hero { padding: 28px 20px; }
   .hero__lockup { width: 70px; margin-bottom: 24px; }
-  .hero__strip { margin-bottom: 18px; }
   .hero__sub { margin-bottom: 26px; }
 }
 
@@ -1290,7 +1269,6 @@ img, svg { display: block; max-width: 100%; }
       <text x="340" y="400" text-anchor="middle" style="font-family:'Barlow Condensed','Arial Narrow',sans-serif;font-size:9px;font-weight:600;letter-spacing:0.28em;fill:#5A6475">LIVERMORE &#183; TRI-VALLEY</text>
     </svg>
 
-    <p class="hero__strip"><strong>Membership is open.</strong> Five Pours a month, redeemed right from your phone at participating downtown spots.</p>
     <h1 class="hero__headline">Five drinks a month at downtown Livermore's best spots.</h1>
     <p class="hero__sub">Downtown Pour Collective is a members-only community for people who love going out in downtown Livermore. Each month your membership covers five Pours (your drinks) at spots we pick for you from the partner roster. Feel like a regular where they know your order, or try somewhere you have never been.</p>
 
@@ -1312,7 +1290,7 @@ img, svg { display: block; max-width: 100%; }
     <div class="why__body">
       <p>There is a version of going out downtown where the bartender sees you and starts your pour before you sit down. Where the room feels like yours because you have a seat in it. That is the version we sell.</p>
       <p>Five Pours a month gives you a standing reason to show up at your spots. The app handles the redemption. The venue handles the welcome. Within a few weeks the places on your list start treating you like one of theirs.</p>
-      <p>Your membership carries five Pours every month and the Coaster Passport you build over the year. The venues get regulars they can count on, which is worth more to an independent operator than any promotion, and that part takes care of itself.</p>
+      <p>Your membership carries five Pours every month and the <a href="#coaster-passport">Coaster Passport</a> you build over the year. The venues get regulars they can count on, which is worth more to an independent operator than any promotion, and that part takes care of itself.</p>
     </div>
   </div>
 </section>
@@ -1392,7 +1370,7 @@ img, svg { display: block; max-width: 100%; }
 </section>
 
 <!-- ===================== SECTION 5 · COASTER PASSPORT ===================== -->
-<section class="passport" data-screen-label="05 Coaster Passport">
+<section class="passport" id="coaster-passport" data-screen-label="05 Coaster Passport">
   <div class="passport__inner">
     <div>
       <span class="eyebrow">THE COASTER PASSPORT</span>
@@ -1499,7 +1477,7 @@ img, svg { display: block; max-width: 100%; }
       <div class="offer-card">
         <p class="offer-card__num">04</p>
         <h3 class="offer-card__title">START WITH ONE CIRCLE</h3>
-        <p class="offer-card__body">Choose the Circle that matches what you like to drink (beer, wine, or cocktails). At signup you are billed your first membership payment, the full year if you chose annual, or your first month if you chose monthly. You can add an optional Member Welcome Kit at checkout for a one-time $49, with no added kit tax. Your subscription begins when payment is confirmed.</p>
+        <p class="offer-card__body">Choose the Circle that matches what you like to drink (beer, wine, or cocktails). At signup you are billed your first membership payment, the full year if you chose annual, or your first month if you chose monthly.</p>
       </div>
     </div>
 
@@ -1528,7 +1506,7 @@ img, svg { display: block; max-width: 100%; }
       <div class="circle-card">
         <p class="circle-card__tag">BEER DRINKERS</p>
         <h3 class="circle-card__eyebrow">TAP CIRCLE</h3>
-        <p class="circle-card__name">Standard draft, bottle, or can</p>
+        <p class="circle-card__name">Eligible standard beer: draft, bottle, or can</p>
         <div class="circle-card__pricing">
           <div class="circle-card__price-option">
             <p class="circle-card__price">$590 / year</p>
@@ -1542,9 +1520,9 @@ img, svg { display: block; max-width: 100%; }
         </div>
       </div>
       <div class="circle-card">
-        <p class="circle-card__tag">WINE DRINKERS</p>
+        <p class="circle-card__tag">WINE OR BEER</p>
         <h3 class="circle-card__eyebrow">CELLAR CIRCLE</h3>
-        <p class="circle-card__name">Standard glass from the regular list</p>
+        <p class="circle-card__name">An eligible standard glass of wine or beer</p>
         <div class="circle-card__pricing">
           <div class="circle-card__price-option">
             <p class="circle-card__price">$690 / year</p>
@@ -1558,9 +1536,9 @@ img, svg { display: block; max-width: 100%; }
         </div>
       </div>
       <div class="circle-card">
-        <p class="circle-card__tag">COCKTAIL &amp; SPIRITS DRINKERS</p>
+        <p class="circle-card__tag">COCKTAILS, SPIRITS, WINE OR BEER</p>
         <h3 class="circle-card__eyebrow">RESERVE CIRCLE</h3>
-        <p class="circle-card__name">Standard cocktail or spirit pour</p>
+        <p class="circle-card__name">An eligible standard cocktail, spirit pour, glass of wine, or beer</p>
         <div class="circle-card__pricing">
           <div class="circle-card__price-option">
             <p class="circle-card__price">$790 / year</p>
@@ -1631,7 +1609,7 @@ img, svg { display: block; max-width: 100%; }
         <p class="partner-tile__name">Maple Street Eatery</p>
       </div>
     </div>
-    <p class="partners__foot">Participating partners will continue to be added as agreements and app setup are completed. Venue availability in the member app may begin after website enrollment opens.</p>
+    <p class="partners__foot">Participating partners will continue to be added as agreements and app setup are completed.</p>
   </div>
 </section>
 
@@ -1671,7 +1649,7 @@ img, svg { display: block; max-width: 100%; }
 <section class="final-cta" data-screen-label="Final CTA">
   <div class="final-cta__inner">
     <h2 class="final-cta__title">Start going out like a regular.</h2>
-    <p class="final-cta__body">Membership is open. Pick your Circle, and your first Pours are ready once your account is set up.</p>
+    <p class="final-cta__body">Pick your Circle, and your first Pours are ready once your account is set up.</p>
     <a class="btn" href="/join" data-join-cta>Join The Collective</a>
     <p class="final-cta__micro">MONTHLY OR ANNUAL  ·  OPTIONAL $49 WELCOME KIT  ·  TURN OFF RENEWAL ANYTIME  ·  21+</p>
     <p class="final-cta__questions">Questions? <a href="mailto:hello@downtownpourcollective.com">hello@downtownpourcollective.com</a></p>
