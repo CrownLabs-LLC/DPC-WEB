@@ -251,27 +251,6 @@ img, svg { display: block; max-width: 100%; }
   height: auto;
   margin: 0 auto 30px;
 }
-.hero__strip {
-  font-family: var(--body);
-  font-weight: 400;
-  font-size: 15px;
-  line-height: 1.5;
-  color: rgba(245, 240, 232, 0.88);
-  margin: 0 auto 16px;
-  max-width: 660px;
-  padding: 10px 20px;
-  border: 1px solid rgba(196, 163, 90, 0.34);
-  border-radius: 4px;
-  background: rgba(196, 163, 90, 0.07);
-  text-wrap: pretty;
-}
-.hero__strip strong {
-  font-family: var(--support);
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--gold);
-}
 .hero__headline {
   font-family: var(--display);
   font-weight: 700;
@@ -345,6 +324,8 @@ img, svg { display: block; max-width: 100%; }
   text-wrap: pretty;
 }
 .why__body p:last-child { margin-bottom: 0; }
+.why__body a { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
+.why__body a:focus-visible { outline: 2px solid currentColor; outline-offset: 4px; }
 
 /* ============ SECTION 3 · IS THIS FOR YOU ============ */
 .foryou {
@@ -1142,7 +1123,6 @@ img, svg { display: block; max-width: 100%; }
   .hero__lockup { width: 76px; }
   .hero__headline { font-size: 36px; }
   .hero__sub { font-size: 16px; }
-  .hero__strip { font-size: 13px; padding: 9px 14px; margin-bottom: 22px; }
   .hero__border { inset: 14px; }
   .hero__accent { width: 220px; height: 220px; }
 
@@ -1223,7 +1203,6 @@ img, svg { display: block; max-width: 100%; }
 @media (max-width: 480px) {
   .hero { padding: 28px 20px; }
   .hero__lockup { width: 70px; margin-bottom: 24px; }
-  .hero__strip { margin-bottom: 18px; }
   .hero__sub { margin-bottom: 26px; }
 }
 
@@ -1290,7 +1269,6 @@ img, svg { display: block; max-width: 100%; }
       <text x="340" y="400" text-anchor="middle" style="font-family:'Barlow Condensed','Arial Narrow',sans-serif;font-size:9px;font-weight:600;letter-spacing:0.28em;fill:#5A6475">LIVERMORE &#183; TRI-VALLEY</text>
     </svg>
 
-    <p class="hero__strip"><strong>Membership is open.</strong> Five Pours a month, redeemed right from your phone at participating downtown spots.</p>
     <h1 class="hero__headline">Five drinks a month at downtown Livermore's best spots.</h1>
     <p class="hero__sub">Downtown Pour Collective is a members-only community for people who love going out in downtown Livermore. Each month your membership covers five Pours (your drinks) at spots we pick for you from the partner roster. Feel like a regular where they know your order, or try somewhere you have never been.</p>
 
@@ -1312,7 +1290,7 @@ img, svg { display: block; max-width: 100%; }
     <div class="why__body">
       <p>There is a version of going out downtown where the bartender sees you and starts your pour before you sit down. Where the room feels like yours because you have a seat in it. That is the version we sell.</p>
       <p>Five Pours a month gives you a standing reason to show up at your spots. The app handles the redemption. The venue handles the welcome. Within a few weeks the places on your list start treating you like one of theirs.</p>
-      <p>Your membership carries five Pours every month and the Coaster Passport you build over the year. The venues get regulars they can count on, which is worth more to an independent operator than any promotion, and that part takes care of itself.</p>
+      <p>Your membership carries five Pours every month and the <a href="#coaster-passport">Coaster Passport</a> you build over the year. The venues get regulars they can count on, which is worth more to an independent operator than any promotion, and that part takes care of itself.</p>
     </div>
   </div>
 </section>
@@ -1392,7 +1370,7 @@ img, svg { display: block; max-width: 100%; }
 </section>
 
 <!-- ===================== SECTION 5 · COASTER PASSPORT ===================== -->
-<section class="passport" data-screen-label="05 Coaster Passport">
+<section class="passport" id="coaster-passport" data-screen-label="05 Coaster Passport">
   <div class="passport__inner">
     <div>
       <span class="eyebrow">THE COASTER PASSPORT</span>
@@ -1499,7 +1477,7 @@ img, svg { display: block; max-width: 100%; }
       <div class="offer-card">
         <p class="offer-card__num">04</p>
         <h3 class="offer-card__title">START WITH ONE CIRCLE</h3>
-        <p class="offer-card__body">Choose the Circle that matches what you like to drink (beer, wine, or cocktails). At signup you are billed your first membership payment, the full year if you chose annual, or your first month if you chose monthly. You can add an optional Member Welcome Kit at checkout for a one-time $49, with no added kit tax. Your subscription begins when payment is confirmed.</p>
+        <p class="offer-card__body">Choose the Circle that matches what you like to drink (beer, wine, or cocktails). At signup you are billed your first membership payment, the full year if you chose annual, or your first month if you chose monthly.</p>
       </div>
     </div>
 

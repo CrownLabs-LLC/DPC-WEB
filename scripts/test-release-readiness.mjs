@@ -281,13 +281,6 @@ for (const [page, markup] of [
     );
   }
 }
-// The deadline and the Kickoff Party belong above the headline, not below the
-// CTA where they fell past the fold on both desktop and mobile.
-assert.match(home, /class="hero__strip"/);
-assert.ok(
-  home.indexOf('hero__strip') < home.indexOf('hero__headline'),
-  'the hero deadline strip must precede the headline',
-);
 // Founding urgency is retired rather than inverted: no countdown, no loss
 // framing, and no selling of benefits that only the founding class holds.
 // Founding Member status itself stays permanent for those who earned it, so
