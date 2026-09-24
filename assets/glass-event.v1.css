@@ -1,0 +1,43 @@
+.gc-intro { max-width: 1100px; margin: auto; padding: 64px 32px 72px; display: grid; grid-template-columns: 1.1fr 1fr; gap: 72px; align-items: start; }
+.gc-invitation { padding-top: 20px; }
+.gc-invitation h1 { font-size: clamp(2.75rem, 5.4vw, 4.5rem); }
+.gc-lead { max-width: 36ch; font-size: 22px; }
+.gc-action { display: inline-flex; align-items: center; justify-content: center; width: auto; min-width: 200px; text-decoration: none; margin-top: 12px; }
+.gc-pickup-link { margin: 24px 0 0; font-size: 16px; }
+.gc-pickup-link a { display: inline-block; padding: 8px 0; }
+.gc-calendar { background: var(--navy); color: var(--cream); padding: 32px; }
+.gc-calendar h2 { font: 700 26px/1.3 'Barlow Condensed', Barlow, sans-serif; display: flex; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
+.gc-calendar h2 span { color: var(--gold); }
+.gc-calendar .dates { margin-bottom: 24px; }
+.gc-calendar > p { font-size: 16px; margin-bottom: 12px; }
+.gc-calendar .gc-calendar-note { color: #d6dfdf; margin-bottom: 0; }
+.gc-section-inner { max-width: 1100px; margin: auto; padding: 64px 32px; display: grid; grid-template-columns: 1fr 1.15fr; gap: 72px; }
+.gc-section-heading p { max-width: 36ch; }
+.gc-section-heading p:last-child { margin-bottom: 0; }
+.gc-restaurants { background: var(--navy); color: var(--cream); }
+.gc-restaurants p { color: #d6dfdf; }
+.gc-restaurants:focus-visible { outline-color: var(--gold); outline-offset: -5px; }
+.gc-restaurant-list { padding: 0; margin: 0; list-style: none; align-self: center; }
+.gc-restaurant-list li { font: 600 27px/1.3 'Barlow Condensed', Barlow, sans-serif; padding: 14px 0; border-bottom: 1px solid #365067; }
+.gc-restaurant-list li:first-child { padding-top: 0; }
+.gc-steps { list-style: decimal; padding-left: 28px; margin: 0; }
+.gc-steps li { padding-left: 10px; margin-bottom: 28px; }
+.gc-steps li::marker { color: var(--liquid); font: 700 22px 'Barlow Condensed', Barlow, sans-serif; }
+.gc-steps h3 { margin-bottom: 8px; font-size: 23px; }
+.gc-steps p { margin: 0; }
+.gc-paper { font-size: 16px; color: var(--ink-soft); border-top: 1px solid #c9c4ba; padding-top: 20px; margin: 4px 0 0; }
+.gc-glass { border-top: 1px solid #c9c4ba; padding-top: 48px; padding-bottom: 40px; }
+@media (max-width: 767px) {
+  .gc-intro { padding: 32px 24px 40px; grid-template-columns: 1fr; gap: 32px; }
+  .gc-invitation { padding: 0; }
+  .gc-lead { font-size: 19px; }
+  .gc-pickup-link { margin-top: 16px; }
+  .gc-calendar { padding: 24px; }
+  .gc-section-inner { padding: 40px 24px; grid-template-columns: 1fr; gap: 28px; }
+  .gc-section-heading p { max-width: 65ch; }
+  .gc-restaurants h2 br { display: none; }
+  .gc-restaurant-list li { font-size: 25px; }
+  .gc-steps { padding-left: 24px; }
+  .gc-steps li { padding-left: 8px; }
+  .gc-glass { padding-bottom: 24px; }
+}

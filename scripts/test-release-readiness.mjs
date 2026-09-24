@@ -268,6 +268,7 @@ for (const [page, markup] of [
   ['privacy.html', privacy],
   ['support.html', support],
   ['glass-pickup.html', await read('glass-pickup.html')],
+  ['glass-comes-back.html', await read('glass-comes-back.html')],
 ]) {
   // Executable JavaScript is excluded because it is not copy. JSON-LD is not
   // excluded: it is the structured data search engines and the assistants quote
