@@ -2,9 +2,10 @@ import { test, expect } from '@playwright/test';
 import { mkdir } from 'node:fs/promises';
 import { TASTING_DATES } from '../../api/lib/glass-campaign.js';
 
-test.beforeEach(async ({ context, baseURL }) => {
+test.beforeEach(async ({ context, baseURL, page }) => {
   const origin = new URL(baseURL).origin;
   await context.route('**/*', route => new URL(route.request().url()).origin === origin ? route.continue() : route.abort());
+  await page.clock.setFixedTime(new Date('2026-09-24T19:00:00Z'));
 });
 
 test('event dates agree with the server schedule and all restaurant names are present', async ({ page }) => {
@@ -21,6 +22,8 @@ test('event dates agree with the server schedule and all restaurant names are pr
   ]);
   await expect(page.getByText(/No tasting on October 7/)).toBeVisible();
   await expect(page.getByText(/During each restaurant's normal dining hours/)).toBeVisible();
+  await expect(page.getByText(/Restaurant check-in is being prepared/)).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'On a tasting date.' })).toBeVisible();
 });
 
 test('the complete invitation works without JavaScript and its destinations resolve', async ({ browser, baseURL }) => {
@@ -29,6 +32,7 @@ test('the complete invitation works without JavaScript and its destinations reso
   await page.goto('/glass-comes-back');
   await expect(page.getByRole('heading', { name: 'The Glass Comes Back.' })).toBeVisible();
   await expect(page.getByText(/same dining visit/)).toBeVisible();
+  await expect(page.getByText(/Restaurant check-in is being prepared/)).toBeVisible();
   await expect(page.getByText(/You don't need to dine to pick up a glass/)).toBeVisible();
   await expect(page.getByText(/checkbox starts checked and is optional/)).toBeVisible();
   await expect(page.getByText(/paper check-in option/)).toBeVisible();
@@ -69,6 +73,25 @@ test('keyboard anchors, narrow viewports and privacy controls work without track
   expect(requests.some(url => /\/api\/|facebook|analytics|googletag/.test(url))).toBe(false);
 });
 
+test('the invitation ends at the Pacific date boundary while pickup remains available', async ({ page }) => {
+  // October 15 in UTC is still the final tasting day in Livermore.
+  await page.clock.setFixedTime(new Date('2026-10-15T06:59:59Z'));
+  await page.goto('/glass-comes-back');
+  await expect(page.locator('#tasting-instructions')).toBeVisible();
+  await expect(page.getByText(/These tastings have ended/)).toHaveCount(0);
+
+  await page.clock.setFixedTime(new Date('2026-10-15T07:00:00Z'));
+  await page.reload();
+  await expect(page.getByText(/These tastings have ended/)).toBeVisible();
+  await expect(page.locator('#event-readiness, #tasting-instructions, #same-visit')).toHaveCount(3);
+  for (const id of ['event-readiness', 'tasting-instructions', 'same-visit']) await expect(page.locator('#' + id)).toBeHidden();
+  await expect(page.getByRole('heading', { name: 'Our participating restaurants.' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'See the restaurants' })).toHaveAttribute('href', '#restaurants');
+  await expect(page.getByRole('link', { name: 'Pick up a glass', exact: true })).toBeVisible();
+  await expect(page.getByText(/while supplies last/, { exact: false }).last()).toBeVisible();
+  await expect(page.locator('time')).toHaveCount(5);
+});
+
 test('capture the event page at desktop and phone sizes for review', async ({ page }, testInfo) => {
   test.skip(!process.env.GLASS_EVENT_SCREENSHOTS || testInfo.project.name === 'mobile-webkit');
   const name = testInfo.project.name === 'desktop-chromium' ? 'desktop' : 'mobile';
@@ -76,4 +99,8 @@ test('capture the event page at desktop and phone sizes for review', async ({ pa
   await page.goto('/glass-comes-back');
   await page.evaluate(() => document.fonts.ready);
   await page.screenshot({ path: `.impeccable/review/${name}.png`, fullPage: true });
+  await page.clock.setFixedTime(new Date('2026-10-15T07:00:00Z'));
+  await page.reload();
+  await page.evaluate(() => document.fonts.ready);
+  await page.screenshot({ path: `.impeccable/review/${name}-ended.png`, fullPage: true });
 });

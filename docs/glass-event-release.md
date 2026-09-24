@@ -1,6 +1,6 @@
 # The Glass Comes Back: public event page
 
-This independent slice adds `/glass-comes-back` for LDI to share. It explains the
+This independent slice adds `/glass-comes-back` as advance information for LDI to share. It explains the
 five 2026 tasting dates, four restaurants, dining/glass requirements, separate
 pickup and tasting check-ins, optional marketing, and paper fallback. It links to
 the already-live `/glass-pickup` flow. Guest content works without JavaScript.
@@ -12,8 +12,10 @@ The approved fixed restaurant routes remain:
 - `/glass-comes-back/calamari-bistro-bar`
 - `/glass-comes-back/l-campo`
 
-Those forms belong to the next slice. This page names the restaurants and
-explains at-table QR use; it does not link guests to unimplemented routes.
+Those forms belong to the next slice. A visible readiness notice says restaurant
+check-in is being prepared, and instructions are explicitly for a tasting date.
+The page does not link guests to unimplemented routes. The notice is also visible
+without JavaScript; the live pickup link is available now.
 
 ## Boundaries
 
@@ -26,21 +28,33 @@ explains at-table QR use; it does not link guests to unimplemented routes.
   without JavaScript or a backend. Browser checks compare its machine-readable
   dates to the server campaign schedule and verify weekdays, preventing drift.
   The event page does not determine eligibility; that belongs to server-enforced
-  tasting check-in. Its dated content can remain as an archive after the event.
+  tasting check-in. A local script derives the last date from the calendar and
+  shows an ended message after October 14 in America/Los_Angeles. It hides tasting
+  instructions and preserves pickup, historical dates and restaurants. It uses
+  the visitor's clock, makes no requests and reads no contact or storage data.
+  Without JavaScript, the explicit 2026 dates remain readable.
 - Existing member-count disclosure checks include the new page. CI path filters
-  include both its HTML and versioned stylesheet.
+  include its HTML and versioned assets. Shared-link metadata uses the existing
+  DPC image, not a third-party image or tracking request.
 
-## Review and release
+## Release checklist
 
-Review this slice independently from main after pickup PR #60. It needs no
-database setup or production credentials. Run the repository offline checks,
-applicable desktop/phone browser checks, and `git diff --check`. The required
-TypeScript invocation is not applicable to this JavaScript repository without a
-tsconfig; report its real result. DB-backed code is unchanged, so no new database
-verification is required for this slice (CI still runs its existing DB job).
+1. After review and release approval, merge and confirm the main-branch deployment
+   is Ready. No migration, new environment flag or database setup is required.
+2. Verify `/glass-comes-back` on the public domain at desktop and phone widths:
+   readiness notice, five dates, four restaurants, pickup link and privacy/support
+   links. Check the shared-link image resolves. Do not create production test data.
+3. Before the first tasting on September 29, verify all four restaurant check-ins
+   are live, their exact QR cards are printed and at the restaurants, and staff
+   have the paper fallback. Paper readiness has not yet been demonstrated.
+4. Remove the preparation notice only after those checks pass. Tasting release
+   checks must cover one normalized email per restaurant per eligible Pacific
+   date, optional initially checked marketing, unchecked submission, preserved
+   prior opt-out, no email verification, and same-visit pickup plus tasting.
+5. After the last tasting, verify the ended state and continuing glass pickup.
+   Update the static invitation to archival wording too, for guests without
+   JavaScript and social previews that do not execute scripts.
 
-Obtain Brandi's required approval before opening the PR, then human review/merge
-and the corresponding release authorization. Do not publish locally. The
-already-completed pickup release approvals do not authorize this page's release.
-After authorized deployment, verify `/glass-comes-back`, its pickup link, and
-privacy/support links on the public domain. Do not create production test data.
+Publishing this advance-information page does not establish that restaurant
+check-in or paper operations are ready. Their release evidence belongs to the
+tasting and restaurant-handoff slices.
