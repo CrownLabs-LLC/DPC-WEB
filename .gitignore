@@ -7,3 +7,7 @@ node_modules/
 .vercel
 test-results/
 playwright-report/
+
+# Local campaign review captures and Supabase CLI cache
+.impeccable/review/
+supabase/.temp/

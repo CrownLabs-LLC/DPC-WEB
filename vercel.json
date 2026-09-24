@@ -21,6 +21,14 @@
   ],
   "headers": [
     {
+      "source": "/glass-pickup",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-store" },
+        { "key": "Referrer-Policy", "value": "no-referrer" },
+        { "key": "X-Content-Type-Options", "value": "nosniff" }
+      ]
+    },
+    {
       "source": "/join",
       "headers": [
         { "key": "Cache-Control", "value": "no-store" }
