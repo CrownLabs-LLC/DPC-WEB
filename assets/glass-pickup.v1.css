@@ -10,7 +10,7 @@ a:hover { text-decoration-thickness: 2px; }
 button, input { font: inherit; }
 button { cursor: pointer; }
 button:disabled { cursor: wait; background: #d4c9b1; }
-button, a, summary { -webkit-tap-highlight-color: #c4a35a66; }
+button, a { -webkit-tap-highlight-color: #c4a35a66; }
 p { max-width: 70ch; margin: 0 0 20px; }
 h1, h2 { font-family: 'Playfair Display', Georgia, serif; font-weight: 700; line-height: 1.12; text-wrap: balance; }
 h1 { font-size: clamp(2.5rem, 4.8vw, 4.25rem); letter-spacing: -.025em; margin: 0 0 28px; }
@@ -32,12 +32,9 @@ input[type=email] { width: 100%; min-height: 56px; border: 1px solid #6b7780; bo
 input::placeholder { color: #596775; opacity: 1; }
 .field-note, .optional, .privacy-note { font-size: 15px; line-height: 1.5; color: var(--ink-soft); }
 .field-note { margin-top: 10px; }
-.marketing { display: flex; align-items: flex-start; gap: 12px; margin: 28px 0 12px; cursor: pointer; }
+.marketing { display: flex; align-items: flex-start; gap: 12px; margin: 28px 0 24px; cursor: pointer; }
 .marketing input { flex: 0 0 22px; width: 22px; height: 22px; margin: 3px 0; accent-color: var(--liquid); }
 .optional { display: block; margin-top: 6px; }
-.preference-note { margin: 12px 0 24px; font-size: 15px; color: var(--ink-soft); }
-summary { cursor: pointer; padding: 12px 0; text-decoration: underline; text-underline-offset: .2em; }
-.preference-note p { margin: 4px 0 16px; }
 .primary { min-height: 56px; width: 100%; padding: 16px 20px; border: 0; border-radius: 4px; background: var(--gold); color: var(--navy); font: 700 20px/1.2 'Barlow Condensed', Barlow, sans-serif; }
 .primary:hover:not(:disabled) { background: #d4b370; }
 .primary:active:not(:disabled) { background: #b0915c; }

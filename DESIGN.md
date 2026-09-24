@@ -180,7 +180,7 @@ Incumbent cards use liquid-blue fills or fine gold-toned borders, generous paddi
 
 ### Inputs / Fields
 
-Pickup's email field is white with a visible single-pixel border, 56px minimum height, and the shared control radius. The label sits above it and helper text below. Keyboard focus uses the page outline. Optional marketing uses the browser checkbox with liquid-blue accent and a directly adjacent explanation. A native disclosure holds the earlier-preference explanation.
+Pickup's email field is white with a visible single-pixel border, 56px minimum height, and the shared control radius. The label sits above it and helper text below. Keyboard focus uses the page outline. Optional marketing uses the browser checkbox with liquid-blue accent and a directly adjacent explanation.
 
 Form errors appear in a bordered inline notice. Loading, unavailable, submitting, and successful states use explicit text; color alone does not communicate the result.
 
