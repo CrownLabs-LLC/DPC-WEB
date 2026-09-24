@@ -9,6 +9,7 @@
   const unavailable = 'Pickup check-in is unavailable right now. Please try again or ask the person handing out glasses for the paper option.';
   const day = new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', weekday: 'long' });
   const date = new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', month: 'long', day: 'numeric' });
+  const fullDate = new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', month: 'long', day: 'numeric', year: 'numeric' });
 
   function renderSchedule(schedule) {
     if (!schedule || !Array.isArray(schedule.dates) || typeof schedule.ended !== 'boolean') throw new Error('schedule');
@@ -22,7 +23,7 @@
     }
     $('tasting-title').textContent = schedule.ended ? 'The tastings have ended.' : 'Bring it back for a taste.';
     $('tasting-description').textContent = schedule.ended
-      ? 'The Glass Comes Back tastings ended on October 14, 2026. You can still pick up a complimentary DPC glass while supplies last.'
+      ? 'The Glass Comes Back tastings ended on ' + fullDate.format(new Date(schedule.endDate + 'T12:00:00Z')) + '. You can still pick up a complimentary DPC glass while supplies last.'
       : 'The Glass Comes Back: bring your DPC glass for a complimentary taste of wine while dining at a participating restaurant.';
     for (const id of ['tasting-instructions', 'dates-title', 'dates', 'exclusion']) $(id).hidden = schedule.ended;
     $('tastings').hidden = false;
@@ -33,7 +34,11 @@
     try {
       const response = await fetch('/api/glass-pickup', { ...options, signal: controller.signal, cache: 'no-store', credentials: 'omit' });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.message || unavailable);
+      if (!response.ok) {
+        const error = new Error(typeof data.message === 'string' ? data.message : unavailable);
+        error.status = response.status;
+        throw error;
+      }
       return data;
     } finally { clearTimeout(timer); }
   }
@@ -86,7 +91,9 @@
       // Contact data remains only in this form's memory until completion.
       form.reset(); pending = null; changed = false;
     } catch (error) {
-      $('form-error').textContent = error.name === 'AbortError' ? 'Your connection took too long. Try again; a repeat submission will not add another pickup.' : unavailable;
+      $('form-error').textContent = error.name === 'AbortError'
+        ? 'Your connection took too long. Try again; a repeat submission will not add another pickup.'
+        : [400, 403, 413, 415, 429].includes(error.status) ? error.message : unavailable;
       $('form-error').hidden = false;
     } finally {
       submitting = false; $('submit').disabled = false; $('submit').textContent = 'Confirm glass pickup';

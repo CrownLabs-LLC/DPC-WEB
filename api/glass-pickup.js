@@ -1,4 +1,4 @@
-import { MARKETING_VERSION, pickupConfiguration, tastingSchedule } from './lib/glass-campaign.js';
+import { MARKETING_VERSION, pickupConfiguration, pickupRateKey, tastingSchedule } from './lib/glass-campaign.js';
 
 const EMAIL = /^[^\s@\x00-\x1f\x7f]+@[^\s@\x00-\x1f\x7f]+\.[^\s@\x00-\x1f\x7f]+$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -33,15 +33,23 @@ export default async function handler(req, res) {
   if (!UUID.test(body.requestId || '') || typeof body.marketingOptIn !== 'boolean' || typeof body.marketingChanged !== 'boolean'
       || (!body.marketingOptIn && !body.marketingChanged)) return fail(400, 'Please reload the page and choose your email preference again.');
   try {
+    const rateKey = pickupRateKey(req, config.key);
+    if (!rateKey) return fail(503, unavailable);
     const response = await fetch(config.url + '/rest/v1/rpc/register_glass_pickup', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', apikey: config.key, Authorization: 'Bearer ' + config.key },
       body: JSON.stringify({ p_request_id: body.requestId, p_email: email, p_marketing_opt_in: body.marketingOptIn,
-        p_marketing_changed: body.marketingChanged, p_wording_version: MARKETING_VERSION }),
+        p_marketing_changed: body.marketingChanged, p_wording_version: MARKETING_VERSION, p_rate_key: rateKey }),
       signal: AbortSignal.timeout(8000),
     });
     // Never relay database bodies: they can contain email or conflict details.
     if (!response.ok) return fail(503, unavailable);
+    const recorded = await response.json();
+    if (recorded === false) {
+      res.setHeader('Retry-After', '60');
+      return fail(429, 'A lot of guests are checking in right now. Please wait a minute, then try again. Your entries are still here.');
+    }
+    if (recorded !== true) return fail(503, unavailable);
     return res.status(200).json({ success: true, schedule: tastingSchedule() });
   } catch { return fail(503, unavailable); }
 }

@@ -1,12 +1,28 @@
+import { createHmac } from 'node:crypto';
+import { isIP } from 'node:net';
+
 export const TASTING_DATES = ['2026-09-29', '2026-09-30', '2026-10-06', '2026-10-13', '2026-10-14'];
 export const MARKETING_VERSION = 'glass-2026-09-24-v1';
 export const MARKETING_WORDING = 'Email me DPC news and upcoming events.';
+
+export function pickupRateKey(req, secret, now = new Date()) {
+  // Vercel supplies this header at its edge. Never trust a browser-supplied
+  // address in the body or fall back to a possibly forwarded proxy chain.
+  const hosted = ['production', 'preview'].includes(process.env.VERCEL_ENV);
+  const address = hosted ? req.headers['x-vercel-forwarded-for'] : req.socket?.remoteAddress;
+  if (typeof address !== 'string' || !isIP(address)) return null;
+  const normalized = isIP(address) === 6 ? new URL('http://[' + address + ']').hostname : address;
+  return createHmac('sha256', secret)
+    .update('glass-pickup:' + now.toISOString().slice(0, 10) + ':' + normalized)
+    .digest('hex');
+}
 
 export function tastingSchedule(now = new Date()) {
   const today = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'America/Los_Angeles', year: 'numeric', month: '2-digit', day: '2-digit',
   }).format(now);
-  return { today, dates: TASTING_DATES.filter(date => date >= today), ended: today > TASTING_DATES.at(-1) };
+  const endDate = TASTING_DATES.at(-1);
+  return { today, dates: TASTING_DATES.filter(date => date >= today), endDate, ended: today > endDate };
 }
 
 export function pickupConfiguration() {

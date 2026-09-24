@@ -12,7 +12,7 @@ Nick may print it before deployment; guest use waits for a verified live flow.
 
 ## Scope and ownership
 
-The four `glass_campaign_*` tables and submission RPC belong to this DPC-WEB
+The five `glass_campaign_*` tables and submission RPC belong to this DPC-WEB
 promotion. They do not touch memberships, credit ledgers, arrivals, finance,
 subscriptions, email providers, or analytics. No cross-repository module-internal
 imports are introduced. SQL defaults are explicitly narrowed to prevent anonymous
@@ -28,6 +28,32 @@ Restaurant tasting check-in, the public event page, private results/CSV exports,
 paper back-entry, four restaurant QR cards, and Nick's demonstrated admin
 walkthrough are later reviewed slices. The pickup sign and paper sheet can be
 prepared now; a stored pickup check-in is not proof of physical glass handover.
+
+## Background submission limit
+
+Pickup accepts up to 30 valid submissions per network address in a 60-second
+window starting with its first submission. Retries count toward the limit. This
+allows multiple guests on restaurant Wi-Fi without a CAPTCHA or email challenge.
+The same database transaction enforces the limit across server instances. A full
+window returns HTTP 429 with `Retry-After: 60` before any campaign contact, pickup,
+request history, or preference change. The form asks the guest to wait a minute
+and retains the entered email, checkbox choice, and request identity for retry.
+
+On Vercel the server uses its
+[`x-vercel-forwarded-for` header](https://vercel.com/docs/headers/request-headers#x-vercel-forwarded-for),
+validates the address, and creates a daily HMAC key using its existing server-only
+secret. The rate table stores that hash and counters, with no raw address or link
+to a contact. Expired hashes older than two days are deleted in batches of up to
+100 during accepted submissions; without traffic, they remain until a subsequent
+submission or authorized cleanup. Missing trusted address/configuration fails
+closed. Local development uses the socket address. No additional service or
+credential is required. This limits bursts from one network; it does not verify
+identity or stop traffic distributed across many addresses.
+
+The original, unapplied pickup migration includes this table and the six-argument
+RPC returning a boolean (`true` recorded/replayed, `false` throttled). Deploy the
+matching API and schema together. Dates, including the confirmation's event end
+date, come from the server schedule.
 
 ## Read-only hosting inspection, September 24
 
@@ -50,8 +76,8 @@ read-only. No expanded access is required for the later private campaign surface
 
 ## Required release sequence
 
-1. Obtain approval to open this independently verified pickup PR from current
-   `main`. Brandi reviews and merges; agents do not approve or merge it.
+1. Brandi reviews the updated pickup PR #60 and authorizes its merge. The PR was
+   opened with her approval; agents do not approve or merge it.
 2. With the corresponding migration/configuration approval, apply
    `db/20260924202337_glass_pickup.sql` once to the **staging** project. The migration
    was generated through `supabase migration new glass_pickup` and retained its
@@ -63,6 +89,9 @@ read-only. No expanded access is required for the later private campaign surface
 4. Use synthetic staging addresses to exercise the real HTTP → RPC → confirmation
    path, uncheck marketing, repeat it, and verify one contact/pickup and preserved
    preference. Check that anon/member table access and RPC execution are denied.
+   Verify the trusted network header works through the actual Vercel route and
+   that the 31st same-network submission gets 429, preserves form entries, and
+   succeeds after a minute. Run this controlled burst only in staging.
    Record request/row evidence without copying actual contact data into logs.
 5. With production migration/release approval, apply the same additive migration
    to `ebiuspbgzggrdiaswpcc`. Keep pickup disabled until the production schema is
@@ -87,12 +116,14 @@ on October 14 does not turn pickup off.
   pickup contract, run without service credentials or external writes.
 - `npm run test:db`: existing diagnostics and new pickup tests run in disposable
   network-isolated PostgreSQL containers. Covers concurrency, retry after newer
-  preference, opt-out preservation, rollback, access grants and RLS.
+  preference, opt-out preservation, rollback, access grants and RLS, concurrent
+  rate limits, expiry/retry, and bounded cleanup of hashed network keys.
 - The diagnostics fixture now waits for TCP readiness after Supabase image
   initialization and uses the local bootstrap administrator for `SET ROLE` tests.
   This changes no production permissions and fixes a pre-existing fixture race.
 - Playwright pickup tests cover desktop Chromium, Android Chromium, and iPhone
-  WebKit: optional marketing, confirmation, retry identity, errors, ended tasting
+  WebKit: optional marketing, confirmation, retry identity, validation/throttle
+  errors, ended tasting
   dates, keyboard use, narrow viewports, blocked storage and no-JavaScript fallback.
   Browser fixtures stub HTTP responses; hosted integration remains a release gate.
 - This is JavaScript, with no TypeScript project configuration. `npx tsc --noEmit`

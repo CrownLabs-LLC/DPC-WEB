@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { mkdir } from 'node:fs/promises';
-const schedule = { today: '2026-09-24', dates: ['2026-09-29', '2026-09-30', '2026-10-06', '2026-10-13', '2026-10-14'], ended: false };
+const schedule = { today: '2026-09-24', dates: ['2026-09-29', '2026-09-30', '2026-10-06', '2026-10-13', '2026-10-14'], endDate: '2026-10-14', ended: false };
 test.beforeEach(async ({ context, page }) => {
   await context.route('**/*', route => new URL(route.request().url()).hostname === '127.0.0.1' ? route.continue() : route.abort());
   await page.route('**/api/glass-pickup', route => route.fulfill({ json: route.request().method() === 'GET' ? { available: true, schedule } : { success: true, schedule } }));
@@ -45,14 +45,79 @@ test('retry retains request identity and input; changed intent gets a new reques
 });
 
 test('pickup remains usable after tastings end without expired invitations', async ({ page }) => {
-  const ended = { today: '2026-10-15', dates: [], ended: true };
+  const ended = { today: '2026-10-15', dates: [], endDate: '2026-10-14', ended: true };
   await page.route('**/api/glass-pickup', route => route.fulfill({ json: route.request().method() === 'GET' ? { available: true, schedule: ended } : { success: true, schedule: ended } }));
   await page.goto('/glass-pickup');
   await page.getByLabel('Your email', { exact: true }).fill('later@example.com');
   await page.getByRole('button', { name: 'Confirm glass pickup' }).click();
   await expect(page.getByRole('heading', { name: "You're ready for pickup." })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'The tastings have ended.' })).toBeVisible();
+  await expect(page.locator('#tasting-description')).toContainText('ended on October 14, 2026');
   await expect(page.locator('#tasting-instructions')).toBeHidden(); await expect(page.locator('#dates')).toBeHidden();
+});
+
+test('background throttle preserves entries and retry identity without a guest challenge', async ({ page }) => {
+  const submissions = [];
+  await page.route('**/api/glass-pickup', route => {
+    if (route.request().method() === 'GET') return route.fulfill({ json: { available: true, schedule } });
+    submissions.push(route.request().postDataJSON());
+    return route.fulfill(submissions.length === 1
+      ? { status: 429, headers: { 'Retry-After': '60' }, json: { success: false, message: 'A lot of guests are checking in right now. Please wait a minute, then try again. Your entries are still here.' } }
+      : { json: { success: true, schedule } });
+  });
+  await page.goto('/glass-pickup');
+  await page.getByLabel('Your email', { exact: true }).fill('limited@example.com');
+  await page.getByRole('checkbox').uncheck();
+  await page.getByRole('button', { name: 'Confirm glass pickup' }).click();
+  await expect(page.getByRole('alert')).toContainText('wait a minute');
+  await expect(page.getByLabel('Your email', { exact: true })).toHaveValue('limited@example.com');
+  await expect(page.getByRole('checkbox')).not.toBeChecked();
+  await expect(page.locator('#confirmation')).toBeHidden();
+  await page.getByRole('button', { name: 'Confirm glass pickup' }).click();
+  await expect(page.getByRole('heading', { name: "You're ready for pickup." })).toBeVisible();
+  expect(submissions[1]).toEqual(submissions[0]);
+});
+
+test('a mistyped domain shows the email correction instead of an outage', async ({ page }) => {
+  let postedEmail;
+  await page.route('**/api/glass-pickup', route => {
+    if (route.request().method() === 'GET') return route.fulfill({ json: { available: true, schedule } });
+    postedEmail = route.request().postDataJSON().email;
+    return route.fulfill({ status: 400, json: { success: false, message: 'Enter a valid email address to continue.' } });
+  });
+  await page.goto('/glass-pickup');
+  await page.getByLabel('Your email', { exact: true }).fill('jane@gmail');
+  await page.getByRole('button', { name: 'Confirm glass pickup' }).click();
+  expect(postedEmail).toBe('jane@gmail');
+  await expect(page.getByRole('alert')).toHaveText('Enter a valid email address to continue.');
+  await expect(page.getByLabel('Your email', { exact: true })).toHaveValue('jane@gmail');
+  await expect(page.locator('#confirmation')).toBeHidden();
+});
+
+for (const status of [413, 415, 503]) {
+  test(`request error ${status} exposes only appropriate guest guidance`, async ({ page }) => {
+    const message = status === 413 ? 'Please check your email and try again.'
+      : status === 415 ? 'Use the glass pickup form.' : 'Private upstream failure: contact@example.com';
+    await page.route('**/api/glass-pickup', route => route.fulfill(route.request().method() === 'GET'
+      ? { json: { available: true, schedule } } : { status, json: { success: false, message } }));
+    await page.goto('/glass-pickup');
+    await page.getByLabel('Your email', { exact: true }).fill('guest@example.com');
+    await page.getByRole('button', { name: 'Confirm glass pickup' }).click();
+    if (status < 500) await expect(page.getByRole('alert')).toHaveText(message);
+    else {
+      await expect(page.getByRole('alert')).toContainText('Pickup check-in is unavailable');
+      await expect(page.getByRole('alert')).not.toContainText('contact@example.com');
+    }
+    await expect(page.locator('#confirmation')).toBeHidden();
+  });
+}
+
+test('ended copy follows a changed server schedule without a client date edit', async ({ page }) => {
+  const extended = { today: '2026-10-22', dates: [], endDate: '2026-10-21', ended: true };
+  await page.route('**/api/glass-pickup', route => route.fulfill({ json: { available: true, schedule: extended } }));
+  await page.goto('/glass-pickup');
+  await expect(page.locator('#tasting-description')).toContainText('ended on October 21, 2026');
+  await expect(page.locator('#tasting-description')).not.toContainText('October 14');
 });
 
 test('server unavailable never shows success and can be retried', async ({ page }) => {

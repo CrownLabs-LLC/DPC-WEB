@@ -23,7 +23,8 @@ function concurrent(input) {
     child.stdin.end(input);
   });
 }
-const call = (id, email, opt = true, changed = false) => `select public.register_glass_pickup('${id}','${email}',${opt},${changed},'glass-2026-09-24-v1');`;
+const defaultRateKey = 'a'.repeat(64);
+const call = (id, email, opt = true, changed = false, rateKey = defaultRateKey) => `select public.register_glass_pickup('${id}','${email}',${opt},${changed},'glass-2026-09-24-v1','${rateKey}');`;
 const asService = statement => 'set role service_role;' + statement;
 try {
   docker(['run', '--detach', '--rm', '--network', 'none', '--name', container, '-e', 'POSTGRES_PASSWORD=local-glass-tests-only', image]);
@@ -50,7 +51,7 @@ try {
   fails(asService(call(randomUUID(), 'not email')), /check constraint/);
   fails(asService(call(randomUUID(), 'none@example.com', false, false)), /Invalid pickup/);
   for (const role of ['anon', 'authenticated']) {
-    for (const table of ['contacts', 'pickups', 'submissions', 'preference_events']) {
+    for (const table of ['contacts', 'pickups', 'submissions', 'preference_events', 'rate_limits']) {
       fails(`set role ${role}; select * from glass_campaign_${table};`, /permission denied/);
     }
     fails(`set role ${role};` + call(randomUUID(), 'unauthorized@example.com'), /permission denied/);
@@ -75,5 +76,32 @@ try {
   assert.equal(sql('select count(*) from glass_campaign_pickups'), '3');
   assert.equal(sql("select count(*) from information_schema.columns where table_name='glass_campaign_pickups' and column_name in ('venue','venue_id','location','restaurant')"), '0');
   assert.equal(sql('select count(*) from glass_campaign_contacts where updated_at < preference_occurred_at'), '0');
-  console.log('PASS: real PostgreSQL pickup atomicity, retries, concurrent requests, email normalization, preference preservation, rollback, RLS and role grants.');
+  // Thirty guests sharing Wi-Fi succeed; further requests cannot create records
+  // or change a saved preference. Four contenders race for the last two slots.
+  const limitedKey = 'b'.repeat(64);
+  sql(asService(Array.from({ length: 28 }, (_, i) => call(randomUUID(), `limited-${i}@example.com`, false, true, limitedKey)).join('\n')));
+  await Promise.all([28, 29, 30, 31].map(i => concurrent(asService(call(randomUUID(), `limited-${i}@example.com`, false, true, limitedKey)))));
+  assert.equal(sql("select count(*) from glass_campaign_contacts where email like 'limited-%'"), '30');
+  assert.equal(sql(`select submissions from glass_campaign_rate_limits where rate_key='${limitedKey}'`), '30');
+  const retryId = randomUUID();
+  const beforeLimit = sql('select (select count(*) from glass_campaign_submissions), (select count(*) from glass_campaign_preference_events), (select count(*) from glass_campaign_pickups)');
+  assert.match(sql(asService(call(retryId, 'limited-0@example.com', true, true, limitedKey))), /\nf$/);
+  assert.equal(sql("select marketing_opt_in from glass_campaign_contacts where email='limited-0@example.com'"), 'f');
+  assert.equal(sql('select (select count(*) from glass_campaign_submissions), (select count(*) from glass_campaign_preference_events), (select count(*) from glass_campaign_pickups)'), beforeLimit);
+  assert.match(sql(asService(call(randomUUID(), 'other-network@example.com', true, false, 'c'.repeat(64)))), /\nt$/);
+  // Advance only the test fixture's window; a real guest can retry after 60s.
+  sql(`update glass_campaign_rate_limits set window_started_at=clock_timestamp()-interval '61 seconds' where rate_key='${limitedKey}';`);
+  assert.match(sql(asService(call(retryId, 'limited-0@example.com', true, true, limitedKey))), /\nt$/);
+  assert.equal(sql(`select submissions from glass_campaign_rate_limits where rate_key='${limitedKey}'`), '1');
+  assert.equal(sql("select marketing_opt_in from glass_campaign_contacts where email='limited-0@example.com'"), 't');
+  assert.equal(sql("select count(*) from glass_campaign_pickups p join glass_campaign_contacts c on c.id=p.contact_id where c.email='limited-0@example.com'"), '1');
+  // Expired hashes are removed in bounded batches and current buckets survive.
+  const oldKey = 'd'.repeat(64);
+  sql(`insert into glass_campaign_rate_limits(rate_key,window_started_at,submissions) values('${oldKey}',clock_timestamp()-interval '3 days',1);`);
+  sql(asService(call(randomUUID(), 'cleanup@example.com')));
+  assert.equal(sql(`select count(*) from glass_campaign_rate_limits where rate_key='${oldKey}'`), '0');
+  assert.equal(sql(`select count(*) from glass_campaign_rate_limits where rate_key='${limitedKey}'`), '1');
+  assert.equal(sql("select count(*) from information_schema.columns where table_name='glass_campaign_rate_limits' and column_name in ('ip','ip_address','email','contact_id')"), '0');
+  fails(asService(call(randomUUID(), 'bad-key@example.com', true, false, '192.0.2.1')), /Invalid pickup/);
+  console.log('PASS: real PostgreSQL pickup atomicity, retries, concurrency, preference preservation, rollback, RLS, role grants, network throttle race, retry after expiry, and bounded hash cleanup.');
 } finally { spawnSync('docker', ['rm', '--force', container], { encoding: 'utf8', timeout: 10000 }); }
