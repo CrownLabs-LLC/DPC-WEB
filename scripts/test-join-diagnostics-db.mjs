@@ -12,7 +12,8 @@ function docker(args, input) {
   return result.stdout;
 }
 function sql(input) {
-  return docker(['exec', '-i', container, 'psql', '-X', '-U', 'postgres', '-d', 'postgres', '-v', 'ON_ERROR_STOP=1'], input);
+  // Use the local bootstrap administrator for role-switching RLS tests.
+  return docker(['exec', '-i', container, 'psql', '-X', '-U', 'supabase_admin', '-d', 'postgres', '-v', 'ON_ERROR_STOP=1'], input);
 }
 const read = (path) => readFileSync(new URL('../' + path, import.meta.url), 'utf8');
 try {
@@ -20,7 +21,9 @@ try {
     '-e', 'POSTGRES_PASSWORD=local-diagnostics-test-only', image]);
   let ready = false;
   for (let i = 0; i < 60; i++) {
-    const probe = spawnSync('docker', ['exec', container, 'pg_isready', '-U', 'postgres'], { timeout: 1000 });
+    // TCP opens only after image initialization; the temporary Unix socket opens
+    // before Supabase has finished creating/restricting its API roles.
+    const probe = spawnSync('docker', ['exec', container, 'pg_isready', '-h', '127.0.0.1', '-U', 'postgres'], { timeout: 1000 });
     if (probe.status === 0) { ready = true; break; }
     await new Promise((resolve) => setTimeout(resolve, 250));
   }

@@ -7,3 +7,12 @@ node_modules/
 .vercel
 test-results/
 playwright-report/
+
+# Local campaign review captures and Supabase CLI cache
+.impeccable/review/
+supabase/.temp/
+
+# Local design-workflow records; the existing DESIGN_HANDOFF.md stays authoritative.
+/DESIGN.md
+/PRODUCT.md
+/.impeccable/design.json

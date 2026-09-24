@@ -4,6 +4,12 @@ on:
   pull_request:
     paths:
       - 'join.html'
+      - 'glass-pickup.html'
+      - 'assets/glass-pickup.*'
+      - 'assets/glass-fonts.*'
+      - 'assets/fonts/**'
+      - 'api/glass-pickup.js'
+      - 'api/lib/glass-campaign.js'
       - 'assets/analytics.js'
       - 'api/track.js'
       - 'api/health-check.js'
@@ -30,6 +36,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
+      - run: npm run test:db
       - run: npx playwright install --with-deps chromium webkit
       - run: npm run test:e2e
       - name: Upload Playwright failure artifacts
