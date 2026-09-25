@@ -167,7 +167,7 @@ glass pickup. The existing confirmation expiry and offline continuity stay in
 place.
 
 Universal pickup confirms “Your glass is ready.” followed by “Bring it back on a
-Tuesday or Wednesday for a complimentary taste of wine.” The existing schedule
+tasting date below for a complimentary taste of wine.” The existing schedule
 shows all five dates before the event, then remaining dates, plus all four
 restaurants. After October 14, the invitation is hidden and the ended message
 remains; glass pickup still works while supplies last.

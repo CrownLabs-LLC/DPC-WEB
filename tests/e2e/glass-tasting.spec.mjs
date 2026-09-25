@@ -101,8 +101,8 @@ test('server email validation is shown without losing the entered address', asyn
 });
 
 for (const [now, message] of [
-  ['2026-09-28T19:00:00Z', 'next tasting is Tuesday, September 29'],
-  ['2026-10-07T19:00:00Z', 'next tasting is Tuesday, October 13'],
+  ['2026-09-28T19:00:00Z', 'See you Tuesday, September 29'],
+  ['2026-10-07T19:00:00Z', 'See you Tuesday, October 13'],
   ['2026-10-15T07:00:00Z', 'These tastings have ended'],
 ]) test(`server date ${now} prevents a tasting submission`, async ({ page }) => {
   const { posts } = await mock(page, { now });
@@ -120,7 +120,7 @@ for (const [now, message] of [
     await expect(page.locator('#tasting-rule')).toBeHidden();
     await expect(page.locator('#paper-option')).toBeHidden();
   } else {
-    await expect(page.locator('#load-status')).toContainText('See you Tuesday.');
+    await expect(page.locator('#load-status')).toContainText('See you Tuesday,');
     await expect(page.locator('#same-visit')).toContainText('no separate glass pickup form is needed');
   }
 });
@@ -301,7 +301,7 @@ test('a known closed date names the actual next weekday, while a disabled servic
     restaurant: { slug: 'l-campo', name: 'L Campo' }, enabled: true, available: false,
   } }));
   await page.goto('/glass-comes-back/l-campo');
-  await expect(page.locator('#load-status')).toContainText('See you Wednesday. The next tasting is Wednesday, September 30');
+  await expect(page.locator('#load-status')).toHaveText('See you Wednesday, September 30, during normal dining hours.');
   await expect(page.locator('#tasting-form')).toBeHidden();
   await expect(page.locator('#confirmation')).toBeHidden();
   await page.unroute(api);

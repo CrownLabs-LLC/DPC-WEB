@@ -21,7 +21,7 @@ test('email-only pickup, optional marketing, confirmation and repeat guest', asy
   expect((await request).postDataJSON()).toMatchObject({ email: 'guest@example.com', marketingOptIn: false, marketingChanged: true });
   await expect(page.getByRole('heading', { name: "Your glass is ready." })).toBeFocused();
   await expect(page.getByText('Show this screen to the person handing out glasses.')).toBeVisible();
-  await expect(page.locator('#return-invitation')).toHaveText('Bring it back on a Tuesday or Wednesday for a complimentary taste of wine.');
+  await expect(page.locator('#return-invitation')).toHaveText('Bring it back on a tasting date below for a complimentary taste of wine.');
   await expect(page.locator('#return-invitation')).toBeVisible();
   await expect(page.locator('#dates time')).toHaveText(['September 29', 'September 30', 'October 6', 'October 13', 'October 14']);
   await expect(page.locator('.restaurants li')).toHaveText(["Demitri's Taverna", 'Swirl on the Square', 'Calamari Bistro & Bar', 'L Campo']);

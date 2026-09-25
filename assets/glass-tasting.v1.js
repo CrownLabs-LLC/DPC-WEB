@@ -5,7 +5,7 @@
   const name = $('restaurant-name').textContent;
   const unavailable = 'Tasting check-in is unavailable right now. Please try again or ask restaurant staff for the paper option.';
   const displayDate = new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
-  const displayDay = new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', weekday: 'long' });
+  const displayNextDate = new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', weekday: 'long', month: 'long', day: 'numeric' });
   const pacificDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Los_Angeles', year: 'numeric', month: '2-digit', day: '2-digit' });
   let state, receipt, pending, refreshTimer, expiryTimer;
   let changed = false, submitting = false, sequence = 0;
@@ -67,7 +67,7 @@
       $('load-status').textContent = !state.enabled ? unavailable : state.schedule.ended
         ? 'These tastings have ended. Glass pickup is still available while supplies last.'
         : state.available ? 'Tasting today · ' + dateLabel(state.schedule.today)
-        : next ? 'See you ' + displayDay.format(new Date(next + 'T12:00:00Z')) + '. The next tasting is ' + dateLabel(next) + ', during normal dining hours.' : 'No tasting is scheduled today.';
+        : next ? 'See you ' + displayNextDate.format(new Date(next + 'T12:00:00Z')) + ', during normal dining hours.' : 'No tasting is scheduled today.';
       $('tasting-intro').hidden = state.enabled && !state.available;
       $('tasting-rule').hidden = state.schedule.ended;
       $('paper-option').hidden = state.schedule.ended;
