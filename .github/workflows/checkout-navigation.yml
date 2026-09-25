@@ -5,6 +5,8 @@ on:
     paths:
       - 'join.html'
       - 'glass-pickup.html'
+      - 'glass-comes-back.html'
+      - 'assets/glass-event.*'
       - 'assets/glass-pickup.*'
       - 'assets/glass-fonts.*'
       - 'assets/fonts/**'
