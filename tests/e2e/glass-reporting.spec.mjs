@@ -67,6 +67,34 @@ test('failed download is not saved and existing results stay visible',async({pag
   await page.locator('[data-download="marketing"]').click();await expect(page.locator('#download-error')).toBeVisible();await expect(page.locator('#report')).toBeVisible();expect(downloads).toBe(0);
   c.csvStatus=200;const download=page.waitForEvent('download');await page.locator('[data-download="marketing"]').click();await download;await expect(page.locator('#download-error')).toBeHidden();
 });
+test('returning to the tab preserves results and a CSV that is still downloading',async({page})=>{
+  const c=await setup(page);await page.goto('/admin/glass-comes-back');await expect(page.locator('#report')).toBeVisible();
+  let release;c.gate=new Promise(r=>release=r);
+  const download=page.waitForEvent('download');await page.locator('[data-download="participation"]').click();
+  await expect.poll(()=>c.requests.some(r=>r.kind==='participation')).toBe(true);
+  const before=c.requests.filter(r=>r.kind==='summary').length;
+  const visible=await page.evaluate(()=>{
+    Object.defineProperty(document,'hidden',{configurable:true,value:true});document.dispatchEvent(new Event('visibilitychange'));
+    Object.defineProperty(document,'hidden',{configurable:true,value:false});document.dispatchEvent(new Event('visibilitychange'));
+    return !document.getElementById('report').hidden;
+  });
+  release();
+  expect(visible).toBe(true);await expect(page.locator('#count-pickups')).toHaveText('12');
+  const file=await download;expect(await readFile(await file.path(),'utf8')).toBe(csv);
+  expect(c.requests.filter(r=>r.kind==='summary')).toHaveLength(before);
+});
+test('refresh leaves a handed-off CSV readable; sign-out still releases it',async({page})=>{
+  await setup(page);await page.goto('/admin/glass-comes-back');await expect(page.locator('#report')).toBeVisible();
+  await page.clock.install();await page.clock.pauseAt(new Date());
+  await page.evaluate(()=>{
+    const create=URL.createObjectURL.bind(URL);URL.createObjectURL=blob=>{window.lastDownloadUrl=create(blob);return window.lastDownloadUrl;};
+  });
+  const download=page.waitForEvent('download');await page.locator('[data-download="marketing"]').click();await download;
+  await page.locator('#refresh').click();await expect(page.locator('#report')).toBeVisible();
+  expect(await page.evaluate(async()=>{try{return await(await fetch(window.lastDownloadUrl)).text();}catch{return null;}})).toBe(csv.replace(/^\uFEFF/,''));
+  await page.locator('#sign-out').click();
+  expect(await page.evaluate(async()=>{try{await fetch(window.lastDownloadUrl);return true;}catch{return false;}})).toBe(false);
+});
 test('sign-out prevents a delayed export or response from restoring private data',async({page})=>{
   const c=await setup(page);let downloads=0;page.on('download',()=>downloads++);await page.goto('/admin/glass-comes-back');await expect(page.locator('#report')).toBeVisible();
   let release;c.gate=new Promise(r=>release=r);await page.locator('[data-download="participation"]').click();await expect.poll(()=>c.requests.some(r=>r.kind==='participation')).toBe(true);

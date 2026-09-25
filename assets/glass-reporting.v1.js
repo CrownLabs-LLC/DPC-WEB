@@ -20,11 +20,13 @@ function clearReport() {
   for (const name of ['pickups', 'tastings', 'emails', 'repeatTasters', 'marketingContacts']) $('count-' + name).textContent = '';
   $('tasting-rows').replaceChildren(); $('tasting-totals').replaceChildren();
   $('download-status').textContent = ''; $('download-error').hidden = true;
-  for (const url of downloads) URL.revokeObjectURL(url); downloads.clear();
 }
 function invalidate() {
   generation++; loadSequence++; refreshPromise = null;
   for (const controller of controllers) controller.abort(); controllers.clear(); clearReport();
+  // Refreshing counts must not revoke a CSV already handed to the browser.
+  // Session invalidation still releases private downloads immediately.
+  for (const url of downloads) URL.revokeObjectURL(url); downloads.clear();
 }
 function storedSession() {
   try {
@@ -198,5 +200,6 @@ for (const button of document.querySelectorAll('[data-download]')) button.addEve
 window.addEventListener('storage', event => { if (event.key === sessionKey) bootstrap(); });
 window.addEventListener('pagehide', () => { invalidate(); $('results').hidden = true; });
 window.addEventListener('pageshow', event => { if (event.persisted) bootstrap(); });
-document.addEventListener('visibilitychange', () => { if (!document.hidden && session) loadReport(); });
+// Returning from a tab or save dialog preserves the current snapshot/download.
+// The timestamp and Refresh results control let the admin request newer counts.
 bootstrap();

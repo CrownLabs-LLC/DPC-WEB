@@ -52,7 +52,10 @@ operate in memory if storage is blocked. It does not persist reports or email
 lists. Sign-out, expiration and denied access clear displayed results; stale
 responses cannot restore them. Token refresh uses Supabase Auth. Tokens are
 never placed in download URLs. Auth transitions move keyboard focus to the new
-view; ordinary refreshes preserve focus.
+view; ordinary refreshes preserve focus. Returning from another tab or a save
+dialog preserves the displayed snapshot. Use Refresh results for newer counts;
+refreshing counts does not revoke a CSV already handed to the browser. Download
+URLs retain their timed cleanup, and session invalidation releases them immediately.
 
 `read_glass_campaign_report(text)` is STABLE, SECURITY INVOKER, with a fixed
 search path and execute granted only to `service_role`. It reads campaign tables
