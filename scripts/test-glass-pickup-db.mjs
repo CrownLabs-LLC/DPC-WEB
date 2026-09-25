@@ -35,6 +35,7 @@ try {
   }
   assert.ok(ready);
   sql(readFileSync(new URL('../db/20260924202337_glass_pickup.sql', import.meta.url), 'utf8'));
+  sql(readFileSync(new URL('../db/20260925152006_glass_tasting.sql', import.meta.url), 'utf8'));
   const first = randomUUID();
   sql(asService(call(first, ' Guest+tag@Example.com ', false, true)));
   sql(asService(call(first, 'guest+tag@example.com', false, true)));

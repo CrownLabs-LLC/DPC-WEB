@@ -269,6 +269,10 @@ for (const [page, markup] of [
   ['support.html', support],
   ['glass-pickup.html', await read('glass-pickup.html')],
   ['glass-comes-back.html', await read('glass-comes-back.html')],
+  ...await Promise.all(['demitris-taverna', 'swirl-on-the-square', 'calamari-bistro-bar', 'l-campo'].map(async slug => {
+    const path = `glass-comes-back/${slug}.html`;
+    return [path, await read(path)];
+  })),
 ]) {
   // Executable JavaScript is excluded because it is not copy. JSON-LD is not
   // excluded: it is the structured data search engines and the assistants quote

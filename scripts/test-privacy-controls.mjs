@@ -119,6 +119,7 @@ check('all public pages expose a static opt-out link and load controls before an
   const root = new URL('../', import.meta.url);
   const files = readdirSync(root).filter(f => f.endsWith('.html') && !['dashboard.html','google92d1118acab8f389.html'].includes(f));
   files.push('stripe-connect/return.html', 'stripe-connect/refresh.html');
+  files.push(...readdirSync(new URL('glass-comes-back/', root)).filter(f => f.endsWith('.html')).map(f => 'glass-comes-back/' + f));
   for (const file of files) {
     const html = readFileSync(new URL(file, root), 'utf8');
     assert.match(html, /privacy-controls\.v1\.js/);
