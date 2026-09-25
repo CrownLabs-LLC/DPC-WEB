@@ -32,12 +32,16 @@ test('the complete invitation works without JavaScript and its destinations reso
   await page.goto('/glass-comes-back');
   await expect(page.getByRole('heading', { name: 'The Glass Comes Back.' })).toBeVisible();
   await expect(page.getByText(/same dining visit/)).toBeVisible();
+  await expect(page.locator('#same-visit')).toContainText("Scan only the restaurant's tasting QR");
+  await expect(page.locator('#same-visit')).toContainText('No separate glass pickup form is needed.');
+  await expect(page.locator('#tasting-instructions')).toContainText('once per person, per restaurant, per eligible day');
+  await expect(page.locator('#tasting-instructions')).toContainText('“Enjoy your pour.”');
   await expect(page.getByText(/Restaurant check-in is being prepared/)).toBeVisible();
   await expect(page.getByText(/You don't need to dine to pick up a glass/)).toBeVisible();
   await expect(page.getByText(/checkbox starts checked and is optional/)).toBeVisible();
   await expect(page.getByText(/paper check-in option/)).toBeVisible();
   await expect(page.getByText(/not the organizer, host, or sponsor/)).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Contact Nick · (925) 488-4889' })).toHaveAttribute('href', 'tel:+19254884889');
+  await expect(page.getByRole('link', { name: 'Contact hello@downtownpourcollective.com' })).toHaveAttribute('href', 'mailto:hello@downtownpourcollective.com');
   await expect(page.getByRole('link', { name: 'Need a hand?' })).toHaveAttribute('href', 'mailto:hello@downtownpourcollective.com');
   await expect(page.getByRole('link', { name: 'Pick up a glass', exact: true })).toHaveAttribute('href', '/glass-pickup');
   const links = await page.locator('a[href^="/"]').evaluateAll(nodes => [...new Set(nodes.map(node => node.getAttribute('href')))]);
@@ -94,7 +98,7 @@ test('the invitation ends at the Pacific date boundary while pickup remains avai
 
 test('capture the event page at desktop and phone sizes for review', async ({ page }, testInfo) => {
   test.skip(!process.env.GLASS_EVENT_SCREENSHOTS || testInfo.project.name === 'mobile-webkit');
-  const name = testInfo.project.name === 'desktop-chromium' ? 'desktop' : 'mobile';
+  const name = 'event-' + (testInfo.project.name === 'desktop-chromium' ? 'desktop' : 'mobile');
   await mkdir('.impeccable/review', { recursive: true });
   await page.goto('/glass-comes-back');
   await page.evaluate(() => document.fonts.ready);

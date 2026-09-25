@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="referrer" content="no-referrer">
-  <title>Pick up your free glass | Downtown Pour Collective</title>
+  <title>Pick up your complimentary glass | Downtown Pour Collective</title>
   <meta name="description" content="Check in to pick up a complimentary DPC glass, while supplies last. Then bring it back for The Glass Comes Back restaurant tastings.">
   <link rel="canonical" href="https://www.downtownpourcollective.com/glass-pickup">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
@@ -23,7 +23,7 @@
   <main id="main">
     <section class="pickup" aria-labelledby="pickup-title">
       <div class="introduction">
-        <h1 id="pickup-title">Pick up your<br>free glass.</h1>
+        <h1 id="pickup-title">Pick up your<br>complimentary glass.</h1>
         <p id="pickup-intro">Enter your email, then show your confirmation to the person handing out glasses.</p>
         <p class="availability">One glass per person.<br> While supplies last.</p>
       </div>
@@ -36,6 +36,7 @@
             <p id="email-note" class="field-note">Used to record your pickup. No account or email verification.</p>
             <label class="marketing" for="marketing"><input id="marketing" name="marketing" type="checkbox" checked><span>Email me DPC news and upcoming events.<span class="optional">Optional. You can still get a glass if you uncheck this.</span></span></label>
             <p id="form-error" class="notice" role="alert" hidden></p>
+            <p class="field-note" id="age-note">By checking in, you confirm you're 21 or older.</p>
             <button class="primary" id="submit" type="submit" disabled>Checking availability…</button>
             <p class="privacy-note">See how DPC handles your information in our <a href="/privacy">Privacy Policy</a>.</p>
           </form>
@@ -44,7 +45,8 @@
         </div>
         <section id="confirmation" hidden aria-labelledby="confirmation-title">
           <svg class="success-mark" viewBox="0 0 48 48" width="48" height="48" aria-hidden="true"><circle cx="24" cy="24" r="21" fill="none" stroke="currentColor" stroke-width="2"/><path d="m14 24 7 7 13-14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          <h2 id="confirmation-title" tabindex="-1">You're ready for pickup.</h2>
+          <h2 id="confirmation-title" tabindex="-1">Your glass is ready.</h2>
+          <p id="return-invitation" hidden>Bring it back on a tasting date below for a complimentary taste of wine.</p>
           <p class="confirmation-action">Show this screen to the person handing out glasses.</p>
           <p>One complimentary DPC glass per person, while supplies last. Keep your glass for your next downtown visit.</p>
           <button id="another" class="text-button" type="button">Check in another guest</button>
@@ -53,9 +55,9 @@
     </section>
     <section class="tastings" id="tastings" hidden aria-labelledby="tasting-title">
       <div class="tasting-copy">
-        <h2 id="tasting-title">Bring it back for a taste.</h2>
+        <h2 id="tasting-title">Tasting dates and restaurants.</h2>
         <p id="tasting-description">The Glass Comes Back: bring your DPC glass for a complimentary taste of wine while dining at a participating restaurant.</p>
-        <p id="tasting-instructions">Visit during normal dining hours on a date below. Scan the restaurant's tasting QR to check in. Picking up your glass that day? You can enjoy a tasting during the same dining visit.</p>
+        <p id="tasting-instructions">Visit during normal dining hours on a date below. Scan only the restaurant's tasting QR to check in. Need a glass during that dining visit? Ask your server for one; no separate pickup check-in is needed.</p>
       </div>
       <div class="tasting-details">
         <h3 id="dates-title">Tasting dates · 2026</h3>
@@ -68,7 +70,7 @@
     <p class="courtesy">Presented by Downtown Pour Collective. Livermore Downtown Inc. shares this information as a courtesy and is not the organizer, host, or sponsor.</p>
   </main>
   <footer>
-    <nav class="footer-links" aria-label="Legal and support"><a href="/privacy">Privacy Policy</a><a href="/terms">Terms</a><a href="/support">Support</a><a href="tel:+19254884889">Contact Nick · (925) 488-4889</a></nav>
+    <nav class="footer-links" aria-label="Legal and support"><a href="/privacy">Privacy Policy</a><a href="/terms">Terms</a><a href="/support">Support</a><a href="mailto:hello@downtownpourcollective.com">Contact hello@downtownpourcollective.com</a></nav>
     <p class="dpc-privacy-footer"><a href="/privacy-choices">Do Not Sell or Share My Personal Information</a></p>
   </footer>
 </body>

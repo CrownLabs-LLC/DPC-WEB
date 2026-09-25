@@ -11,14 +11,20 @@ test('email-only pickup, optional marketing, confirmation and repeat guest', asy
   await expect(page.getByRole('button', { name: 'Confirm glass pickup' })).toBeEnabled();
   await expect(page.getByRole('checkbox')).toBeChecked();
   expect(await page.locator('input').count()).toBe(2);
+  await expect(page.locator('#age-note')).toHaveText("By checking in, you confirm you're 21 or older.");
+  expect(await page.locator('#submit').evaluate(button => button.previousElementSibling.id)).toBe('age-note');
+  await expect(page.locator('.privacy-note a')).toHaveAttribute('href', '/privacy');
   await page.getByLabel('Your email', { exact: true }).fill('guest@example.com');
   await page.getByRole('checkbox').uncheck();
   const request = page.waitForRequest(r => r.url().endsWith('/api/glass-pickup') && r.method() === 'POST');
   await page.getByRole('button', { name: 'Confirm glass pickup' }).click();
   expect((await request).postDataJSON()).toMatchObject({ email: 'guest@example.com', marketingOptIn: false, marketingChanged: true });
-  await expect(page.getByRole('heading', { name: "You're ready for pickup." })).toBeFocused();
+  await expect(page.getByRole('heading', { name: "Your glass is ready." })).toBeFocused();
   await expect(page.getByText('Show this screen to the person handing out glasses.')).toBeVisible();
-  await expect(page.getByText('October 14', { exact: true })).toBeVisible();
+  await expect(page.locator('#return-invitation')).toHaveText('Bring it back on a tasting date below for a complimentary taste of wine.');
+  await expect(page.locator('#return-invitation')).toBeVisible();
+  await expect(page.locator('#dates time')).toHaveText(['September 29', 'September 30', 'October 6', 'October 13', 'October 14']);
+  await expect(page.locator('.restaurants li')).toHaveText(["Demitri's Taverna", 'Swirl on the Square', 'Calamari Bistro & Bar', 'L Campo']);
   expect(page.url()).not.toContain('guest');
   expect(await page.evaluate(() => ({ local: JSON.stringify(localStorage), session: JSON.stringify(sessionStorage) }))).toEqual({ local: '{}', session: '{}' });
   await page.getByRole('button', { name: 'Check in another guest' }).click();
@@ -40,7 +46,7 @@ test('retry retains request identity and input; changed intent gets a new reques
   await expect(page.getByLabel('Your email', { exact: true })).toHaveValue('retry@example.com');
   await submit.click(); await expect(page.getByRole('alert')).toBeVisible();
   await page.getByRole('checkbox').uncheck(); fail = false;
-  await submit.click(); await expect(page.getByRole('heading', { name: "You're ready for pickup." })).toBeVisible();
+  await submit.click(); await expect(page.getByRole('heading', { name: "Your glass is ready." })).toBeVisible();
   expect(ids[0]).toBe(ids[1]); expect(ids[2]).not.toBe(ids[1]);
 });
 
@@ -50,10 +56,11 @@ test('pickup remains usable after tastings end without expired invitations', asy
   await page.goto('/glass-pickup');
   await page.getByLabel('Your email', { exact: true }).fill('later@example.com');
   await page.getByRole('button', { name: 'Confirm glass pickup' }).click();
-  await expect(page.getByRole('heading', { name: "You're ready for pickup." })).toBeVisible();
+  await expect(page.getByRole('heading', { name: "Your glass is ready." })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'The tastings have ended.' })).toBeVisible();
   await expect(page.locator('#tasting-description')).toContainText('ended on October 14, 2026');
   await expect(page.locator('#tasting-instructions')).toBeHidden(); await expect(page.locator('#dates')).toBeHidden();
+  await expect(page.locator('#return-invitation')).toBeHidden();
 });
 
 test('background throttle preserves entries and retry identity without a guest challenge', async ({ page }) => {
@@ -74,7 +81,7 @@ test('background throttle preserves entries and retry identity without a guest c
   await expect(page.getByRole('checkbox')).not.toBeChecked();
   await expect(page.locator('#confirmation')).toBeHidden();
   await page.getByRole('button', { name: 'Confirm glass pickup' }).click();
-  await expect(page.getByRole('heading', { name: "You're ready for pickup." })).toBeVisible();
+  await expect(page.getByRole('heading', { name: "Your glass is ready." })).toBeVisible();
   expect(submissions[1]).toEqual(submissions[0]);
 });
 
@@ -128,11 +135,12 @@ test('server unavailable never shows success and can be retried', async ({ page 
   await expect(page.locator('#confirmation')).toBeHidden();
 });
 
-test('no-JavaScript fallback is readable and never submits email through a URL', async ({ browser }) => {
-  const context = await browser.newContext({ javaScriptEnabled: false });
+test('no-JavaScript fallback is readable and never submits email through a URL', async ({ browser, baseURL }) => {
+  const context = await browser.newContext({ javaScriptEnabled: false, baseURL });
   const page = await context.newPage();
-  await page.goto('http://127.0.0.1:4173/glass-pickup');
-  await expect(page.getByText(/Please enable JavaScript to check in/)).toBeVisible();
+  await page.goto('/glass-pickup');
+  await expect(page.locator('noscript p')).toBeVisible();
+  await expect(page.locator('noscript p')).toContainText('Please enable JavaScript to check in');
   await expect(page.locator('form')).toBeHidden();
   await expect(page.getByRole('link', { name: 'Do Not Sell or Share My Personal Information', exact: true })).toBeVisible();
   await context.close();
@@ -153,20 +161,33 @@ test('keyboard and small viewport access, no contact analytics or storage depend
   await page.getByLabel('Your email', { exact: true }).fill('keyboard@example.com');
   const checkbox = page.getByRole('checkbox'); await checkbox.focus(); await checkbox.press('Space');
   await page.getByRole('button', { name: 'Confirm glass pickup' }).focus(); await page.keyboard.press('Enter');
-  await expect(page.getByRole('heading', { name: "You're ready for pickup." })).toBeFocused();
+  await expect(page.getByRole('heading', { name: "Your glass is ready." })).toBeFocused();
   expect(requests.some(url => /\/api\/track|facebook|analytics|keyboard@/.test(url))).toBe(false);
 });
 
 test('capture form and confirmation at the shipped viewport', async ({ page }, testInfo) => {
   test.skip(!process.env.GLASS_SCREENSHOTS || testInfo.project.name === 'mobile-webkit');
   // Only the explicit visual round captures images; regular checks are assertions.
-  const name = testInfo.project.name === 'desktop-chromium' ? 'desktop' : 'mobile';
+  const name = 'pickup-' + (testInfo.project.name === 'desktop-chromium' ? 'desktop' : 'mobile');
   await mkdir('.impeccable/review', { recursive: true });
   await page.goto('/glass-pickup'); await expect(page.getByRole('button', { name: 'Confirm glass pickup' })).toBeEnabled();
   await page.evaluate(() => document.fonts.ready);
   await page.screenshot({ path: `.impeccable/review/${name}.png`, fullPage: true });
   await page.getByLabel('Your email', { exact: true }).fill('preview@example.com');
   await page.getByRole('button', { name: 'Confirm glass pickup' }).click();
-  await expect(page.getByRole('heading', { name: "You're ready for pickup." })).toBeVisible();
+  await expect(page.getByRole('heading', { name: "Your glass is ready." })).toBeVisible();
   await page.screenshot({ path: `.impeccable/review/${name}-confirmation.png`, fullPage: true });
+});
+
+
+test('pickup confirmation keeps its glass handover but hides an invitation when the schedule cannot refresh', async ({ page }) => {
+  await page.goto('/glass-pickup');
+  await page.getByLabel('Your email', { exact: true }).fill('guest@example.com');
+  await page.getByRole('button', { name: 'Confirm glass pickup' }).click();
+  await expect(page.locator('#return-invitation')).toBeVisible();
+  await page.route('**/api/glass-pickup', route => route.abort());
+  await page.evaluate(() => window.dispatchEvent(new Event('pageshow')));
+  await expect(page.locator('#return-invitation')).toBeHidden();
+  await expect(page.locator('#tastings')).toBeHidden();
+  await expect(page.getByRole('heading', { name: 'Your glass is ready.' })).toBeVisible();
 });

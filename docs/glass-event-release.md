@@ -1,8 +1,10 @@
 # The Glass Comes Back: public event page
 
 This independent slice adds `/glass-comes-back` as advance information for LDI to share. It explains the
-five 2026 tasting dates, four restaurants, dining/glass requirements, separate
-pickup and tasting check-ins, optional marketing, and paper fallback. It links to
+five 2026 tasting dates, four restaurants, dining/glass requirements, universal
+glass pickup, optional marketing, and paper fallback. Nick's September 25 update
+lets tasting guests receive a glass from their server after only the restaurant
+check-in, without a separate pickup submission. It links to
 the already-live `/glass-pickup` flow. Guest content works without JavaScript.
 
 The approved fixed restaurant routes remain:
@@ -50,7 +52,10 @@ without JavaScript; the live pickup link is available now.
 4. Remove the preparation notice only after those checks pass. Tasting release
    checks must cover one normalized email per restaurant per eligible Pacific
    date, optional initially checked marketing, unchecked submission, preserved
-   prior opt-out, no email verification, and same-visit pickup plus tasting.
+   prior opt-out, no email verification, and a server-provided glass during the
+   same tasting visit without a separate pickup submission. The public rule is
+   once per person, restaurant and eligible day; unverified email cannot prove
+   personhood or whether staff already served a tasting.
 5. After the last tasting, verify the ended state and continuing glass pickup.
    Update the static invitation to archival wording too, for guests without
    JavaScript and social previews that do not execute scripts.

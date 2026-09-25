@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>Tasting at Demitri's Taverna | Downtown Pour Collective</title>
+  <meta name="description" content="Check in for The Glass Comes Back tasting at Demitri's Taverna. Dine with your DPC glass on an eligible tasting date.">
+  <link rel="canonical" href="https://www.downtownpourcollective.com/glass-comes-back/demitris-taverna">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <script src="/assets/privacy-controls.v1.js"></script>
+  <link rel="stylesheet" href="/assets/glass-fonts.v1.css">
+  <link rel="stylesheet" href="/assets/glass-pickup.v1.css">
+  <link rel="stylesheet" href="/assets/glass-tasting.v1.css">
+  <link rel="stylesheet" href="/assets/privacy-footer.v2.css">
+  <script src="/assets/glass-tasting.v1.js" defer></script>
+</head>
+<body data-restaurant="demitris-taverna">
+  <a class="skip-link" href="#main">Skip to tasting check-in</a>
+  <header class="masthead">
+    <a class="brand" href="/" aria-label="Downtown Pour Collective home"><img src="/favicon.svg" alt="" width="44" height="44"><span>Downtown<br>Pour Collective</span></a>
+    <a href="mailto:hello@downtownpourcollective.com">Need a hand?</a>
+  </header>
+  <main id="main" tabindex="-1">
+    <section class="pickup gt-check-in" aria-labelledby="tasting-title">
+      <div class="introduction">
+        <h1 id="tasting-title">A taste at<br><span id="restaurant-name">Demitri's Taverna</span>.</h1>
+        <p id="tasting-intro">Dining here for a tasting? Enter your email, then show restaurant staff your confirmation. Bring your DPC glass, or ask your server for one.</p>
+        <p class="availability" id="tasting-rule">One tasting per person, per restaurant, per eligible day. Return on later tasting nights. During normal dining hours.</p>
+        <p class="gt-event-link"><a href="/glass-comes-back">See all event details</a></p>
+      </div>
+      <div class="check-in">
+        <div id="form-panel">
+          <noscript><p class="notice">Please enable JavaScript to check in, or ask restaurant staff for the paper option.</p></noscript>
+          <p id="load-status" role="status"></p>
+          <form id="tasting-form" hidden>
+            <label class="field-label" for="email">Your email</label>
+            <input id="email" name="email" type="email" autocomplete="email" inputmode="email" autocapitalize="none" spellcheck="false" required maxlength="254" placeholder="you@example.com" aria-describedby="email-note">
+            <p id="email-note" class="field-note">Used to record your tasting. No account or email verification.</p>
+            <label class="marketing" for="marketing"><input id="marketing" name="marketing" type="checkbox" checked><span>Email me DPC news and upcoming events.<span class="optional">Optional. You can still enjoy your tasting if you uncheck this.</span></span></label>
+            <p id="form-error" class="notice" role="alert" hidden></p>
+            <p class="field-note" id="age-note">By checking in, you confirm you're 21 or older.</p>
+            <button class="primary" id="submit" type="submit" disabled>Checking availability…</button>
+            <p class="privacy-note">See how DPC handles your information in our <a href="/privacy">Privacy Policy</a>.</p>
+          </form>
+          <button id="reload" class="text-button" type="button" hidden>Try again</button>
+        </div>
+        <section id="confirmation" hidden aria-labelledby="confirmation-title">
+          <svg class="success-mark" viewBox="0 0 48 48" width="48" height="48" aria-hidden="true"><circle cx="24" cy="24" r="21" fill="none" stroke="currentColor" stroke-width="2"/><path d="m14 24 7 7 13-14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <h2 id="confirmation-title" tabindex="-1">Enjoy your pour.</h2>
+          <p class="gt-confirm-restaurant">Demitri's Taverna</p>
+          <p class="gt-confirm-date"><time id="confirmation-date"></time></p>
+          <p class="confirmation-action">Show this screen to restaurant staff.</p>
+          <p>One complimentary taste of wine while dining with your DPC glass. Valid for the date shown.</p>
+          <button id="another" class="text-button" type="button">Check in another guest</button>
+        </section>
+      </div>
+    </section>
+    <section class="tastings" aria-labelledby="dates-title">
+      <div>
+        <h2 id="dates-title">Tasting dates.</h2>
+        <p id="schedule-note">Bring your DPC glass and dine here on a tasting date during normal dining hours.</p>
+        <p id="same-visit">Need a glass for your tasting? Your server can hand you one. Check in here only; no separate glass pickup form is needed.</p>
+        <p id="pickup-link" hidden>You can still <a href="/glass-pickup">pick up a glass</a> while supplies last.</p>
+        <p id="paper-option">Phone or page not working? Ask restaurant staff for the paper check-in option.</p>
+      </div>
+      <div>
+        <h3>2026</h3>
+        <ul id="dates" class="dates" aria-labelledby="dates-title">
+          <li><time datetime="2026-09-29">September 29</time><span>Tuesday</span></li>
+          <li><time datetime="2026-09-30">September 30</time><span>Wednesday</span></li>
+          <li><time datetime="2026-10-06">October 6</time><span>Tuesday</span></li>
+          <li><time datetime="2026-10-13">October 13</time><span>Tuesday</span></li>
+          <li><time datetime="2026-10-14">October 14</time><span>Wednesday</span></li>
+        </ul>
+        <p>No tasting on October 7 (Witches Night Out).</p>
+      </div>
+    </section>
+    <p class="courtesy">Presented by Downtown Pour Collective. Livermore Downtown Inc. shares this information as a courtesy and is not the organizer, host, or sponsor.</p>
+  </main>
+  <footer>
+    <nav class="footer-links" aria-label="Legal and support"><a href="/privacy">Privacy Policy</a><a href="/terms">Terms</a><a href="/support">Support</a><a href="mailto:hello@downtownpourcollective.com">Contact hello@downtownpourcollective.com</a></nav>
+    <p class="dpc-privacy-footer"><a href="/privacy-choices">Do Not Sell or Share My Personal Information</a></p>
+  </footer>
+</body>
+</html>

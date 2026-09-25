@@ -1,0 +1,6 @@
+.gt-check-in h1 { font-size: clamp(2.25rem, 4.3vw, 3.5rem); overflow-wrap: anywhere; }
+.introduction .gt-event-link { margin-top: 24px; font-size: 16px; }
+.gt-confirm-restaurant { font: 700 30px/1.2 'Barlow Condensed', Barlow, sans-serif; overflow-wrap: anywhere; margin-bottom: 12px; }
+.gt-confirm-date { font-size: 22px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.gt-check-in #load-status:empty { display: none; }
+.tastings :focus-visible { outline-color: var(--gold); }
