@@ -41,7 +41,7 @@ test('the complete invitation works without JavaScript and its destinations reso
   await expect(page.getByText(/checkbox starts checked and is optional/)).toBeVisible();
   await expect(page.getByText(/paper check-in option/)).toBeVisible();
   await expect(page.getByText(/not the organizer, host, or sponsor/)).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Contact Nick · (925) 488-4889' })).toHaveAttribute('href', 'tel:+19254884889');
+  await expect(page.getByRole('link', { name: 'Contact hello@downtownpourcollective.com' })).toHaveAttribute('href', 'mailto:hello@downtownpourcollective.com');
   await expect(page.getByRole('link', { name: 'Need a hand?' })).toHaveAttribute('href', 'mailto:hello@downtownpourcollective.com');
   await expect(page.getByRole('link', { name: 'Pick up a glass', exact: true })).toHaveAttribute('href', '/glass-pickup');
   const links = await page.locator('a[href^="/"]').evaluateAll(nodes => [...new Set(nodes.map(node => node.getAttribute('href')))]);

@@ -103,7 +103,7 @@
   });
   $('another').addEventListener('click', () => {
     confirmed = false; $('confirmation').hidden = true; $('form-panel').hidden = false;
-    $('pickup-title').textContent = 'Pick up your free glass.';
+    $('pickup-title').textContent = 'Pick up your complimentary glass.';
     $('pickup-intro').textContent = 'Enter your email, then show your confirmation to the person handing out glasses.';
     $('email').focus(); availability();
   });
