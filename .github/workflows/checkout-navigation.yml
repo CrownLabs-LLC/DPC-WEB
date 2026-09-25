@@ -4,6 +4,10 @@ on:
   pull_request:
     paths:
       - 'join.html'
+      - 'admin/glass-comes-back.html'
+      - 'assets/glass-reporting.*'
+      - 'api/glass-reporting.js'
+      - 'api/lib/glass-reporting.js'
       - 'glass-pickup.html'
       - 'glass-comes-back.html'
       - 'glass-comes-back/**'

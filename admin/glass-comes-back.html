@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en-US">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow, noarchive">
+  <title>Campaign results · DPC</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/assets/glass-reporting.v1.css">
+  <script type="module" src="/assets/glass-reporting.v1.js"></script>
+</head>
+<body>
+  <div class="wrap">
+    <header class="top">
+      <a class="brand" href="/admin/support">DPC operations</a>
+      <a href="/glass-comes-back">View event page</a>
+      <span class="spacer"></span>
+      <span id="who" class="account" hidden></span>
+      <button id="sign-out" hidden>Sign out</button>
+    </header>
+    <main>
+      <section id="boot" class="entry" aria-live="polite">
+        <h1 tabindex="-1">Campaign results</h1>
+        <p id="boot-message">Loading your workspace…</p>
+        <button id="boot-retry" hidden>Try again</button>
+      </section>
+      <section id="sign-in" class="entry" hidden aria-labelledby="sign-in-title">
+        <h1 id="sign-in-title" tabindex="-1">Campaign results</h1>
+        <p>Use your existing DPC admin account to view participation and download reports.</p>
+        <p id="sign-in-message" role="alert" hidden></p>
+        <form id="login-form">
+          <label for="email">Email</label>
+          <input id="email" type="email" autocomplete="username" required>
+          <label for="password">Password</label>
+          <input id="password" type="password" autocomplete="current-password" required>
+          <button id="login-submit" class="primary" type="submit">Sign in</button>
+        </form>
+        <p class="help">Need access? <a href="mailto:hello@downtownpourcollective.com">Contact DPC</a>.</p>
+      </section>
+      <section id="denied" class="entry" hidden aria-labelledby="denied-title">
+        <h1 id="denied-title" tabindex="-1">Admin access needed</h1>
+        <p>This account cannot view campaign records. Contact DPC if you need access, or sign out to use another account.</p>
+        <a href="mailto:hello@downtownpourcollective.com">Contact DPC</a>
+      </section>
+      <section id="results" hidden aria-labelledby="results-title">
+        <div class="heading">
+          <div><h1 id="results-title" tabindex="-1">The Glass Comes Back</h1><p>Campaign results <span id="environment"></span></p></div>
+          <button id="refresh">Refresh results</button>
+        </div>
+        <p id="load-status" role="status" aria-live="polite">Loading saved records…</p>
+        <p id="load-error" class="error" role="alert" hidden></p>
+        <div id="report" hidden>
+          <dl class="totals" aria-label="Campaign totals">
+            <div><dt>Pickup check-ins</dt><dd id="count-pickups"></dd></div>
+            <div><dt>Tasting check-ins</dt><dd id="count-tastings"></dd></div>
+            <div><dt>Distinct email addresses</dt><dd id="count-emails"></dd></div>
+            <div><dt>Emails with multiple tastings</dt><dd id="count-repeatTasters"></dd></div>
+            <div><dt>Marketing contacts</dt><dd id="count-marketingContacts"></dd></div>
+          </dl>
+          <p class="explanation">Counts reflect submitted check-ins and unverified email addresses. Pickup totals exclude glasses supplied during a tasting. Paper sheets aren’t included yet.</p>
+          <p id="empty" class="empty" hidden>No check-ins have been recorded yet. Results will appear here after the first pickup or tasting submission.</p>
+          <section class="visits" aria-labelledby="visits-title">
+            <h2 id="visits-title">Tastings by restaurant and date</h2>
+            <p id="table-description">One recorded visit per email, restaurant and eligible date. Dates are shown in Livermore time.</p>
+            <div class="table-scroll" tabindex="0" role="region" aria-label="Tasting counts by restaurant and date">
+              <table aria-describedby="table-description">
+                <caption class="sr-only">Recorded tasting check-ins for the five eligible dates in 2026</caption>
+                <thead><tr><th scope="col">Tasting date</th><th scope="col">Demitri’s Taverna</th><th scope="col">Swirl on the Square</th><th scope="col">Calamari Bistro &amp; Bar</th><th scope="col">L Campo</th><th scope="col">Total</th></tr></thead>
+                <tbody id="tasting-rows"></tbody>
+                <tfoot id="tasting-totals"></tfoot>
+              </table>
+            </div>
+          </section>
+          <section class="downloads" aria-labelledby="downloads-title">
+            <h2 id="downloads-title">Download reports</h2>
+            <p>Each CSV includes the full campaign as recorded when you download it.</p>
+            <div class="download-row">
+              <div><h3>Participation</h3><p>Pickup and tasting records, email, original date, restaurant and source.</p></div>
+              <button data-download="participation" class="primary">Download participation CSV</button>
+            </div>
+            <div class="download-row">
+              <div><h3>Marketing contacts</h3><p>One row per currently opted-in email, with its recorded choice. Keep existing mailing-list unsubscribes and suppression rules when importing.</p></div>
+              <button data-download="marketing" class="primary">Download marketing CSV</button>
+            </div>
+            <p class="help">CSV files contain guest emails. Keep them within the DPC team.</p>
+            <p id="download-status" role="status" aria-live="polite"></p>
+            <p id="download-error" class="error" role="alert" hidden></p>
+          </section>
+        </div>
+      </section>
+      <noscript><p>JavaScript is needed to sign in and view private campaign results.</p></noscript>
+    </main>
+    <footer><a href="/privacy">Privacy Policy</a><a href="mailto:hello@downtownpourcollective.com">Contact DPC</a></footer>
+  </div>
+</body>
+</html>
