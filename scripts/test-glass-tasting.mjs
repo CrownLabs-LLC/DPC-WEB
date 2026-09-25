@@ -50,6 +50,8 @@ try {
     assert.ok(html.includes(`data-restaurant="${slug}"`));
     assert.ok(html.includes(name.replaceAll('&', '&amp;')));
     assert.ok(html.includes(`https://www.downtownpourcollective.com/glass-comes-back/${slug}`));
+    assert.deepEqual([...html.matchAll(/<time datetime="(\d{4}-\d{2}-\d{2})"/g)].map(match => match[1]), TASTING_DATES,
+      `Static tasting dates must match the API schedule for ${slug}`);
   }
   assert.equal((await invoke({ ...valid(), marketingOptIn: false, marketingChanged: true })).status, 200);
   assert.equal(JSON.parse(calls.at(-1).options.body).p_marketing_opt_in, false);

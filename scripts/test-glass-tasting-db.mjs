@@ -3,6 +3,7 @@ import { spawn, spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import assert from 'node:assert/strict';
+import { TASTING_DATES } from '../api/lib/glass-campaign.js';
 const container = 'dpc-tasting-test-' + randomUUID();
 const image = 'public.ecr.aws/supabase/postgres:17.6.1.167';
 const args = ['exec', '-i', container, 'psql', '-X', '-At', '-U', 'supabase_admin', '-d', 'postgres', '-v', 'ON_ERROR_STOP=1'];
@@ -47,6 +48,8 @@ try {
   const preMigration = randomUUID();
   sql(asService(pickup(preMigration, 'existing@example.com', false, true)));
   sql(readFileSync(new URL('../db/20260925152006_glass_tasting.sql', import.meta.url), 'utf8'));
+  assert.deepEqual(JSON.parse(sql('select to_json(public.glass_tasting_dates());')), TASTING_DATES,
+    'The executed database schedule must match the API schedule');
   sql(asService(pickup(preMigration, 'existing@example.com', false, true)));
   assert.equal(count('pickups'), '1');
   assert.equal(sql('select kind from glass_campaign_submissions'), 'pickup');

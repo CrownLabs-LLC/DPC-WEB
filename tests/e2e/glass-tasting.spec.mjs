@@ -12,10 +12,12 @@ function response(slug, now = start) {
 }
 async function mock(page, options = {}) {
   const posts = [];
-  const control = { now: start, enabled: true, getFailed: false, postStatus: 200, postMessage: '', ...options };
+  const control = { now: start, enabled: true, getFailed: false, getCount: 0, getGate: null, postStatus: 200, postMessage: '', ...options };
   await page.route(api, async route => {
     const slug = new URL(route.request().url()).searchParams.get('restaurant');
     if (route.request().method() === 'GET') {
+      control.getCount++;
+      if (control.getGate) await control.getGate;
       if (control.getFailed) return route.abort();
       const state = tastingState(new Date(control.now));
       return route.fulfill({ json: { ...state, enabled: control.enabled, available: control.enabled && state.eligible, restaurant: { slug, name: RESTAURANTS[slug] } } });
@@ -124,17 +126,72 @@ test('confirmation expires at the server deadline even with a wrong device clock
   await expect(page.locator('#confirmation-date')).toHaveText('Wednesday, September 30, 2026');
 });
 
-test('returning to a page revalidates its date and hides offline or past confirmations', async ({ page }) => {
+test('committed confirmation stays visible through slow refreshes, connection failures and app switches', async ({ page }) => {
+  await page.clock.install({ time: new Date('2001-01-01T00:00:00Z') });
+  await page.clock.pauseAt(new Date('2001-01-01T01:00:00Z'));
   const { control } = await mock(page);
   await page.goto('/glass-comes-back/l-campo'); await checkIn(page);
   await expect(page.locator('#confirmation')).toBeVisible();
+  let release;
+  control.getGate = new Promise(resolve => { release = resolve; });
+  const beforeRefresh = control.getCount;
+  await page.clock.runFor(60001);
+  await expect.poll(() => control.getCount).toBeGreaterThan(beforeRefresh);
+  await expect(page.locator('#confirmation')).toBeVisible();
+  await expect(page.locator('#form-panel')).toBeHidden();
+  control.getGate = null; release();
+  await expect(page.locator('#submit')).toBeEnabled();
   control.getFailed = true;
+  await page.evaluate(() => {
+    Object.defineProperty(document, 'hidden', { configurable: true, value: true });
+    window.dispatchEvent(new PageTransitionEvent('pagehide', { persisted: true }));
+    document.dispatchEvent(new Event('visibilitychange'));
+  });
+  await expect(page.locator('#confirmation')).toBeVisible();
+  await page.evaluate(() => {
+    delete document.hidden;
+    document.dispatchEvent(new Event('visibilitychange'));
+  });
+  await expect(page.locator('#load-status')).toContainText('paper option');
+  await expect(page.locator('#confirmation')).toBeVisible();
+  await expect(page.locator('#form-panel')).toBeHidden();
+  await page.evaluate(() => window.dispatchEvent(new Event('pageshow')));
+  await expect(page.locator('#confirmation')).toBeVisible();
+  await page.getByRole('button', { name: 'Check in another guest' }).click();
+  await expect(page.locator('#confirmation')).toBeHidden();
+  await expect(page.locator('#form-panel')).toBeVisible();
+  await expect(page.locator('#submit')).toBeDisabled();
+});
+
+for (const update of [{ now: '2026-09-30T19:00:00Z' }, { enabled: false }]) {
+  test(`successful availability updates can invalidate a receipt: ${JSON.stringify(update)}`, async ({ page }) => {
+    const { control } = await mock(page);
+    await page.goto('/glass-comes-back/l-campo'); await checkIn(page);
+    await expect(page.locator('#confirmation')).toBeVisible();
+    Object.assign(control, update);
+    await page.evaluate(() => window.dispatchEvent(new Event('pageshow')));
+    await expect(page.locator('#confirmation')).toBeHidden();
+    await expect(page.locator('#form-panel')).toBeVisible();
+  });
+}
+
+test('offline confirmation still expires, including after sleep pauses the monotonic clock', async ({ page }) => {
+  await page.clock.install({ time: new Date('2001-01-01T00:00:00Z') });
+  await page.clock.pauseAt(new Date('2001-01-01T01:00:00Z'));
+  const { control } = await mock(page, { now: '2026-09-30T06:59:55Z' });
+  await page.goto('/glass-comes-back/l-campo'); await checkIn(page);
+  await expect(page.locator('#confirmation')).toBeVisible();
+  control.getFailed = true;
+  // The device calendar is wrong but elapsed wall time catches a sleep interval
+  // while performance.now() and the expiry timer remain paused.
+  await page.clock.setFixedTime(new Date('2001-01-01T01:00:06Z'));
   await page.evaluate(() => window.dispatchEvent(new Event('pageshow')));
   await expect(page.locator('#confirmation')).toBeHidden();
+  await expect(page.locator('#form-panel')).toBeVisible();
   await expect(page.locator('#load-status')).toContainText('paper option');
-  control.getFailed = false; control.now = '2026-09-30T19:00:00Z';
-  await page.getByRole('button', { name: 'Try again' }).click();
-  await expect(submit(page)).toBeEnabled();
+  // Moving the device clock back cannot restore an expired confirmation.
+  await page.clock.setFixedTime(new Date('2001-01-01T01:00:00Z'));
+  await page.evaluate(() => window.dispatchEvent(new Event('pageshow')));
   await expect(page.locator('#confirmation')).toBeHidden();
 });
 
@@ -204,11 +261,16 @@ test('capture the restaurant form and confirmation for review', async ({ page },
   test.skip(!process.env.GLASS_TASTING_SCREENSHOTS || info.project.name === 'mobile-webkit');
   const name = info.project.name === 'desktop-chromium' ? 'desktop' : 'mobile';
   await mkdir('.impeccable/review', { recursive: true });
-  await mock(page); await page.goto('/glass-comes-back/calamari-bistro-bar');
+  const { control } = await mock(page); await page.goto('/glass-comes-back/calamari-bistro-bar');
   await expect(submit(page)).toBeEnabled(); await page.evaluate(() => document.fonts.ready);
   await page.screenshot({ path: `.impeccable/review/${name}.png`, fullPage: true });
   await page.getByRole('link', { name: 'glass pickup form' }).focus();
   await page.screenshot({ path: `.impeccable/review/${name}-focus.png`, fullPage: true });
   await checkIn(page); await expect(page.locator('#confirmation')).toBeVisible();
   await page.screenshot({ path: `.impeccable/review/${name}-confirmation.png`, fullPage: true });
+  control.getFailed = true;
+  await page.evaluate(() => window.dispatchEvent(new Event('pageshow')));
+  await expect(page.locator('#load-status')).toContainText('paper option');
+  await expect(page.locator('#confirmation')).toBeVisible();
+  await page.screenshot({ path: `.impeccable/review/${name}-offline-confirmation.png`, fullPage: true });
 });

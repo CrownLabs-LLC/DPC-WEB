@@ -39,8 +39,11 @@ inside DPC-WEB campaign helpers; there are no cross-module internal imports.
 Responses contain only the current restaurant/date and a server-calculated
 expiry. They never disclose previous participation, original check-in timestamps,
 contact IDs or saved preferences. The page hides a confirmation at the next
-Pacific midnight, while revalidating on page return, and if availability cannot
-be confirmed. No date override is shipped. Anonymous/member database access and
+Pacific midnight. Refreshes and connection failures preserve a still-valid
+confirmation; only local expiry or a successful response reporting a changed date
+or disabled tastings removes it. Relative monotonic and wall-clock deadlines also
+check expiry on return from device sleep without relying on a correct device
+calendar. No date override is shipped. Anonymous/member database access and
 RPC execution are denied; the server uses its service credential.
 
 Tastings use a separate 30-submission/60-second network bucket, shared across
@@ -106,6 +109,13 @@ These are pending operations requiring the corresponding hosted-change approval.
 
 ## Production and restaurant readiness
 
+Review the campaign privacy disclosure before activation. The currently published
+policy describes member Check-Ins with device location; it does not explicitly
+describe non-member campaign email/restaurant/date records. A separate campaign
+privacy draft is prepared for owner/counsel review, including retention and the
+existing policy's notice/versioning process. This PR does not publish legal copy
+or treat that review as complete.
+
 After review, CI and production-change authorization, apply the identical
 migration once to production `ebiuspbgzggrdiaswpcc`. Enable the independent
 Production `GLASS_TASTING_ENABLED=true` flag only when the schema is ready.
@@ -119,6 +129,14 @@ the exact QR cards and paper forms are printed, placed and understood by staff.
 Software release alone does not establish that readiness. QR production, private
 results/CSV, authenticated paper back-entry and the operational handoff remain
 separate planned slices.
+
+Include the repeat-confirmation limitation in Nick's restaurant handoff: an
+unverified email can reopen the same generic confirmation, so one stored
+check-in is not proof that a tasting has not already been served. Keep the agreed
+privacy-preserving response; do not expose an email's earlier visit to anyone
+who types that address. Restaurant staff must understand and accept this
+limitation when applying the one-tasting policy. The system does not verify
+identity or prevent a guest from using another email.
 
 To disable tastings safely, set `GLASS_TASTING_ENABLED=false` and redeploy through
 the approved process. Preserve all campaign records; do not drop tables or undo
