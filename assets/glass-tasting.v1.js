@@ -5,6 +5,7 @@
   const name = $('restaurant-name').textContent;
   const unavailable = 'Tasting check-in is unavailable right now. Please try again or ask restaurant staff for the paper option.';
   const displayDate = new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+  const displayDay = new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', weekday: 'long' });
   const pacificDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Los_Angeles', year: 'numeric', month: '2-digit', day: '2-digit' });
   let state, receipt, pending, refreshTimer, expiryTimer;
   let changed = false, submitting = false, sequence = 0;
@@ -58,6 +59,7 @@
         || !Number.isFinite(Date.parse(data.serverNow))) throw new Error('availability');
       state = data;
       if (receipt && (receipt.date !== state.schedule.today || !state.available)) clearReceipt();
+      form.hidden = state.enabled && !state.available;
       $('submit').disabled = !state.available;
       $('submit').textContent = state.available ? 'Confirm tasting check-in' : 'Check-in unavailable';
       $('reload').hidden = state.enabled;
@@ -65,13 +67,18 @@
       $('load-status').textContent = !state.enabled ? unavailable : state.schedule.ended
         ? 'These tastings have ended. Glass pickup is still available while supplies last.'
         : state.available ? 'Tasting today · ' + dateLabel(state.schedule.today)
-        : next ? 'The next tasting is ' + dateLabel(next) + ', during normal dining hours.' : 'No tasting is scheduled today.';
+        : next ? 'See you ' + displayDay.format(new Date(next + 'T12:00:00Z')) + '. The next tasting is ' + dateLabel(next) + ', during normal dining hours.' : 'No tasting is scheduled today.';
+      $('tasting-intro').hidden = state.enabled && !state.available;
+      $('tasting-rule').hidden = state.schedule.ended;
+      $('paper-option').hidden = state.schedule.ended;
+      $('same-visit').hidden = state.schedule.ended;
+      $('pickup-link').hidden = !state.schedule.ended;
       $('schedule-note').textContent = state.schedule.ended ? 'These tasting dates have ended. Thank you for joining us.'
         : 'Bring your DPC glass and dine here on a tasting date during normal dining hours.';
       showValidReceipt();
     } catch {
       if (current !== sequence || submitting) return;
-      state = null; if (!showValidReceipt()) hideReceipt();
+      state = null; form.hidden = false; if (!showValidReceipt()) hideReceipt();
       $('submit').disabled = true; $('submit').textContent = 'Check-in unavailable';
       $('load-status').textContent = unavailable; $('reload').hidden = false;
     } finally {

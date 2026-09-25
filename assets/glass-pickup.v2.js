@@ -21,7 +21,8 @@
       const weekday = document.createElement('span'); weekday.textContent = day.format(d);
       li.append(label, weekday); $('dates').append(li);
     }
-    $('tasting-title').textContent = schedule.ended ? 'The tastings have ended.' : 'Bring it back for a taste.';
+    $('return-invitation').hidden = schedule.ended;
+    $('tasting-title').textContent = schedule.ended ? 'The tastings have ended.' : 'Tasting dates and restaurants.';
     $('tasting-description').textContent = schedule.ended
       ? 'The Glass Comes Back tastings ended on ' + fullDate.format(new Date(schedule.endDate + 'T12:00:00Z')) + '. You can still pick up a complimentary DPC glass while supplies last.'
       : 'The Glass Comes Back: bring your DPC glass for a complimentary taste of wine while dining at a participating restaurant.';
@@ -56,6 +57,7 @@
     } catch {
       // Do not leave expired invitations visible when server time cannot refresh.
       $('tastings').hidden = true;
+      $('return-invitation').hidden = true;
       if (!confirmed) {
         $('load-status').textContent = unavailable;
         $('reload').hidden = false;

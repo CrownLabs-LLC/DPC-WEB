@@ -25,8 +25,8 @@
     <section class="pickup gt-check-in" aria-labelledby="tasting-title">
       <div class="introduction">
         <h1 id="tasting-title">A taste at<br><span id="restaurant-name">Demitri's Taverna</span>.</h1>
-        <p>Dining here with your DPC glass? Enter your email, then show restaurant staff your confirmation.</p>
-        <p class="availability">One tasting per restaurant on each tasting date. During normal dining hours.</p>
+        <p id="tasting-intro">Dining here for a tasting? Enter your email, then show restaurant staff your confirmation. Bring your DPC glass, or ask your server for one.</p>
+        <p class="availability" id="tasting-rule">One tasting per person, per restaurant, per eligible day. Return on later tasting nights. During normal dining hours.</p>
         <p class="gt-event-link"><a href="/glass-comes-back">See all event details</a></p>
       </div>
       <div class="check-in">
@@ -39,6 +39,7 @@
             <p id="email-note" class="field-note">Used to record your tasting. No account or email verification.</p>
             <label class="marketing" for="marketing"><input id="marketing" name="marketing" type="checkbox" checked><span>Email me DPC news and upcoming events.<span class="optional">Optional. You can still enjoy your tasting if you uncheck this.</span></span></label>
             <p id="form-error" class="notice" role="alert" hidden></p>
+            <p class="field-note" id="age-note">By checking in, you confirm you're 21 or older.</p>
             <button class="primary" id="submit" type="submit" disabled>Checking availability…</button>
             <p class="privacy-note">See how DPC handles your information in our <a href="/privacy">Privacy Policy</a>.</p>
           </form>
@@ -46,7 +47,7 @@
         </div>
         <section id="confirmation" hidden aria-labelledby="confirmation-title">
           <svg class="success-mark" viewBox="0 0 48 48" width="48" height="48" aria-hidden="true"><circle cx="24" cy="24" r="21" fill="none" stroke="currentColor" stroke-width="2"/><path d="m14 24 7 7 13-14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          <h2 id="confirmation-title" tabindex="-1">Enjoy your tasting.</h2>
+          <h2 id="confirmation-title" tabindex="-1">Enjoy your pour.</h2>
           <p class="gt-confirm-restaurant">Demitri's Taverna</p>
           <p class="gt-confirm-date"><time id="confirmation-date"></time></p>
           <p class="confirmation-action">Show this screen to restaurant staff.</p>
@@ -59,8 +60,9 @@
       <div>
         <h2 id="dates-title">Tasting dates.</h2>
         <p id="schedule-note">Bring your DPC glass and dine here on a tasting date during normal dining hours.</p>
-        <p>Picking up a glass today? You can taste during the same eligible dining visit. Complete the <a href="/glass-pickup">glass pickup form</a> separately.</p>
-        <p>Phone or page not working? Ask restaurant staff for the paper check-in option.</p>
+        <p id="same-visit">Need a glass for your tasting? Your server can hand you one. Check in here only; no separate glass pickup form is needed.</p>
+        <p id="pickup-link" hidden>You can still <a href="/glass-pickup">pick up a glass</a> while supplies last.</p>
+        <p id="paper-option">Phone or page not working? Ask restaurant staff for the paper check-in option.</p>
       </div>
       <div>
         <h3>2026</h3>

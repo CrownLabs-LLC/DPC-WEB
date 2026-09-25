@@ -46,9 +46,14 @@ for (const [slug, name] of Object.entries(RESTAURANTS)) {
     await expect(page.locator('h1')).toContainText(name);
     await expect(page.getByRole('checkbox')).toBeChecked();
     await expect(page.locator('input')).toHaveCount(2);
+    await expect(page.locator('#age-note')).toHaveText("By checking in, you confirm you're 21 or older.");
+    expect(await page.locator('#submit').evaluate(button => button.previousElementSibling.id)).toBe('age-note');
+    await expect(page.locator('.privacy-note a')).toHaveAttribute('href', '/privacy');
+    await expect(page.locator('#same-visit')).toContainText('Your server can hand you one');
+    await expect(page.locator('.availability')).toContainText('One tasting per person, per restaurant, per eligible day.');
     await page.getByRole('checkbox').uncheck();
     await checkIn(page, 'Guest+tag@Example.com');
-    await expect(page.getByRole('heading', { name: 'Enjoy your tasting.' })).toBeFocused();
+    await expect(page.getByRole('heading', { name: 'Enjoy your pour.' })).toBeFocused();
     await expect(page.locator('#confirmation')).toContainText(name);
     await expect(page.locator('#confirmation-date')).toHaveText('Tuesday, September 29, 2026');
     expect(posts).toHaveLength(1);
@@ -107,7 +112,17 @@ for (const [now, message] of [
   await page.locator('#tasting-form').dispatchEvent('submit');
   expect(posts).toHaveLength(0);
   await expect(page.locator('#confirmation')).toBeHidden();
-  await expect(page.getByRole('link', { name: 'glass pickup form' })).toBeVisible();
+  await expect(page.locator('#tasting-form')).toBeHidden();
+  await expect(page.locator('#tasting-intro')).toBeHidden();
+  if (now === '2026-10-15T07:00:00Z') {
+    await expect(page.getByRole('link', { name: 'pick up a glass' })).toBeVisible();
+    await expect(page.locator('#same-visit')).toBeHidden();
+    await expect(page.locator('#tasting-rule')).toBeHidden();
+    await expect(page.locator('#paper-option')).toBeHidden();
+  } else {
+    await expect(page.locator('#load-status')).toContainText('See you Tuesday.');
+    await expect(page.locator('#same-visit')).toContainText('no separate glass pickup form is needed');
+  }
 });
 
 test('confirmation expires at the server deadline even with a wrong device clock', async ({ page }) => {
@@ -259,12 +274,12 @@ test('without JavaScript every restaurant still identifies itself and offers the
 
 test('capture the restaurant form and confirmation for review', async ({ page }, info) => {
   test.skip(!process.env.GLASS_TASTING_SCREENSHOTS || info.project.name === 'mobile-webkit');
-  const name = info.project.name === 'desktop-chromium' ? 'desktop' : 'mobile';
+  const name = 'tasting-' + (info.project.name === 'desktop-chromium' ? 'desktop' : 'mobile');
   await mkdir('.impeccable/review', { recursive: true });
   const { control } = await mock(page); await page.goto('/glass-comes-back/calamari-bistro-bar');
   await expect(submit(page)).toBeEnabled(); await page.evaluate(() => document.fonts.ready);
   await page.screenshot({ path: `.impeccable/review/${name}.png`, fullPage: true });
-  await page.getByRole('link', { name: 'glass pickup form' }).focus();
+  await page.getByRole('link', { name: 'See all event details' }).focus();
   await page.screenshot({ path: `.impeccable/review/${name}-focus.png`, fullPage: true });
   await checkIn(page); await expect(page.locator('#confirmation')).toBeVisible();
   await page.screenshot({ path: `.impeccable/review/${name}-confirmation.png`, fullPage: true });
@@ -273,4 +288,28 @@ test('capture the restaurant form and confirmation for review', async ({ page },
   await expect(page.locator('#load-status')).toContainText('paper option');
   await expect(page.locator('#confirmation')).toBeVisible();
   await page.screenshot({ path: `.impeccable/review/${name}-offline-confirmation.png`, fullPage: true });
+});
+
+
+test('a known closed date names the actual next weekday, while a disabled service stays an error', async ({ page }) => {
+  const { control } = await mock(page, { now: '2026-09-28T19:00:00Z' });
+  // Public schedule fixture with Wednesday next proves the greeting is derived
+  // from that schedule, not hard-coded to the first Tuesday of the campaign.
+  await page.route(api, route => route.fulfill({ json: {
+    ...tastingState(new Date(control.now)),
+    schedule: { today: '2026-09-28', dates: ['2026-09-30'], endDate: '2026-10-14', ended: false },
+    restaurant: { slug: 'l-campo', name: 'L Campo' }, enabled: true, available: false,
+  } }));
+  await page.goto('/glass-comes-back/l-campo');
+  await expect(page.locator('#load-status')).toContainText('See you Wednesday. The next tasting is Wednesday, September 30');
+  await expect(page.locator('#tasting-form')).toBeHidden();
+  await expect(page.locator('#confirmation')).toBeHidden();
+  await page.unroute(api);
+  await mock(page, { enabled: false });
+  await page.evaluate(() => window.dispatchEvent(new Event('pageshow')));
+  await expect(page.locator('#load-status')).toContainText('Tasting check-in is unavailable');
+  await expect(page.locator('#load-status')).not.toContainText('See you');
+  await expect(page.locator('#tasting-form')).toBeVisible();
+  await expect(page.locator('#submit')).toBeDisabled();
+  await expect(page.locator('#confirmation')).toBeHidden();
 });

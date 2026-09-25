@@ -12,7 +12,7 @@ This slice adds four browser check-ins at the already agreed destinations:
 The public origin is `https://www.downtownpourcollective.com`. Email is required
 and unverified. Marketing starts checked, remains optional, and an untouched
 default preserves a saved opt-out. A successful transaction produces the same
-restaurant/date confirmation for new and repeated check-ins. There is no contact
+restaurant/date confirmation on the guest's device for new and repeated check-ins. There is no contact
 lookup, automatic email, browser storage, tracking, or staff account.
 
 ## Dates, counts and boundaries
@@ -25,9 +25,15 @@ normal-dining-hours, dining and physical-glass requirements.
 
 `glass_campaign_tastings` records at most one check-in per campaign contact,
 restaurant and date. This is a submitted check-in, not proof of service. Separate
-restaurants and dates produce separate visits. Pickup and tasting remain separate
-forms and counts, including during the same dining visit; they share contact
-preferences and append-only choice history. Request IDs bind to flow and intent,
+restaurants and dates produce separate visits. Nick's September 25 rule is once
+per person, per restaurant, per eligible day, with return visits on later nights
+welcome. The software deduplicates normalized, unverified email; it does not
+prove personhood or prior physical service. A server may hand a glass to a tasting
+guest who needs one after the restaurant check-in. There is no glass toggle or
+additional pickup submission, and those handovers are not separately reported.
+The universal pickup form remains for separate glass distribution. Pickup totals
+count pickup-form submissions, not all glasses handed out. Its records
+share contact preferences and append-only choice history with tastings. Request IDs bind to flow and intent,
 so retries cannot overwrite a later preference or become a different activity.
 
 The migration adds tasting identity to existing submissions and adds a kind guard
@@ -97,8 +103,9 @@ These are pending operations requiring the corresponding hosted-change approval.
    that today's real date is eligible. If a controlled staging window is not
    available, positive hosted verification remains pending.
 5. With uniquely labeled synthetic staging emails, submit all four forms, opt
-   out, repeat with a fresh request/browser, and perform a separate pickup and
-   tasting. Verify durable counts and preserved preferences privately. After a
+   out, repeat with a fresh request/browser, and exercise the universal pickup
+   independently to confirm cross-flow preferences. A tasting guest receiving a
+   glass from the server must make only the tasting submission. Verify durable counts and preserved preferences privately. After a
    quiet rate window, confirm the 31st rapid tasting submission gets 429 and the
    form retains its entries; confirm retry after 60 seconds. This also proves
    Vercel supplies the trusted network header. Do not run the burst in production.
@@ -142,3 +149,31 @@ To disable tastings safely, set `GLASS_TASTING_ENABLED=false` and redeploy throu
 the approved process. Preserve all campaign records; do not drop tables or undo
 the additive migration. Pickup remains independently available. After October 14,
 the tasting forms refuse submissions and point guests to continuing glass pickup.
+
+## Nick's Part 1 copy and handoff alignment
+
+Both forms show “By checking in, you confirm you're 21 or older.” immediately
+above their submit button. This is an affirmation in the form copy, not a new
+checkbox, collected age field, identity check or verification process. Marketing
+remains prechecked and optional, with the existing privacy link and saved opt-out
+semantics. This change does not approve or publish the separate privacy draft.
+
+Staff should look for exactly “Enjoy your pour.” on a successful restaurant
+check-in, with the restaurant and eligible date below it. On a known non-tasting
+date the form is hidden and a friendly greeting names the next actual eligible
+weekday and date. An unavailable service remains a distinct error. After
+October 14 the ended state replaces the invitation and links to continuing
+glass pickup. The existing confirmation expiry and offline continuity stay in
+place.
+
+Universal pickup confirms “Your glass is ready.” followed by “Bring it back on a
+Tuesday or Wednesday for a complimentary taste of wine.” The existing schedule
+shows all five dates before the event, then remaining dates, plus all four
+restaurants. After October 14, the invitation is hidden and the ended message
+remains; glass pickup still works while supplies last.
+
+Nick reports that the pickup QR on his server card uses the unchanged production
+pickup URL, was redrawn in navy, and scans clean. This is Nick's reported scan
+evidence, not an independent scan by this task. It does not establish that all
+four tasting QR cards and paper forms are ready, so the public preparation notice
+remains. No new QR or print-kit file was generated.
