@@ -80,7 +80,7 @@ check('homepage, join and membership success are the only eligible paths', () =>
   for (const path of ['/', '/join', '/join/', '/subscription-success']) {
     assert.equal(browser({ path, privacyAllowed: true }).inserted.length, 1, path);
   }
-  for (const path of ['/depositor-confirmation', '/reserved-confirmation', '/subscription-cancelled', '/partners', '/support', '/privacy-choices', '/dashboard', '/admin/support']) {
+  for (const path of ['/depositor-confirmation', '/reserved-confirmation', '/subscription-cancelled', '/partners', '/support', '/privacy-choices', '/dashboard', '/admin/support', '/glass-pickup', '/glass-comes-back', '/glass-comes-back/demitris-taverna', '/glass-comes-back/calamari-bistro-bar', '/glass-comes-back/l-campo', '/glass-comes-back/swirl-on-the-square']) {
     assert.equal(browser({ path, privacyAllowed: true }).inserted.length, 0, path);
   }
 });

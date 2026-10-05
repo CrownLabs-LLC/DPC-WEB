@@ -59,22 +59,26 @@ The `dpc:privacy-change` event announces changes.
 
 ## Verification
 
-- `npm test -- --runInBand`: passed, including 14 privacy-control checks and
-  8 Meta readiness checks.
-- Focused browser privacy/Meta coverage: 33/33 passed across desktop Chromium,
-  mobile Chromium and mobile WebKit. Width checks cover 320, 390 and 1280
-  pixels. Every external service is blocked or locally fulfilled; enabled-path
-  tests use an inert intercepted SDK response and transmit no visitor data.
-- The full browser run passed 216/219. The three failures were the existing
-  mobile-WebKit checkout-handoff test timing out at its five-second URL
-  assertion. An untouched `main` comparison reproduced the same failure in the
-  same test; this patch changes no checkout behavior. The focused privacy/Meta
-  suite and every non-WebKit-handoff regression passed.
+Refreshed October 5, 2026 against current main `f8bc310` on the readiness
+branch, with all four launch switches still false:
+
+- `npm test -- --runInBand`: passed, including 14 privacy-control checks,
+  8 Meta readiness checks, and the current campaign suites.
+- Full browser suite: 333 passed, 9 capture-only skips, no retries across
+  desktop Chromium, mobile Chromium and mobile WebKit. Every external service
+  in the privacy/Meta tests is blocked or locally fulfilled; enabled-path tests
+  use an inert intercepted SDK response and transmit no visitor data.
+- Campaign pickup, landing and restaurant pages use the same versioned privacy
+  controls but have no Meta loader or advertising-enabled switch. Static and
+  loader tests explicitly exclude these routes.
 - `node --check assets/privacy-controls.v2.js` and
   `node --check assets/meta-pixel.v1.js`: passed.
-- `git diff --check`: passed.
-- TypeScript and DB tests: not applicable; this static website has no
-  TypeScript project and the slice changes no API, database, or module imports.
+- `git diff f8bc310 --check`: passed with no output.
+- `npx tsc --noEmit`: not applicable; actual exit 1/compiler help because this
+  JavaScript website has no TypeScript configuration.
+- Database tests: not required locally; no API or DB path differs from main.
+  The repository CI still runs its existing disposable PostgreSQL suites.
+- Module boundaries: no cross-module imports or DPC internal imports added.
 - The automatic visual detector ran in degraded regex mode (parser modules
   unavailable). It reported no findings but did not check computed contrast.
   Focused desktop/mobile browser tests supplement it. This is not comprehensive

@@ -10,6 +10,7 @@ const types = {
   '.js': 'text/javascript; charset=utf-8',
   '.json': 'application/json; charset=utf-8',
   '.svg': 'image/svg+xml',
+  '.ttf': 'font/ttf',
 };
 
 createServer(async (req, res) => {

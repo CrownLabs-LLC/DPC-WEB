@@ -8,7 +8,7 @@ This release prepares Meta Pixel ID `28569583012647858` without activating it. E
 - Eligible paths: `/`, `/join`, and `/subscription-success`.
 - `/subscription-success` remains PageView-only. This change does not add `Purchase`, `Subscribe`, `Lead`, `CompleteRegistration`, value, currency or any other conversion payload.
 - No advanced matching, customer fields, hashed identifiers, Conversions API or App data.
-- Depositor/token pages, Stripe Connect returns, cancellations, partner pages, support, privacy/legal pages, dashboard and admin are excluded.
+- Depositor/token pages, Stripe Connect returns, cancellations, partner pages, support, privacy/legal pages, dashboard, admin and all Glass Comes Back pickup/tasting pages are excluded.
 - Query strings and fragments are removed from eligible URLs before the SDK boundary. An unsafe or unparseable referrer fails closed. The SDK request itself uses `referrerPolicy = "no-referrer"`.
 - Only HTTPS requests on `www.downtownpourcollective.com` or `downtownpourcollective.com` can pass. Preview and local hosts remain off even if their HTML switch is changed; enabled browser tests intercept the production hostname and SDK locally.
 - There is no unconditional noscript image.
