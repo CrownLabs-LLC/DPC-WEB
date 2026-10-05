@@ -9,7 +9,7 @@ function check(name, run) { run(); checks++; console.log('PASS:', name); }
 
 function browser({
   path = '/', search = '', hash = '', referrer = '', privacyAllowed = false,
-  origin = 'https://www.downtownpourcollective.com'
+  origin = 'https://www.downtownpourcollective.com', readyState = 'complete', scrubThrows = false
 } = {}) {
   const listeners = {};
   const inserted = [];
@@ -27,6 +27,7 @@ function browser({
     history: {
       state: null,
       replaceState(state, _title, nextPath) {
+        if (scrubThrows) throw Error('history unavailable');
         this.state = state;
         location.pathname = nextPath;
         location.search = '';
@@ -37,7 +38,7 @@ function browser({
     addEventListener(type, listener) { listeners[type] = listener; }
   };
   const document = {
-    readyState: 'complete',
+    readyState,
     title: 'DPC',
     referrer,
     createElement(tag) { return { tag }; },
@@ -66,6 +67,7 @@ check('enabled path requests the exact SDK without advanced matching and emits P
   assert.equal(b.inserted.length, 1);
   assert.equal(b.inserted[0].src, 'https://connect.facebook.net/en_US/fbevents.js');
   assert.equal(b.inserted[0].referrerPolicy, 'no-referrer');
+  assert.equal(b.window.fbq.disablePushState, true);
   assert.deepEqual(queuedCalls(b).slice(0, 2), [
     ['set', 'autoConfig', false, PIXEL_ID],
     ['init', PIXEL_ID]
@@ -116,8 +118,58 @@ check('a later privacy block suppresses an event while the SDK is loading', () =
   const b = browser({ path: '/subscription-success', privacyAllowed: true });
   b.window.DPCPrivacy.canLoadAdvertising = () => allowed;
   allowed = false;
+  b.listeners['dpc:privacy-change']({ detail: { optedOut: false } });
+  assert.deepEqual(queuedCalls(b).filter(call => call[0] === 'consent'), [['consent', 'revoke']]);
   b.inserted[0].onload();
   assert.equal(queuedCalls(b).filter(call => call[0] === 'track').length, 0);
+});
+
+check('privacy changes revoke the loaded SDK and never grant consent back', () => {
+  const b = browser({ privacyAllowed: true });
+  b.inserted[0].onload();
+  b.listeners['dpc:privacy-change']();
+  assert.equal(queuedCalls(b).filter(call => call[0] === 'consent').length, 0);
+  b.window.DPCPrivacy.canLoadAdvertising = () => false;
+  b.listeners['dpc:privacy-change']();
+  b.window.DPCPrivacy.canLoadAdvertising = () => true;
+  b.listeners['dpc:privacy-change']();
+  assert.deepEqual(queuedCalls(b).filter(call => call[0] === 'consent'), [['consent', 'revoke']]);
+  const blocked = browser();
+  blocked.listeners['dpc:privacy-change']();
+  assert.equal(typeof blocked.window.fbq, 'undefined');
+});
+
+check('bfcache restores revoke SDK consent before its independent automatic event', () => {
+  const b = browser({ privacyAllowed: true });
+  b.listeners.pageshow({ persisted: false });
+  assert.equal(queuedCalls(b).filter(call => call[0] === 'consent').length, 0);
+  b.listeners.pageshow({ persisted: true });
+  assert.deepEqual(queuedCalls(b).filter(call => call[0] === 'consent'), [['consent', 'revoke']]);
+});
+
+check('public tracking safely refuses requests before SDK setup or after failed setup', () => {
+  for (const options of [
+    { readyState: 'loading' },
+    { search: '?private=1', scrubThrows: true }
+  ]) {
+    const b = browser({ ...options, privacyAllowed: true });
+    assert.equal(b.window.DPCMetaPixel.track('PageView'), false);
+    assert.equal(typeof b.window.fbq, 'undefined');
+  }
+  const b = browser({ privacyAllowed: true });
+  b.inserted[0].onerror();
+  assert.equal(b.window.DPCMetaPixel.track('PageView'), false);
+});
+
+check('later public tracking scrubs a changed URL before emitting on another allowed path', () => {
+  const b = browser({ privacyAllowed: true });
+  b.inserted[0].onload();
+  b.location.pathname = '/join';
+  b.location.search = '?private=1';
+  b.location.hash = '#private';
+  assert.equal(b.window.DPCMetaPixel.track('PageView'), true);
+  assert.equal(b.location.search, '');
+  assert.equal(b.location.hash, '');
 });
 
 check('source contains no noscript beacon, customer data, purchase event or CAPI path', () => {

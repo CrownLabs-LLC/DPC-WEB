@@ -133,33 +133,34 @@ test('enabled fixture sends one PageView on each allowlisted path with sanitized
     expect(await page.evaluate(() => localStorage.getItem('dpc_cookie_consent'))).toBeNull();
     expect(await page.evaluate(() => window.fbq.queue.map(args => Array.from(args)).filter(call => call[0] === 'track'))).toEqual([['track', 'PageView']]);
   }
-  expect(meta).toEqual(pixelPages.size === 3 ? Array(3).fill('https://connect.facebook.net/en_US/fbevents.js') : []);
+  expect(meta).toEqual(Array(3).fill('https://connect.facebook.net/en_US/fbevents.js'));
   expect(meta.join(' ')).not.toMatch(/person|example|utm|private/i);
 });
 
-test('enabled fixture honors saved opt-out and GPC before any SDK request', async ({ page }) => {
-  const source = pixelPages.get('/join').replace(
-    'name="dpc-advertising-enabled" content="false"',
-    'name="dpc-advertising-enabled" content="true"'
-  );
-  const meta = [];
-  await routeEnabledPixelAssets(page);
-  page.on('request', request => {
-    if (/facebook\.net|facebook\.com/.test(new URL(request.url()).hostname)) meta.push(request.url());
+for (const privacySignal of ['saved opt-out', 'GPC']) {
+  test(`enabled fixture honors ${privacySignal} before any SDK request`, async ({ page }) => {
+    const source = pixelPages.get('/join').replace(
+      'name="dpc-advertising-enabled" content="false"',
+      'name="dpc-advertising-enabled" content="true"'
+    );
+    const meta = [];
+    await routeEnabledPixelAssets(page);
+    page.on('request', request => {
+      if (/facebook\.net|facebook\.com/.test(new URL(request.url()).hostname)) meta.push(request.url());
+    });
+    // Playwright gives each case a fresh context: the GPC case starts with no saved opt-out.
+    await page.addInitScript(signal => {
+      window.preferenceBeforeControls = localStorage.getItem('dpc_advertising_opt_out');
+      if (signal === 'saved opt-out') localStorage.setItem('dpc_advertising_opt_out', '1');
+      else Object.defineProperty(navigator, 'globalPrivacyControl', { value: true, configurable: true });
+    }, privacySignal);
+    await page.route(url => url.hostname === 'www.downtownpourcollective.com' && url.pathname === '/join', route => route.fulfill({ status: 200, contentType: 'text/html', body: source }), { times: 1 });
+    await page.goto('https://www.downtownpourcollective.com/join');
+    expect(await page.evaluate(() => window.preferenceBeforeControls)).toBeNull();
+    expect(await page.evaluate(() => window.DPCMetaPixel.getState().sdkRequested)).toBe(false);
+    expect(meta).toEqual([]);
   });
-
-  await page.addInitScript(() => localStorage.setItem('dpc_advertising_opt_out', '1'));
-  await page.route(url => url.hostname === 'www.downtownpourcollective.com' && url.pathname === '/join', route => route.fulfill({ status: 200, contentType: 'text/html', body: source }), { times: 1 });
-  await page.goto('https://www.downtownpourcollective.com/join');
-  expect(await page.evaluate(() => window.DPCMetaPixel.getState().sdkRequested)).toBe(false);
-
-  await page.evaluate(() => localStorage.removeItem('dpc_advertising_opt_out'));
-  await page.addInitScript(() => Object.defineProperty(navigator, 'globalPrivacyControl', { value: true, configurable: true }));
-  await page.route(url => url.hostname === 'www.downtownpourcollective.com' && url.pathname === '/join', route => route.fulfill({ status: 200, contentType: 'text/html', body: source }), { times: 1 });
-  await page.goto('https://www.downtownpourcollective.com/join');
-  expect(await page.evaluate(() => window.DPCMetaPixel.getState().sdkRequested)).toBe(false);
-  expect(meta).toEqual([]);
-});
+}
 
 for (const width of [320, 1280]) {
   test(`privacy footer is reachable without accepting analytics at ${width}px`, async ({ page }) => {

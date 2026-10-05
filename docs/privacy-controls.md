@@ -62,9 +62,9 @@ The `dpc:privacy-change` event announces changes.
 Refreshed October 5, 2026 against current main `f8bc310` on the readiness
 branch, with all four launch switches still false:
 
-- `npm test -- --runInBand`: passed, including 14 privacy-control checks,
-  8 Meta readiness checks, and the current campaign suites.
-- Full browser suite: 333 passed, 9 capture-only skips, no retries across
+- `npm test -- --runInBand`: passed, including 16 privacy-control checks,
+  12 Meta readiness checks, and the current campaign suites.
+- Full browser suite: 336 passed, 9 capture-only skips, no retries across
   desktop Chromium, mobile Chromium and mobile WebKit. Every external service
   in the privacy/Meta tests is blocked or locally fulfilled; enabled-path tests
   use an inert intercepted SDK response and transmit no visitor data.
@@ -79,6 +79,12 @@ branch, with all four launch switches still false:
 - Database tests: not required locally; no API or DB path differs from main.
   The repository CI still runs its existing disposable PostgreSQL suites.
 - Module boundaries: no cross-module imports or DPC internal imports added.
+- Real-SDK compatibility: six intercepted Chromium/mobile-WebKit scenarios pass
+  for navigation, cross-tab opt-out, GPC and simulated persisted `pageshow`.
+  SDK SHA256: `89a2a82574d35ba44820a985fff208cb50bbe810307f7ee069f97fd391c9a131`.
+  The original loader at `4e4d169` fails the same check with three extra PageViews
+  exposing fragments/query strings. No browser request reaches Meta.
+  This manual SDK check supplements the inert fixtures; it is not part of `npm test`.
 - The automatic visual detector ran in degraded regex mode (parser modules
   unavailable). It reported no findings but did not check computed contrast.
   Focused desktop/mobile browser tests supplement it. This is not comprehensive
@@ -90,8 +96,12 @@ artifact, not a source change to stage.
 ## Before activating Meta (separate approval/release)
 
 The notice rollout completed September 18, 2026 at 3:25:44.302062 PM Pacific.
-Brandi's September 21 amendment selected fourteen full days, so earliest
-eligibility is October 2 at the same time. Eligibility is not activation.
+Merged DPC Decision #56 still requires thirty full days: October 18 at the
+same time. Brandi's September 21 fourteen-day amendment would make eligibility
+October 2, but it must land in a separate DPC docs PR before activation relies
+on it. Preserve Day 0; neither date is automatic activation. See the readiness
+checklist for the governance gate and the attribution tradeoff requiring owner
+acknowledgment.
 Follow the complete checklist, event scope and rollback procedure in
 `docs/meta-pixel-readiness.md`; obtain a separate go-live decision.
 

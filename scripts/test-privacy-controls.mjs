@@ -128,6 +128,19 @@ check('preview/local cookies stay host-only; preference names require an exact m
   b.api.optOut();
   assert.doesNotMatch(b.document.lastCookie, /Domain=/);
 });
+const launchSwitches = ['index.html', 'join.html', 'subscription-success.html', 'privacy-choices.html'].map(file => {
+  const html = readFileSync(new URL('../' + file, import.meta.url), 'utf8');
+  const matches = [...html.matchAll(/<meta name="dpc-advertising-enabled" content="([^"]+)">/g)];
+  assert.equal(matches.length, 1, file + ' must have exactly one launch switch');
+  return matches[0][1];
+});
+check('all four launch switches have the same valid value', () => {
+  assert.ok(launchSwitches.every(value => value === 'true' || value === 'false'));
+  assert.equal(new Set(launchSwitches).size, 1);
+});
+check('the preparation release keeps advertising disabled', () => {
+  assert.equal(launchSwitches[0], 'false');
+});
 check('all public pages expose a static opt-out link and load controls before analytics', () => {
   const root = new URL('../', import.meta.url);
   const files = readdirSync(root).filter(f => f.endsWith('.html') && !['dashboard.html','google92d1118acab8f389.html'].includes(f));
@@ -143,16 +156,14 @@ check('all public pages expose a static opt-out link and load controls before an
     const analytics = html.indexOf('src="assets/analytics.js"');
     if (analytics !== -1) assert.ok(html.indexOf('privacy-controls.v2.js') < analytics);
     if (pixelPages.has(file)) {
-      assert.match(html, /<meta name="dpc-advertising-enabled" content="false">/);
       assert.match(html, /<script src="\/assets\/meta-pixel\.v1\.js"><\/script>/);
       assert.ok(html.indexOf('privacy-controls.v2.js') < html.indexOf('meta-pixel.v1.js'));
     } else {
       assert.doesNotMatch(html, /meta-pixel\.v1\.js/);
+      if (file !== 'privacy-choices.html') assert.doesNotMatch(html, /dpc-advertising-enabled/);
     }
     assert.doesNotMatch(html, /connect\.facebook\.net|facebook\.com\/tr[?]|fbq\s*\(/);
   }
-  const choices = readFileSync(new URL('privacy-choices.html', root), 'utf8');
-  assert.match(choices, /<meta name="dpc-advertising-enabled" content="false">/);
   const footerCss = readFileSync(new URL('assets/privacy-footer.v2.css', root), 'utf8');
   assert.match(footerCss, /\.dpc-policy-notice\s*\{/);
   assert.doesNotMatch(source, /fetch\s*\(|sendBeacon|createElement\s*\(|fbq\s*\(/);

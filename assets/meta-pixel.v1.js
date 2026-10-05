@@ -81,9 +81,10 @@
   }
 
   function trackOnce(eventName) {
-    if (!canTrack(eventName)) return false;
+    if (!sdkRequested || typeof window.fbq !== 'function' || !canTrack(eventName)) return false;
     var key = eventName + ':' + normalizedPath();
     if (tracked[key]) return false;
+    if (!scrubCurrentUrl()) return false;
     tracked[key] = true;
     window.fbq('track', eventName);
     return true;
@@ -93,6 +94,7 @@
     if (sdkRequested || !canTrack('PageView') || !scrubCurrentUrl()) return false;
     sdkRequested = true;
     var fbq = installQueue();
+    fbq.disablePushState = true;
     // No advanced matching data. Disable Meta's automatic page/button/form
     // configuration; this integration's event allowlist is PageView only.
     fbq('set', 'autoConfig', false, PIXEL_ID);
@@ -130,10 +132,15 @@
     track: trackOnce
   });
 
-  // Privacy changes can only close the gate. A later opt-out never emits an
-  // event, and the SDK is never requested after an initially blocked visit.
-  window.addEventListener('dpc:privacy-change', function (event) {
-    if (event && event.detail && event.detail.optedOut) return;
+  // Revoke SDK consent as well as closing our gate, including while it loads.
+  // Never grant again within this document or load after an initially blocked visit.
+  window.addEventListener('dpc:privacy-change', function () {
+    if (sdkRequested && window.fbq && !privacyAllowsAdvertising()) window.fbq('consent', 'revoke');
+  });
+  // The SDK also emits on bfcache restores independently of disablePushState.
+  // This listener runs before the SDK's and keeps restored documents silent.
+  window.addEventListener('pageshow', function (event) {
+    if (event.persisted && sdkRequested && window.fbq) window.fbq('consent', 'revoke');
   });
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
   else init();
