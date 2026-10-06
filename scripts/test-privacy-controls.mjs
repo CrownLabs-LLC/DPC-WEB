@@ -138,8 +138,8 @@ check('all four launch switches have the same valid value', () => {
   assert.ok(launchSwitches.every(value => value === 'true' || value === 'false'));
   assert.equal(new Set(launchSwitches).size, 1);
 });
-check('the preparation release keeps advertising disabled', () => {
-  assert.equal(launchSwitches[0], 'false');
+check('the owner-approved activation enables all four launch switches', () => {
+  assert.equal(launchSwitches[0], 'true');
 });
 check('all public pages expose a static opt-out link and load controls before analytics', () => {
   const root = new URL('../', import.meta.url);
@@ -156,10 +156,10 @@ check('all public pages expose a static opt-out link and load controls before an
     const analytics = html.indexOf('src="assets/analytics.js"');
     if (analytics !== -1) assert.ok(html.indexOf('privacy-controls.v2.js') < analytics);
     if (pixelPages.has(file)) {
-      assert.match(html, /<script src="\/assets\/meta-pixel\.v1\.js"><\/script>/);
-      assert.ok(html.indexOf('privacy-controls.v2.js') < html.indexOf('meta-pixel.v1.js'));
+      assert.match(html, /<script src="\/assets\/meta-pixel\.v2\.js"><\/script>/);
+      assert.ok(html.indexOf('privacy-controls.v2.js') < html.indexOf('meta-pixel.v2.js'));
     } else {
-      assert.doesNotMatch(html, /meta-pixel\.v1\.js/);
+      assert.doesNotMatch(html, /meta-pixel\.v2\.js/);
       if (file !== 'privacy-choices.html') assert.doesNotMatch(html, /dpc-advertising-enabled/);
     }
     assert.doesNotMatch(html, /connect\.facebook\.net|facebook\.com\/tr[?]|fbq\s*\(/);

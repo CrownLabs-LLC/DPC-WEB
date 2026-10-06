@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 
-const source = readFileSync(new URL('../assets/meta-pixel.v1.js', import.meta.url), 'utf8');
+const source = readFileSync(new URL('../assets/meta-pixel.v2.js', import.meta.url), 'utf8');
 const PIXEL_ID = '28569583012647858';
 let checks = 0;
 function check(name, run) { run(); checks++; console.log('PASS:', name); }
@@ -29,9 +29,10 @@ function browser({
       replaceState(state, _title, nextPath) {
         if (scrubThrows) throw Error('history unavailable');
         this.state = state;
-        location.pathname = nextPath;
-        location.search = '';
-        location.hash = '';
+        const next = new URL(nextPath, origin);
+        location.pathname = next.pathname;
+        location.search = next.search;
+        location.hash = next.hash;
       }
     },
     DPCPrivacy: { canLoadAdvertising() { return privacyAllowed; } },
@@ -45,7 +46,7 @@ function browser({
     getElementsByTagName(tag) { return tag === 'script' ? [firstScript] : []; },
     addEventListener(type, listener) { listeners[type] = listener; }
   };
-  vm.runInNewContext(source, { window, document, URL, Object });
+  vm.runInNewContext(source, { window, document, URL, URLSearchParams, Object });
   return { window, document, location, listeners, inserted };
 }
 
@@ -100,6 +101,41 @@ check('query strings and fragments are removed before the SDK boundary', () => {
   assert.equal(b.location.search, '');
   assert.equal(b.location.hash, '');
   assert.doesNotMatch(JSON.stringify(queuedCalls(b)), /person|example|utm|secret/i);
+});
+
+check('validated Meta click IDs and numeric campaign tags survive the SDK boundary', () => {
+  const clickId = 'IwAR' + 'abc123DEF_-'.repeat(8);
+  const retained = '?fbclid=' + clickId + '&utm_source=meta&utm_medium=paid_social&utm_id=123456789012345&utm_campaign=123456789012345&utm_content=123456789012346&utm_term=123456789012347';
+  const b = browser({ path: '/join', search: retained + '&email=person%40example.com&session_id=secret&gclid=private', hash: '#private', privacyAllowed: true });
+  assert.equal(b.inserted.length, 1);
+  assert.equal(b.location.search, retained);
+  assert.equal(b.location.hash, '');
+  b.inserted[0].onload();
+  assert.deepEqual(queuedCalls(b).filter(call => call[0] === 'track'), [['track', 'PageView']]);
+});
+
+check('duplicate, malformed, free-text and oversized attribution values are discarded', () => {
+  for (const search of [
+    '?fbclid=person%40example.com', '?fbclid=' + 'x'.repeat(501),
+    '?fbclid=' + 'x'.repeat(20) + '&fbclid=' + 'y'.repeat(20),
+    '?utm_source=meta&utm_source=instagram', '?utm_source=person',
+    '?utm_campaign=Brandi-Lukshin&utm_content=person%40example.com',
+    '?utm_medium=other&utm_term=private&utm_id=' + '1'.repeat(33),
+    '?FBCLID=' + 'x'.repeat(40), '?utm_campaign=123%0Aprivate'
+  ]) {
+    const b = browser({ search, privacyAllowed: true });
+    assert.equal(b.inserted.length, 1, search);
+    assert.equal(b.location.search, '', search);
+  }
+});
+
+check('same-origin attribution referrers remain eligible without admitting private query values', () => {
+  const allowed = browser({ path: '/join', referrer: 'https://www.downtownpourcollective.com/?utm_campaign=123&utm_source=meta', privacyAllowed: true });
+  assert.equal(allowed.inserted.length, 1);
+  for (const query of ['?utm_source=meta&email=person%40example.com', '?utm_campaign=private', '?utm_source=meta&utm_source=meta']) {
+    assert.equal(browser({ path: '/join', referrer: 'https://www.downtownpourcollective.com/' + query, privacyAllowed: true }).inserted.length, 0);
+  }
+  assert.equal(browser({ referrer: 'https://example.com/?utm_source=meta', privacyAllowed: true }).inserted.length, 0);
 });
 
 check('unsafe referrer details fail closed before any Meta request', () => {
