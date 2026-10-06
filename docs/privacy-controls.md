@@ -1,12 +1,13 @@
-# Advertising privacy controls — controls-only release
+# Advertising privacy controls and disabled Meta readiness
 
-This slice adds the public **Do Not Sell or Share My Personal Information**
-footer link and `/privacy-choices`. It does not install or activate Meta,
-publish amended policy text, change checkout legal versions, or deploy anything.
+The original controls slice added the public **Do Not Sell or Share My Personal
+Information** footer link and `/privacy-choices`. The current preparation adds a
+separately gated Meta loader and tests while keeping every production launch
+switch off. It does not activate Meta or change legal versions.
 
 ## Behavior
 
-- `assets/privacy-controls.v1.js` loads on public HTML pages before analytics.
+- `assets/privacy-controls.v2.js` loads on public HTML pages before analytics.
 - Manual opt-out saves `dpc_advertising_opt_out=1` in first-party cookie and
   local storage. Either copy is sufficient. The cookie has a one-year maximum
   lifetime, `Path=/`, `SameSite=Lax`, and `Secure` on HTTPS. Production www/apex
@@ -33,12 +34,12 @@ publish amended policy text, change checkout legal versions, or deploy anything.
   a clear fallback and privacy contact. No advertising request is possible.
 
 `window.DPCPrivacy` exposes `getState()`, `optOut()`, and
-`canLoadAdvertising()`. The latter is hard-disabled with
-`ADVERTISING_ENABLED = false`. There is deliberately no advertising loader,
-Meta SDK, tracking call, preconnect, or noscript image. Toggling the constant
-alone does **not** install a pixel. A future integration must enforce the
-privacy decision at every load and event boundary, and fail closed when the
-controls are unavailable. The `dpc:privacy-change` event announces changes.
+`canLoadAdvertising()`. The latter requires the exact page launch switch plus
+no saved/in-page opt-out and no GPC signal. `assets/meta-pixel.v1.js` is present
+only on the three approved paths and enforces that decision again at SDK-load
+and PageView boundaries. Every committed launch switch remains `false`, so
+production behavior is still zero Meta requests. There is no noscript image.
+The `dpc:privacy-change` event announces changes.
 
 ## Scoped interface decisions
 
@@ -58,62 +59,51 @@ controls are unavailable. The `dpc:privacy-change` event announces changes.
 
 ## Verification
 
-- `npm test -- --runInBand`: existing offline suites plus 13 privacy-control
-  checks; passed.
-- Browser regression coverage: 86 tests across mobile Chromium and WebKit,
-  including 16 privacy test runs. Width checks cover 320, 390, and 1280 pixels.
-  New tests block external services. The initial 78-test suite passed; after
-  adding footer-clearance tests, all 16 privacy runs passed but two existing
-  legal-checkbox tests failed in a four-worker run and passed in isolation.
-  The current-main reconciliation rerun, `npm run test:e2e -- --workers=2`,
-  passed all 86 tests. No checkout logic or legal-version fixture was changed
-  for this controls slice.
-- `node --check assets/privacy-controls.v1.js`: passed.
-- `git diff --check`: passed.
-- TypeScript and DB tests: not applicable; this static website has no
-  TypeScript project and the slice changes no API, database, or module imports.
+Refreshed October 5, 2026 against current main `f8bc310` on the readiness
+branch, with all four launch switches still false:
+
+- `npm test -- --runInBand`: passed, including 16 privacy-control checks,
+  12 Meta readiness checks, and the current campaign suites.
+- Full browser suite: 336 passed, 9 capture-only skips, no retries across
+  desktop Chromium, mobile Chromium and mobile WebKit. Every external service
+  in the privacy/Meta tests is blocked or locally fulfilled; enabled-path tests
+  use an inert intercepted SDK response and transmit no visitor data.
+- Campaign pickup, landing and restaurant pages use the same versioned privacy
+  controls but have no Meta loader or advertising-enabled switch. Static and
+  loader tests explicitly exclude these routes.
+- `node --check assets/privacy-controls.v2.js` and
+  `node --check assets/meta-pixel.v1.js`: passed.
+- `git diff f8bc310 --check`: passed with no output.
+- `npx tsc --noEmit`: not applicable; actual exit 1/compiler help because this
+  JavaScript website has no TypeScript configuration.
+- Database tests: not required locally; no API or DB path differs from main.
+  The repository CI still runs its existing disposable PostgreSQL suites.
+- Module boundaries: no cross-module imports or DPC internal imports added.
+- Real-SDK compatibility: six intercepted Chromium/mobile-WebKit scenarios pass
+  for navigation, cross-tab opt-out, GPC and simulated persisted `pageshow`.
+  SDK SHA256: `89a2a82574d35ba44820a985fff208cb50bbe810307f7ee069f97fd391c9a131`.
+  The original loader at `4e4d169` fails the same check with three extra PageViews
+  exposing fragments/query strings. No browser request reaches Meta.
+  This manual SDK check supplements the inert fixtures; it is not part of `npm test`.
 - The automatic visual detector ran in degraded regex mode (parser modules
   unavailable). It reported no findings but did not check computed contrast.
-  Desktop/mobile browser inspection and independent finish review supplement it.
-- Independent Impeccable finish review: PASS for the scoped UI. The mobile
-  image is usable; desktop composition is visible and corroborated by DOM
-  dimensions, but screenshot scaling/padding artifacts limit pixel-accurate
-  visual evidence. This is not comprehensive accessibility certification.
+  Focused desktop/mobile browser tests supplement it. This is not comprehensive
+  accessibility certification.
 
-Local screenshots under `.impeccable/review/` and the temporary `node_modules`
-dependency symlink are verification artifacts, not source changes to stage.
+The temporary `node_modules` dependency symlink is a local verification
+artifact, not a source change to stage.
 
 ## Before activating Meta (separate approval/release)
 
-1. Counsel's response permits flexible notice. DPC's selected no-email plan is
-   an in-App notice on next open as the primary method, reinforced by a
-   temporary website-footer notice and the policy's actual publication date.
-   Section 15 will state fourteen days for future changes, while this first
-   Meta rollout voluntarily waits thirty full days after notice.
-2. Treat the policy update as notice, not forced re-consent. Do not change the
-   member legal-currentness gate in a way that blocks existing logins. New
-   signup acceptance evidence and existing-member notice must be designed as
-   separate server-owned states before the published privacy version changes.
-3. On the rollout day, set the actual Last Updated date, publish the policy and
-   both notice surfaces, and record the timestamp. That timestamp starts the
-   thirty-day Meta hold. Preserve the existing published text/version until
-   the coordinated rollout is authorized.
-4. Confirm Meta Automatic Advanced Matching is OFF in Events Manager; do not
-   infer its account setting from website code. Reconfirm counsel's commercial
-   assumptions with the owner.
-5. Implement a separately reviewed, restricted marketing-page integration for
-   the supplied pixel ID `28569583012647858`. Exclude token-bearing return and
-   depositor pages, admin/support and all member App activity. Decide event
-   scope explicitly; do not add purchase attribution as an incidental change.
-6. Test GPC and saved opt-out before any SDK request, including repeat visits,
-   blocked storage, unavailable controls, and privacy changes in another tab.
-   Never add an unconditional noscript pixel.
-7. Avoid transmitting query strings, fragments, emails, identifiers, App data,
-   or location/redemption data. Verify real outgoing payloads before approval.
-8. Update the choices-page copy that currently says advertising is off, and
-   rerun tests against the actual proposed integration.
-9. Obtain owner review and deployment approval. No PR, commit, push, merge, or
-   production configuration change is included in this local implementation.
+The notice rollout completed September 18, 2026 at 3:25:44.302062 PM Pacific.
+Merged DPC Decision #56 still requires thirty full days: October 18 at the
+same time. Brandi's September 21 fourteen-day amendment would make eligibility
+October 2, but it must land in a separate DPC docs PR before activation relies
+on it. Preserve Day 0; neither date is automatic activation. See the readiness
+checklist for the governance gate and the attribution tradeoff requiring owner
+acknowledgment.
+Follow the complete checklist, event scope and rollback procedure in
+`docs/meta-pixel-readiness.md`; obtain a separate go-live decision.
 
 The site uses immutable caching for `/assets/*`. New controls use versioned
 filenames; future asset changes must use new versions and update all HTML
