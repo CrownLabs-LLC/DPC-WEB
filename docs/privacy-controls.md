@@ -1,9 +1,9 @@
-# Advertising privacy controls and disabled Meta readiness
+# Advertising privacy controls and Meta activation
 
 The original controls slice added the public **Do Not Sell or Share My Personal
-Information** footer link and `/privacy-choices`. The current preparation adds a
-separately gated Meta loader and tests while keeping every production launch
-switch off. It does not activate Meta or change legal versions.
+Information** footer link and `/privacy-choices`. The owner-approved activation enables a
+separately gated Meta loader on three eligible pages, while preserving browser
+opt-outs and legal versions. See the activation record below.
 
 ## Behavior
 
@@ -35,10 +35,10 @@ switch off. It does not activate Meta or change legal versions.
 
 `window.DPCPrivacy` exposes `getState()`, `optOut()`, and
 `canLoadAdvertising()`. The latter requires the exact page launch switch plus
-no saved/in-page opt-out and no GPC signal. `assets/meta-pixel.v1.js` is present
+no saved/in-page opt-out and no GPC signal. `assets/meta-pixel.v2.js` is present
 only on the three approved paths and enforces that decision again at SDK-load
-and PageView boundaries. Every committed launch switch remains `false`, so
-production behavior is still zero Meta requests. There is no noscript image.
+and PageView boundaries. The four committed launch switches are `true`; production requests still
+require an eligible hostname/path and no opt-out or GPC. There is no noscript image.
 The `dpc:privacy-change` event announces changes.
 
 ## Scoped interface decisions
@@ -57,7 +57,7 @@ The `dpc:privacy-change` event announces changes.
 - These decisions apply only to this controls release. They do not establish
   a global design system or revise policy content or legal versions.
 
-## Verification
+## Historical preparation verification
 
 Refreshed October 5, 2026 against current main `f8bc310` on the readiness
 branch, with all four launch switches still false:
@@ -93,17 +93,21 @@ branch, with all four launch switches still false:
 The temporary `node_modules` dependency symlink is a local verification
 artifact, not a source change to stage.
 
-## Before activating Meta (separate approval/release)
+## Activation — October 5, 2026
 
-The notice rollout completed September 18, 2026 at 3:25:44.302062 PM Pacific.
-Merged DPC Decision #56 still requires thirty full days: October 18 at the
-same time. Brandi's September 21 fourteen-day amendment would make eligibility
-October 2, but it must land in a separate DPC docs PR before activation relies
-on it. Preserve Day 0; neither date is automatic activation. See the readiness
-checklist for the governance gate and the attribution tradeoff requiring owner
-acknowledgment.
-Follow the complete checklist, event scope and rollback procedure in
-`docs/meta-pixel-readiness.md`; obtain a separate go-live decision.
+[DPC #434](https://github.com/CrownLabs-LLC/DPC/pull/434) merged at `f0e90f2`.
+Decision #56 preserves the September 18 notice timestamp and requires fourteen
+full days, so eligibility began October 2, 2026 at 3:25:44.302062 PM Pacific.
+Brandi confirmed that the September 22 Circle-definition republication does
+not reset Day 0, and approved retaining Meta click attribution and restricted
+campaign tags before tonight's launch. The advertising opt-out model remains.
+
+The new `meta-pixel.v2.js` retains only validated `fbclid`, fixed source/medium
+values and numeric campaign/ad/ad-set IDs. It strips other queries and all
+fragments, preserves GPC and opt-out checks, and continues PageView-only scope.
+The old loader and privacy-control assets remain unchanged. Follow
+[the activation record](meta-pixel-readiness.md) for the exact allowlist,
+Nick's ad URL template, review/deployment evidence and rollback steps.
 
 The site uses immutable caching for `/assets/*`. New controls use versioned
 filenames; future asset changes must use new versions and update all HTML

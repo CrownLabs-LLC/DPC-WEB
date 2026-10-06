@@ -7,13 +7,13 @@ const pixelPages = new Map([
   ['/subscription-success', readFileSync(new URL('../../subscription-success.html', import.meta.url), 'utf8')],
 ]);
 const privacyControlsSource = readFileSync(new URL('../../assets/privacy-controls.v2.js', import.meta.url), 'utf8');
-const metaPixelSource = readFileSync(new URL('../../assets/meta-pixel.v1.js', import.meta.url), 'utf8');
+const metaPixelSource = readFileSync(new URL('../../assets/meta-pixel.v2.js', import.meta.url), 'utf8');
 
 async function routeEnabledPixelAssets(page) {
   await page.route('https://www.downtownpourcollective.com/assets/privacy-controls.v2.js', route => {
     return route.fulfill({ status: 200, contentType: 'application/javascript', body: privacyControlsSource });
   });
-  await page.route('https://www.downtownpourcollective.com/assets/meta-pixel.v1.js', route => {
+  await page.route('https://www.downtownpourcollective.com/assets/meta-pixel.v2.js', route => {
     return route.fulfill({ status: 200, contentType: 'application/javascript', body: metaPixelSource });
   });
 }
@@ -88,30 +88,34 @@ test('public footer works without JavaScript and the choice page gives a fallbac
   await context.close();
 });
 
-test('accepting existing analytics does not activate Meta', async ({ page }) => {
+test('analytics acceptance cannot bypass the production-host restriction', async ({ page }) => {
   const meta = [];
   page.on('request', req => { if (/facebook\.net|facebook\.com/.test(new URL(req.url()).hostname)) meta.push(req.url()); });
   await page.goto('/');
   await page.locator('#cookie-accept').click();
-  expect(await page.evaluate(() => window.DPCPrivacy.canLoadAdvertising())).toBe(false);
+  expect(await page.evaluate(() => window.DPCPrivacy.canLoadAdvertising())).toBe(true);
   expect(await page.evaluate(() => typeof window.fbq)).toBe('undefined');
   expect(meta).toEqual([]);
 });
 
-test('production-disabled homepage, join and success paths make zero Meta requests', async ({ page }) => {
+test('rollback switches block Meta on the production hostname', async ({ page }) => {
   const meta = [];
+  await routeEnabledPixelAssets(page);
   page.on('request', request => {
     if (/facebook\.net|facebook\.com/.test(new URL(request.url()).hostname)) meta.push(request.url());
   });
-  for (const path of pixelPages.keys()) {
-    await page.goto(path);
+  for (const [path, source] of pixelPages) {
+    await page.route(url => url.hostname === 'www.downtownpourcollective.com' && url.pathname === path, route => route.fulfill({ status: 200, contentType: 'text/html', body: source.replace('name="dpc-advertising-enabled" content="true"', 'name="dpc-advertising-enabled" content="false"') }), { times: 1 });
+    await page.goto('https://www.downtownpourcollective.com' + path);
     expect(await page.evaluate(() => window.DPCMetaPixel?.getState().sdkRequested)).toBe(false);
   }
   expect(meta).toEqual([]);
 });
 
-test('enabled fixture sends one PageView on each allowlisted path with sanitized URLs', async ({ page }) => {
+test('committed activation sends one PageView per eligible path with only approved attribution', async ({ page }) => {
   const meta = [];
+  const clickId = 'IwAR' + 'abc123DEF_-'.repeat(8);
+  const retained = `?fbclid=${clickId}&utm_source=meta&utm_medium=paid_social&utm_campaign=123456789012345&utm_content=123456789012346&utm_term=123456789012347`;
   await routeEnabledPixelAssets(page);
   await page.route('https://connect.facebook.net/**', route => {
     meta.push(route.request().url());
@@ -123,12 +127,12 @@ test('enabled fixture sends one PageView on each allowlisted path with sanitized
       return route.fulfill({
         status: 200,
         contentType: 'text/html',
-        body: source.replace('name="dpc-advertising-enabled" content="false"', 'name="dpc-advertising-enabled" content="true"')
+        body: source
       });
     }, { times: 1 });
-    await page.goto(`https://www.downtownpourcollective.com${path}?email=person%40example.com&utm_source=test#private-fragment`);
+    await page.goto(`https://www.downtownpourcollective.com${path}${retained}&email=person%40example.com#private-fragment`);
     await expect.poll(() => meta.length).toBe([...pixelPages.keys()].indexOf(path) + 1);
-    expect(new URL(page.url()).search).toBe('');
+    expect(new URL(page.url()).search).toBe(retained);
     expect(new URL(page.url()).hash).toBe('');
     expect(await page.evaluate(() => localStorage.getItem('dpc_cookie_consent'))).toBeNull();
     expect(await page.evaluate(() => window.fbq.queue.map(args => Array.from(args)).filter(call => call[0] === 'track'))).toEqual([['track', 'PageView']]);
@@ -139,10 +143,7 @@ test('enabled fixture sends one PageView on each allowlisted path with sanitized
 
 for (const privacySignal of ['saved opt-out', 'GPC']) {
   test(`enabled fixture honors ${privacySignal} before any SDK request`, async ({ page }) => {
-    const source = pixelPages.get('/join').replace(
-      'name="dpc-advertising-enabled" content="false"',
-      'name="dpc-advertising-enabled" content="true"'
-    );
+    const source = pixelPages.get('/join');
     const meta = [];
     await routeEnabledPixelAssets(page);
     page.on('request', request => {
@@ -161,6 +162,23 @@ for (const privacySignal of ['saved opt-out', 'GPC']) {
     expect(meta).toEqual([]);
   });
 }
+
+test('consented GA4 still sees the approved campaign tags after the Meta URL scrub', async ({ page }) => {
+  await routeEnabledPixelAssets(page);
+  await page.addInitScript(() => localStorage.setItem('dpc_cookie_consent', '1'));
+  await page.route('https://www.downtownpourcollective.com/assets/analytics.js', route => route.fulfill({ status: 200, contentType: 'application/javascript', body: readFileSync(new URL('../../assets/analytics.js', import.meta.url), 'utf8') }));
+  await page.route('https://www.googletagmanager.com/**', async route => {
+    // Hold the asynchronous SDK response until the advertising loader has scrubbed.
+    await expect.poll(() => new URL(page.url()).search).not.toContain('email=');
+    await route.fulfill({ status: 200, contentType: 'application/javascript', body: 'window.gaObservedUrl = location.href;' });
+  });
+  await page.route('https://connect.facebook.net/**', route => route.fulfill({ status: 200, contentType: 'application/javascript', body: '/* inert SDK */' }));
+  await page.route(url => url.hostname === 'www.downtownpourcollective.com' && url.pathname === '/', route => route.fulfill({ status: 200, contentType: 'text/html', body: pixelPages.get('/') }));
+  const clean = 'https://www.downtownpourcollective.com/?utm_source=meta&utm_medium=paid_social&utm_campaign=123456789012345';
+  await page.goto(clean + '&email=person%40example.com#private');
+  await expect.poll(() => page.evaluate(() => window.gaObservedUrl)).toBe(clean);
+  expect(await page.evaluate(() => window.dataLayer.some(args => args[0] === 'config' && args[1] === 'G-C7CCW2YLPH'))).toBe(true);
+});
 
 for (const width of [320, 1280]) {
   test(`privacy footer is reachable without accepting analytics at ${width}px`, async ({ page }) => {
