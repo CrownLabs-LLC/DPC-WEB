@@ -52,12 +52,23 @@ The immutable deployed assets remain unchanged. Join loads the new
   access with service-role readback.
 
 Verified locally on the slice branch from website main `b3435df`:
-`npm test -- --runInBand` and `npm run test:db` passed; 108 targeted browser
-checks passed across desktop Chromium, mobile Chromium and mobile WebKit.
+`npm test -- --runInBand` and `npm run test:db` passed.
+After correcting the legal test's versioned analytics route and waiting for
+the tracking fixture's solved Turnstile marker, the full browser suite passed
+in [CI on `521646a`](https://github.com/CrownLabs-LLC/DPC-WEB/actions/runs/38207896145):
+**357 passed, 9 optional screenshot checks skipped, no failures or retries**
+across desktop Chromium, mobile Chromium and mobile WebKit (366 total cases).
 Eight additional captured real-SDK checks passed on Chromium and mobile WebKit,
 including payload checks for the new events. `git diff --check` passed.
 `npx tsc --noEmit` prints compiler help (exit 1): this JavaScript-only repository
 has no TypeScript project. No cross-module business imports were added.
+
+The full-suite pass above is CI evidence. A separate local full run had 351
+passes, 9 skips and 6 failures in existing legal-recovery/optional-kit tests;
+5 failures passed in a single-worker rerun, with one optional-kit radio-choice
+assertion still failing. Concurrent memory pressure was reported locally, but
+its causal role was not established. No assertions were weakened or production
+behavior changed to address those local results.
 
 ## Release order
 
