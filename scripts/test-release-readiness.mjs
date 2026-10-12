@@ -9,7 +9,7 @@ const [join, support, deploy, packageSource, serve, analytics, trackApi, dashboa
   read('DEPLOY.md'),
   read('package.json'),
   read('serve.json'),
-  read('assets/analytics.js'),
+  read('assets/analytics.v2.js'),
   read('api/track.js'),
   read('dashboard.html'),
   read('api/dashboard-data.js'),
@@ -359,7 +359,7 @@ assert.doesNotMatch(privacy, /Effective Date: \[DATE\]/);
 
 assert.match(join, /TURNSTILE_MAX_LOAD_ATTEMPTS = 50/);
 // /assets is immutable for a year: returning visitors must load the new writer.
-assert.match(join, /assets\/analytics\.js\?v=20260914/);
+assert.match(join, /assets\/analytics\.v2\.js/);
 assert.match(join, /assets\/join-diagnostics\.js\?v=20260914/);
 assert.match(join, /turnstileDiagnostics\.failure\('turnstile_unavailable'/);
 assert.match(join, /error_code: 'turnstile_incomplete'/);

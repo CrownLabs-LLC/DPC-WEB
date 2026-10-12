@@ -39,6 +39,12 @@ try {
   sql(read('db/setup.sql'));
   sql(read('db/20260914_join_diagnostics.sql'));
   sql(read('tests/db/join-diagnostics.sql'));
+  sql(read('db/20261011_join_checkout_click.sql'));
+  sql("insert into site_events(event) values ('join_checkout_click');");
+  sql(read('db/20261011_join_checkout_click.sql'));
+  sql(read('db/setup.sql'));
+  sql(read('tests/db/join-checkout-click.sql'));
+  console.log('PASS: button-click upgrade, reapplication, retained history, event constraint and anonymous insert-only RLS.');
   console.log('PASS: PostgreSQL migration reapplication, legacy rows, bounded diagnostics, anonymous insert-only RLS and service-role reads.');
 } finally {
   spawnSync('docker', ['rm', '--force', container], { encoding: 'utf8', timeout: 10000 });

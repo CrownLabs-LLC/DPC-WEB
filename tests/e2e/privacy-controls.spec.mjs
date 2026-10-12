@@ -7,13 +7,13 @@ const pixelPages = new Map([
   ['/subscription-success', readFileSync(new URL('../../subscription-success.html', import.meta.url), 'utf8')],
 ]);
 const privacyControlsSource = readFileSync(new URL('../../assets/privacy-controls.v2.js', import.meta.url), 'utf8');
-const metaPixelSource = readFileSync(new URL('../../assets/meta-pixel.v2.js', import.meta.url), 'utf8');
+const metaPixelSource = readFileSync(new URL('../../assets/meta-pixel.v3.js', import.meta.url), 'utf8');
 
 async function routeEnabledPixelAssets(page) {
   await page.route('https://www.downtownpourcollective.com/assets/privacy-controls.v2.js', route => {
     return route.fulfill({ status: 200, contentType: 'application/javascript', body: privacyControlsSource });
   });
-  await page.route('https://www.downtownpourcollective.com/assets/meta-pixel.v2.js', route => {
+  await page.route('https://www.downtownpourcollective.com/assets/meta-pixel.v3.js', route => {
     return route.fulfill({ status: 200, contentType: 'application/javascript', body: metaPixelSource });
   });
 }
