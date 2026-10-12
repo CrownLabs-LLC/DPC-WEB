@@ -133,20 +133,6 @@ a:focus-visible, button:focus-visible, input:focus-visible, [tabindex]:focus-vis
   margin: 0 auto 28px;
   opacity: 0.7;
 }
-.depositor-note {
-  font-size: 13px;
-  line-height: 1.55;
-  color: rgba(245, 240, 232, 0.72);
-  text-align: center;
-  margin: 0 0 28px;
-}
-.depositor-note strong { color: var(--cream); }
-.depositor-note--foot {
-  margin: 26px auto 0;
-  max-width: 560px;
-  padding-top: 20px;
-  border-top: 1px solid rgba(196, 163, 90, 0.22);
-}
 .panel__note {
   font-family: var(--body);
   font-size: 13px;
@@ -154,7 +140,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, [tabindex]:focus-vis
   color: rgba(245, 240, 232, 0.72);
   margin: 14px 0 0;
 }
-.deposit-explainer {
+.checkout-kit {
   font-family: var(--body);
   font-size: 13px;
   line-height: 1.55;
@@ -336,16 +322,6 @@ a:focus-visible, button:focus-visible, input:focus-visible, [tabindex]:focus-vis
   padding: 5px 9px;
   white-space: nowrap;
 }
-.interval-opt__note {
-  grid-area: badge;
-  font-size: 12px;
-  color: rgba(245, 240, 232, 0.5);
-  margin: 0;
-  text-align: right;
-  white-space: normal;
-  justify-self: end;
-  align-self: center;
-}
 
 .fields {
   display: grid;
@@ -482,10 +458,9 @@ a:focus-visible, button:focus-visible, input:focus-visible, [tabindex]:focus-vis
 
 .fine {
   margin: 14px 0 0;
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.55;
-  letter-spacing: 0.02em;
-  color: rgba(245, 240, 232, 0.45);
+  color: rgba(245, 240, 232, 0.72);
   text-align: left;
 }
 
@@ -716,7 +691,7 @@ body:has(.cookie:not([hidden])) .page {
   <div class="join">
     <p class="join__eyebrow">Membership</p>
     <h1 class="join__title">Join The Collective</h1>
-    <p class="join__lede">Choose the Circle that matches what you like to drink (beer, wine, or cocktails). Start with one Circle today, pick monthly or annual, then continue to secure checkout.</p>
+    <p class="join__lede">Choose your Circle, then select monthly or annual billing.</p>
     <hr class="join__rule">
 
     <form id="join-form" novalidate>
@@ -763,7 +738,7 @@ body:has(.cookie:not([hidden])) .page {
             <input type="radio" name="billingInterval" value="annual" checked required>
             <span class="interval-opt__card">
               <p class="interval-opt__title">Annual</p>
-              <p class="interval-opt__body">Pay the year up front. Best value.</p>
+              <p class="interval-opt__body">Pay for 12 months up front.</p>
               <span class="interval-opt__badge">2 months free</span>
             </span>
           </label>
@@ -772,11 +747,9 @@ body:has(.cookie:not([hidden])) .page {
             <span class="interval-opt__card">
               <p class="interval-opt__title">Monthly</p>
               <p class="interval-opt__body">Billed each month.</p>
-              <span class="interval-opt__note">Turn off renewal anytime</span>
             </span>
           </label>
         </div>
-        <p class="panel__note">Both paths include the same membership. Annual is twelve months for the price of ten, prepaid for the year.</p>
       </div>
 
       <div class="panel">
@@ -808,18 +781,17 @@ body:has(.cookie:not([hidden])) .page {
         <div class="turnstile-wrap" id="turnstile-slot"></div>
         <div class="actions">
           <p class="summary" id="order-summary" aria-live="polite"></p>
-          <p class="deposit-explainer">Your first membership payment is due today: the full year if you choose annual, or your first month if you choose monthly. Add an optional Member Welcome Kit on Stripe Checkout for a one-time $49, with no added kit tax. You can remove it before paying. Stripe shows your final total.</p>
-          <button class="btn" type="submit" id="submit-btn">Continue to Checkout</button>
+          <p class="checkout-kit">Optional Member Welcome Kit: $49 once, no added kit tax. Add or remove it at checkout.</p>
+          <button class="btn" type="submit" id="submit-btn" aria-describedby="checkout-next-steps">Continue to Checkout</button>
+          <p class="panel__note" id="checkout-next-steps">After payment, your app setup email arrives within a few minutes.</p>
           <p class="checkout-handoff" id="checkout-handoff" role="status" hidden>Secure checkout is ready. If it does not open automatically, tap below.</p>
           <a class="btn checkout-fallback" id="checkout-fallback" hidden>Open Secure Checkout</a>
           <p class="form__error" id="form-error" role="alert"></p>
           <button class="legal-retry" type="button" id="legal-versions-retry" hidden disabled>Try again</button>
-          <p class="fine" id="offer-fineprint">MONTHLY OR ANNUAL · OPTIONAL $49 WELCOME KIT · TURN OFF RENEWAL ANYTIME · 21+</p>
+          <p class="fine" id="offer-fineprint">Turn off renewal anytime.</p>
         </div>
       </div>
     </form>
-
-    <p class="depositor-note depositor-note--foot"><strong>Paid a $49 Founding Slot Deposit during the founding window?</strong> Only a deposit that converted to a membership before the window closed includes one Member Welcome Kit. If yours did, you already have an account: sign in instead of joining here. If your deposit was refunded, it does not include a Kit. You can join here with membership alone and choose whether to add the optional Kit at checkout.</p>
   </div>
 </main>
 
@@ -929,7 +901,6 @@ window.DPC_JOIN = {
   var checkoutFallback = document.getElementById('checkout-fallback');
   var checkoutHandoff = document.getElementById('checkout-handoff');
   var summaryEl = document.getElementById('order-summary');
-  var fineEl = document.getElementById('offer-fineprint');
   var turnstileSlot = document.getElementById('turnstile-slot');
   // A blocked diagnostics asset must not block joining.
   var noDiagnostics = function () { return { begin: function () {}, failure: function (code, details) {
@@ -966,6 +937,19 @@ window.DPC_JOIN = {
     return el ? el.value : '';
   }
 
+  function preselectPlanFromUrl() {
+    var params = new URLSearchParams(window.location.search);
+    [
+      { param: 'circle', name: 'circle', allowed: ['tap', 'cellar', 'reserve'] },
+      { param: 'billing', name: 'billingInterval', allowed: ['annual', 'monthly'] }
+    ].forEach(function (field) {
+      var value = params.get(field.param);
+      if (field.allowed.indexOf(value) === -1) return;
+      var input = form.querySelector('input[name="' + field.name + '"][value="' + value + '"]');
+      if (input) input.checked = true;
+    });
+  }
+
   function money(n) {
     return typeof n === 'number' ? '$' + n : '—';
   }
@@ -981,11 +965,6 @@ window.DPC_JOIN = {
       priceEl.textContent = money(p.monthly) + ' / mo';
       if (noteEl) noteEl.textContent = 'or ' + money(p.annual) + ' / year';
     });
-    if (fineEl) {
-      fineEl.textContent = offer === 'founding'
-        ? 'MONTHLY OR ANNUAL · ONE-TIME $49 FOUNDING SLOT DEPOSIT · FOUNDING PRICING THROUGH AUGUST · 21+'
-        : 'MONTHLY OR ANNUAL · OPTIONAL $49 WELCOME KIT · TURN OFF RENEWAL ANYTIME · 21+';
-    }
     refreshSummary();
   }
 
@@ -1001,20 +980,16 @@ window.DPC_JOIN = {
     var p = (((cfg.prices || {})[offer] || {})[circle] || {});
     var amount = interval === 'annual' ? p.annual : p.monthly;
     var label = circle.charAt(0).toUpperCase() + circle.slice(1);
-    var period = interval === 'annual' ? 'year' : 'month';
     // Retain historical founding pricing; standard checkout starts with membership alone.
     var isFounding = offer === 'founding';
     var oneTime = isFounding
-      ? ' plus a one-time $49 Founding Slot Deposit at signup'
+      ? ' Includes a one-time $49 Founding Slot Deposit.'
       : '';
-    var oneTimeNote = isFounding
-      ? ''
-      : ' Add an optional Member Welcome Kit at checkout for a one-time $49, with no added kit tax. Stripe shows your final total.';
     var dueToday = typeof amount === 'number'
-      ? ' Due today: <strong>' + money(amount + (isFounding ? 49 : 0)) + '</strong>.'
+      ? ' · Due today: <strong>' + money(amount + (isFounding ? 49 : 0)) + '</strong>.'
       : '';
-    summaryEl.innerHTML = 'You selected <strong>' + label + ' · ' + interval + '</strong> at <strong>' +
-      money(amount) + ' / ' + period + '</strong>' + oneTime + '.' + dueToday + oneTimeNote;
+    var intervalLabel = interval === 'annual' ? 'Annual' : 'Monthly';
+    summaryEl.innerHTML = '<strong>' + label + ' · ' + intervalLabel + '</strong>' + dueToday + oneTime;
   }
 
   var errorIsSticky = false;
@@ -1601,6 +1576,8 @@ window.DPC_JOIN = {
   // Browser history can restore checked radios after the initial script ran.
   // Recalculate after restoration so the selected plan keeps its visible total.
   window.addEventListener('pageshow', function () { setTimeout(refreshPrices, 0); });
+  // Apply link defaults once; history restoration must keep the member's edits.
+  preselectPlanFromUrl();
   refreshPrices();
   turnstileDiagnostics.begin('script_load');
   renderTurnstile();
