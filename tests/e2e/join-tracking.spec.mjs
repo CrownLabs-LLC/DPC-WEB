@@ -39,7 +39,7 @@ async function fixture(page, context, { failure = false, privacy = null } = {}) 
       return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ tos: '3.0', privacy: '4.9', memberTerms: '3.0', autoRenewalTerms: '3.0' }) });
     }
     if (url.hostname === 'challenges.cloudflare.com' && url.pathname.includes('/turnstile/')) {
-      return route.fulfill({ contentType: 'application/javascript', body: 'window.turnstile={render:function(_,opts){opts.callback("fixture-token");return "fixture-widget"},reset:function(){},remove:function(){}};' });
+      return route.fulfill({ contentType: 'application/javascript', body: 'window.turnstile={render:function(slot,opts){opts.callback("fixture-token");slot.dataset.solved="true";return "fixture-widget"},reset:function(){},remove:function(){}};' });
     }
     if (url.href === 'https://connect.facebook.net/en_US/fbevents.js') {
       sdkRequests.push(url.href);
@@ -60,6 +60,7 @@ async function fixture(page, context, { failure = false, privacy = null } = {}) 
   }, privacy);
   await page.goto(origin + '/join');
   await expect(page.locator('#submit-btn')).toBeEnabled();
+  await expect(page.locator('#turnstile-slot')).toHaveAttribute('data-solved', 'true');
   // Use the established navigation seam; the real handoff and events still run.
   await page.evaluate(() => { window.DPC_JOIN.navigateToCheckout = url => { window.fixtureCheckoutUrl = url; }; });
   return { events, sdkRequests, checkoutRequests };
