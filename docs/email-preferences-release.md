@@ -43,7 +43,8 @@ The initial HTML contains no active preference form. A disabled page reads only
 its public configuration; it never calls the membership API. Configuration
 failure also leaves the form hidden. The project refs are existing DPC-WEB
 bindings, confirmed read-only against the Supabase project inventory on October
-13. No hosting environment variable was changed in this implementation.
+13. Vercel configuration remains unchanged; the approved staging API setup and
+its test results are recorded below.
 
 Backend `POUR_REMINDER_PREFERENCES_ENABLED` separately gates capability issuance
 and re-enable. Its approved continuity exception permits minimal read/disable
@@ -109,14 +110,93 @@ issue comments or the PR. Any Vercel preview toolbar/injected scripts must be
 disabled or proven blocked by this page's CSP. Platform access-log behavior is
 a hosted verification gate, not a claim established by these local tests.
 
-## Staging and production gates still pending
+## Staging execution: October 13, 2026
+
+Brandi explicitly approved opening this PR and the staging-only deployment/test
+steps below. [DPC-WEB #67](https://github.com/CrownLabs-LLC/DPC-WEB/pull/67) is open
+at implementation revision `96d74851694b892b670fbfd689fd6d14c2eda500`.
+Its [GitHub browser gate](https://github.com/CrownLabs-LLC/DPC-WEB/actions/runs/38468984297)
+passed, and Vercel created the
+[Git-integrated preview](https://dpc-web-git-codex-pour-reminde-966a8e-brandis-projects-65a11cb6.vercel.app/email-preferences).
+No merge or production activation is authorized by that approval.
+
+Only `dpc-staging` (`hohbsqkmrlhkstojfdgx`) was changed:
+
+- Preflight confirmed the migration's existing member, membership, period,
+  audit, digest and updated-at dependencies. Applied the exact reviewed DPC
+  `2274994ae2f863f4c4b2521fe2286bc5f487a07e` Slice 1a migration, whose source name
+  is `20261011211055_pour_reminder_preferences.sql`. The hosted migration tool
+  recorded it as **`20261013211825` / `pour_reminder_preferences`**. Preserve this
+  mapping for later deployment reconciliation; do not blindly replay it.
+  SQL SHA-256: `eda012d08c80d0a9daec202681fbb1040bf557261bead469727d5b7d911ec66a`.
+- Deployed only `pour-reminder-preferences`, version 1, with its five exact
+  source files from that DPC revision. Deployment ID:
+  `348fc63e-f138-4d93-b0b1-52430deb3bd0`; bundle SHA-256:
+  `786f07c340a1f287b68b0c356a9c4e65e21cac31d364e681f6ded23004207f8a`.
+  `verify_jwt=false` retains the reviewed AES-GCM capability authentication.
+- Added a fresh staging-only capability keyring and the single exact preview
+  origin above. No reminder-prefixed secrets existed before this setup.
+  The API activation flag was tested missing, false, then true, and returned
+  to **false** afterward. No sender, enrollment, provider-event or scheduler
+  activation was added. Other existing secrets were preserved.
+- Created one clearly labeled inactive synthetic member at `example.com`,
+  without an auth identity or Circle memberships. Capabilities were generated
+  privately with the exact reviewed codec for this fixture only. Fixture IDs,
+  tokens and signing material remain outside Git, PR text and screenshots.
+
+Actual HTTPS checks against the deployed endpoint passed:
+
+| Check | Hosted result |
+| --- | --- |
+| Exact-origin preflight / other origin | 200 with exact CORS origin / 403 without allow-origin. |
+| Scanner GET | 405, no preference change. |
+| Invalid and expired capabilities | 400 `invalid_link`, no preference change. |
+| Initial read | Only `{ state: "unknown", version: 0 }`; no enrollment on read. |
+| API flag missing or false | Enable 503; valid-link read and explicit disable still succeed. Reviewed issuer also rejects `apiEnabled=false`. |
+| API flag true | Explicit enable/disable/re-enable succeed with monotonic versions. |
+| Stale enable | 409 `preference_changed`; current opt-out survives. |
+| Old enable request replay after opt-out | 200 returning the current disabled state; no new enable/audit. |
+| Final fixture state | Inactive member, disabled preference at version 5, six expected preference audit rows. |
+| Side effects | Zero fixture Circle memberships, periods, credits, ledger entries, redemption attempts, onboarding deliveries, reminder deliveries, reminder notifications and provider events. |
+| Privilege boundary | Preference RPC executable by service role only; anonymous and authenticated execute are false. Support evidence rejects a caller without trusted admin identity. |
+| Current web preview | Public config returns `{ enabled: false }` with no-store. Browser shows unavailable text and no preference controls. |
+
+Hosted advisors confirm RLS on all five new tables. The new notices are four
+intentional service-only deny-all tables with
+[no member policy](https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy),
+and the intentionally authenticated
+[admin-guarded support RPC](https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable).
+The deployed privilege and forbidden-caller checks above confirm that boundary;
+pre-existing staging notices were unchanged and not edited in this slice.
+
+For the function-specific 21:18–21:22:30 UTC test window, inspection found 31
+edge-access and 34 function-runtime log records. Their logged attributes had
+zero capability strings, request-body fields or query-bearing request URLs.
+Access logs do retain ordinary URL, request metadata, IP and inferred location
+fields. This sampled attribute inspection is not a claim of platform-wide body
+or query redaction; no body logging was enabled. The browser capability belongs
+in the fragment and API POST body only. Vercel logging/settings inspection
+remains pending authenticated dashboard access.
+
+**Open hosted gate:** the saved Vercel CLI token is invalid, and the in-app
+browser requires sign-in. No Vercel environment setting was changed. The user
+was asked to sign in while independent staging work continued. Branch-scoped
+Preview configuration, actual browser-to-staging read/write proof, explicit
+false web flag proof, desktop/mobile screenshots of those live states and
+Vercel logging/injection checks remain pending. This PR is not yet a completed
+Slice 1c release gate. Keep the synthetic member disabled and the API flag false
+until continuing that proof. Retain the staging keyring for the issued test
+links' 90-day lifetime; no member mail has been sent.
+
+## Authorized staging steps and remaining production gates
 
 Read-only inspection on October 13 found that `dpc-staging`
 (`hohbsqkmrlhkstojfdgx`) has neither `member_reminder_preferences` nor a deployed
 `pour-reminder-preferences` Edge Function. Browser mocks cannot satisfy the
 shared plan's real staging proof requirement.
 
-After the local implementation is reviewed, request explicit permission for:
+The following staging steps were explicitly approved; completed parts and
+remaining work are distinguished in the execution record above:
 
 1. Opening this DPC-WEB PR and obtaining its Git-integrated Vercel preview.
 2. A staging-only preference deployment from reviewed DPC `2274994`: preflight
