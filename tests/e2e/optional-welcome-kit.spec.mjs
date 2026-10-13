@@ -84,6 +84,7 @@ for (const circle of CIRCLES) {
         await expect(page.locator('#legal')).not.toBeChecked();
         expect(submissions).toHaveLength(0);
         const summary = page.locator('#order-summary');
+        await expect(summary).toContainText(`$${circle[interval]} / ${interval === 'annual' ? 'year' : 'month'}`);
         await expect(summary).toContainText(`Due today: $${circle[interval]}.`);
         await expect(summary).not.toContainText(`Due today: $${circle[interval] + 49}.`);
         await expect(page.locator('.checkout-kit')).toContainText('Optional Member Welcome Kit: $49 once, no added kit tax. Add or remove it at checkout.');
@@ -126,17 +127,23 @@ test('missing and invalid pricing parameters preserve independent form defaults'
   expect(submissions).toHaveLength(0);
 });
 
-test('changing Circle and billing interval updates only the membership total', async ({ page, context, baseURL }) => {
+test('changing the linked plan updates the total and real Back never reapplies the link', async ({ page, context, baseURL }) => {
   const submissions = await setup(page, context, baseURL);
-  await page.goto('/join?circle=tap&billing=annual');
+  // Match production: Back may load a new document instead of restoring bfcache.
+  await page.route(url => url.origin === new URL(baseURL).origin && url.pathname === '/join', async route => {
+    const response = await route.fetch();
+    await route.fulfill({ response, headers: { ...response.headers(), 'cache-control': 'no-store' } });
+  });
+  const entryUrl = '/join?circle=tap&billing=annual';
+  const response = await page.goto(entryUrl);
+  expect(response.headers()['cache-control']).toBe('no-store');
   for (const circle of CIRCLES) {
     for (const interval of ['annual', 'monthly']) {
       await choose(page, circle, interval);
+      await expect(page.locator('#order-summary')).toContainText(`$${circle[interval]} / ${interval === 'annual' ? 'year' : 'month'}`);
       await expect(page.locator('#order-summary')).toContainText(`Due today: $${circle[interval]}.`);
     }
   }
-  // A restored page refreshes its total without reapplying the original link.
-  await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true })));
   await expect(page.locator('input[name="circle"][value="reserve"]')).toBeChecked();
   await expect(page.locator('input[name="billingInterval"][value="monthly"]')).toBeChecked();
   await expect(page.locator('#order-summary')).toContainText('Due today: $79.');
@@ -145,6 +152,18 @@ test('changing Circle and billing interval updates only the membership total', a
   await expect(page).toHaveURL(CHECKOUT_URL);
   expect(submissions).toHaveLength(1);
   expect(submissions[0]).toMatchObject({ circle: 'reserve', billingInterval: 'monthly' });
+  await page.goBack();
+  await expect(page).toHaveURL(new URL(entryUrl, baseURL).href);
+  await expect(page.locator('input[name="circle"][value="tap"]')).not.toBeChecked();
+  if (await page.locator('input[name="circle"]:checked').count()) {
+    await expect(page.locator('input[name="circle"][value="reserve"]')).toBeChecked();
+    await expect(page.locator('input[name="billingInterval"][value="monthly"]')).toBeChecked();
+    await expect(page.locator('#order-summary')).toContainText('Due today: $79.');
+  } else {
+    // WebKit can clear the form on Back. A blank choice must have no quoted total.
+    await expect(page.locator('#order-summary')).toBeEmpty();
+  }
+  expect(submissions).toHaveLength(1);
 });
 
 test('browser back and cancel return to membership-only signup without another submission', async ({ page, context, baseURL }) => {

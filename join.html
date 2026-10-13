@@ -938,6 +938,9 @@ window.DPC_JOIN = {
   }
 
   function preselectPlanFromUrl() {
+    // A no-store history return can rerun this script after the member edits a plan.
+    var navigation = performance.getEntriesByType && performance.getEntriesByType('navigation')[0];
+    if (navigation && navigation.type !== 'navigate') return;
     var params = new URLSearchParams(window.location.search);
     [
       { param: 'circle', name: 'circle', allowed: ['tap', 'cellar', 'reserve'] },
@@ -989,7 +992,9 @@ window.DPC_JOIN = {
       ? ' · Due today: <strong>' + money(amount + (isFounding ? 49 : 0)) + '</strong>.'
       : '';
     var intervalLabel = interval === 'annual' ? 'Annual' : 'Monthly';
-    summaryEl.innerHTML = '<strong>' + label + ' · ' + intervalLabel + '</strong>' + dueToday + oneTime;
+    var period = interval === 'annual' ? 'year' : 'month';
+    summaryEl.innerHTML = '<strong>' + label + ' · ' + intervalLabel + '</strong> · ' +
+      money(amount) + ' / ' + period + dueToday + oneTime;
   }
 
   var errorIsSticky = false;
@@ -1576,7 +1581,7 @@ window.DPC_JOIN = {
   // Browser history can restore checked radios after the initial script ran.
   // Recalculate after restoration so the selected plan keeps its visible total.
   window.addEventListener('pageshow', function () { setTimeout(refreshPrices, 0); });
-  // Apply link defaults once; history restoration must keep the member's edits.
+  // Link defaults apply only on fresh navigation, never a reload or history return.
   preselectPlanFromUrl();
   refreshPrices();
   turnstileDiagnostics.begin('script_load');
