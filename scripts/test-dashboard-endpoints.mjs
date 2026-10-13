@@ -95,6 +95,7 @@ process.env.SUPABASE_ANON_KEY = 'anon_test_key';
   };
   const handler = await fresh('../api/track.js');
   for (const event of [
+    'join_checkout_click',
     'join_submit',
     'join_checkout_redirect',
     'join_checkout_ready',
@@ -117,7 +118,7 @@ process.env.SUPABASE_ANON_KEY = 'anon_test_key';
     check(`track allows ${event}`, out.status === 202 && out.body.stored === true, out);
   }
   globalThis.fetch = origFetch;
-  check('track checkout funnels posted 11 events', calls.length === 11, calls);
+  check('track checkout funnels posted 12 events', calls.length === 12, calls);
   const joinError = calls.find((call) => call.event === 'join_error');
   check(
     'track persists sanitized join error detail',
@@ -332,7 +333,11 @@ function mockDashboardFetch({
         { ts: new Date(now - 40 * 86400e3).toISOString(), event: 'page_view', page: 'member', referrer: null },
         { ts: new Date(now - 40 * 86400e3).toISOString(), event: 'join_error', error_code: 'network' },
       ];
-      const filtered = u.includes('join_checkout_ready')
+      const filtered = u.includes('event=eq.join_checkout_click')
+        ? [{ ts: new Date(now - 5000e3).toISOString() },
+           { ts: new Date(now - 5000e3).toISOString() },
+           { ts: new Date(now - 40 * 86400e3).toISOString() }]
+        : u.includes('join_checkout_ready')
         ? checkoutRows.concat(extraCheckoutRows)
         : u.includes('event=eq.join_error')
         ? rows.filter((row) => row.event === 'join_error')
@@ -388,6 +393,11 @@ process.env.SUPABASE_SERVICE_ROLE_KEY = 'service_test_key';
   check('dashboard authorized -> 200', out.status === 200, out.status);
   check('dashboard days honored', out.body?.days === 7, out.body?.days);
   const f = out.body?.funnel;
+  check('button clicks count independently, including repeated timestamps',
+    f?.totals?.checkout_clicks === 2 && f?.prev?.checkout_clicks === 1, f);
+  check('daily click and checkout-start metrics are retained',
+    f?.daily?.reduce((sum, row) => sum + row.checkout_clicks, 0) === 2
+    && f?.daily?.reduce((sum, row) => sum + row.checkout_ready, 0) === 2, f?.daily);
   check('funnel counts current period only', f?.totals?.visits === 2 && f?.totals?.confirmations === 1, f?.totals);
   check('daily acquisition counts checkout attempts', (
     f?.daily?.reduce((sum, row) => sum + row.checkout_attempts, 0) === 10

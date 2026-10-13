@@ -31,6 +31,7 @@ alter table public.site_events add constraint site_events_event_check check (
     'deposit_click',
     'deposit_confirmed',
     'form_submit',
+    'join_checkout_click',
     'join_submit',
     'join_checkout_redirect',
     'join_checkout_ready',

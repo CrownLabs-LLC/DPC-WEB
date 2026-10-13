@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 
-const source = readFileSync(new URL('../assets/meta-pixel.v2.js', import.meta.url), 'utf8');
+const source = readFileSync(new URL('../assets/meta-pixel.v3.js', import.meta.url), 'utf8');
 const PIXEL_ID = '28569583012647858';
 let checks = 0;
 function check(name, run) { run(); checks++; console.log('PASS:', name); }
@@ -212,7 +212,73 @@ check('source contains no noscript beacon, customer data, purchase event or CAPI
   assert.doesNotMatch(source, /<noscript|facebook\.com\/tr|fetch\s*\(|sendBeacon/i);
   assert.doesNotMatch(source, /fbq\(['"]track['"],\s*['"](?:Purchase|Subscribe|Lead|CompleteRegistration)['"]/);
   assert.doesNotMatch(source, /fbq\(['"]init['"],\s*PIXEL_ID\s*,/);
-  assert.match(source, /ALLOWED_EVENTS = Object\.freeze\(\['PageView'\]\)/);
+  assert.match(source, /ALLOWED_EVENTS = Object\.freeze\(\['PageView', 'JoinCheckoutClick', 'InitiateCheckout'\]\)/);
+});
+
+check('join intent uses a custom event; checkout start uses the standard event without form values', () => {
+  const b = browser({ path: '/join', privacyAllowed: true });
+  b.inserted[0].onload();
+  assert.equal(b.window.DPCMetaPixel.track('JoinCheckoutClick', { email: 'private@example.invalid' }), true);
+  assert.equal(b.window.DPCMetaPixel.track('InitiateCheckout', { value: 79 }), true);
+  assert.deepEqual(queuedCalls(b).filter(call => /^track/.test(call[0])), [
+    ['track', 'PageView'], ['trackCustom', 'JoinCheckoutClick'], ['track', 'InitiateCheckout']
+  ]);
+  assert.equal(b.window.DPCMetaPixel.track('JoinCheckoutClick'), false);
+  assert.equal(b.window.DPCMetaPixel.track('InitiateCheckout'), false);
+  assert.equal(b.window.DPCMetaPixel.track('Purchase'), false);
+});
+
+check('checkout events cannot fire on the homepage, return page or excluded paths', () => {
+  for (const path of ['/', '/subscription-success', '/support', '/glass-pickup']) {
+    const b = browser({ path, privacyAllowed: true });
+    if (b.inserted[0]) b.inserted[0].onload();
+    for (const event of ['JoinCheckoutClick', 'InitiateCheckout']) {
+      assert.equal(b.window.DPCMetaPixel.track(event), false, path);
+    }
+  }
+});
+
+check('slow SDK buffers only bounded event names locally, then flushes in funnel order', () => {
+  const b = browser({ path: '/join', privacyAllowed: true });
+  for (const event of ['JoinCheckoutClick', 'InitiateCheckout']) {
+    assert.equal(b.window.DPCMetaPixel.track(event), true);
+    assert.equal(b.window.DPCMetaPixel.track(event), false);
+  }
+  assert.equal(queuedCalls(b).filter(call => /^track/.test(call[0])).length, 0);
+  b.inserted[0].onload();
+  b.inserted[0].onload();
+  assert.deepEqual(queuedCalls(b).filter(call => /^track/.test(call[0])), [
+    ['track', 'PageView'], ['trackCustom', 'JoinCheckoutClick'], ['track', 'InitiateCheckout']
+  ]);
+});
+
+check('opt-out during SDK loading discards pending checkout events and never rearms', () => {
+  const b = browser({ path: '/join', privacyAllowed: true });
+  b.window.DPCMetaPixel.track('JoinCheckoutClick');
+  b.window.DPCMetaPixel.track('InitiateCheckout');
+  b.window.DPCPrivacy.canLoadAdvertising = () => false;
+  b.listeners['dpc:privacy-change']();
+  b.window.DPCPrivacy.canLoadAdvertising = () => true;
+  b.inserted[0].onload();
+  assert.equal(b.window.DPCMetaPixel.track('InitiateCheckout'), false);
+  assert.equal(queuedCalls(b).filter(call => /^track/.test(call[0])).length, 0);
+});
+
+check('checkout events fail closed for privacy, unsafe URLs, script failure and restored pages', () => {
+  for (const options of [{ privacyAllowed: false }, { privacyAllowed: true, referrer: 'https://example.com/private' }]) {
+    const b = browser({ path: '/join', ...options });
+    assert.equal(b.window.DPCMetaPixel.track('JoinCheckoutClick'), false);
+    assert.equal(b.window.DPCMetaPixel.track('InitiateCheckout'), false);
+  }
+  for (const event of ['error', 'restore']) {
+    const b = browser({ path: '/join', privacyAllowed: true });
+    b.window.DPCMetaPixel.track('JoinCheckoutClick');
+    if (event === 'error') b.inserted[0].onerror();
+    else b.listeners.pageshow({ persisted: true });
+    b.inserted[0].onload();
+    assert.equal(b.window.DPCMetaPixel.track('InitiateCheckout'), false);
+    assert.equal(queuedCalls(b).filter(call => /^track/.test(call[0])).length, 0);
+  }
 });
 
 console.log('\n' + checks + ' Meta Pixel checks passed.');

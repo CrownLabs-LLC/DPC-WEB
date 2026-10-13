@@ -12,6 +12,7 @@ const ALLOWED_EVENTS = new Set([
   'deposit_click',
   'deposit_confirmed',
   'form_submit',
+  'join_checkout_click',
   'join_submit',
   'join_checkout_redirect',
   'join_checkout_ready',

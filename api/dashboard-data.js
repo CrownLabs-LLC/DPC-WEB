@@ -148,6 +148,8 @@ function emptyDailyMap(days, now) {
       visits: 0,
       home_views: 0,
       join_views: 0,
+      checkout_clicks: 0,
+      checkout_ready: 0,
       checkout_attempts: 0,
       checkout_departed: 0,
       join_errors: 0,
@@ -168,7 +170,7 @@ async function funnelSection(days, now) {
   const currentStart = now - days * DAY_MS;
   const prevStart = now - 2 * days * DAY_MS;
   const since = new Date(prevStart).toISOString();
-  const [funnelRows, errorRows, checkoutRows] = await Promise.all([
+  const [funnelRows, errorRows, checkoutRows, clickRows] = await Promise.all([
     supabaseSelect(
       `site_events?select=ts,event,page,referrer&event=in.(page_view,membership_checkout_complete)&ts=gte.${since}&order=ts.desc&limit=20000`
     ),
@@ -178,6 +180,10 @@ async function funnelSection(days, now) {
     supabaseSelect(
       `site_events?select=ts,event,flow_id&event=in.(join_submit,join_checkout_ready,join_checkout_departed,join_checkout_fallback_clicked,join_checkout_stalled)&ts=gte.${since}&order=ts.desc&limit=20000`
     ),
+    // Keep pre-validation clicks out of the handoff query budget and outage logic.
+    supabaseSelect(
+      `site_events?select=ts&event=eq.join_checkout_click&ts=gte.${since}&order=ts.desc&limit=20000`
+    ),
   ]);
   const daily = emptyDailyMap(days, now);
   const blankTotals = () => ({
@@ -186,6 +192,7 @@ async function funnelSection(days, now) {
     join_views: 0,
     confirmations: 0,
     join_errors: 0,
+    checkout_clicks: 0,
     join_submits: 0,
     checkout_ready: 0,
     checkout_departed: 0,
@@ -271,6 +278,14 @@ async function funnelSection(days, now) {
     }
   }
 
+  for (const row of clickRows) {
+    const ts = Date.parse(row.ts);
+    const isCurrent = ts >= currentStart;
+    (isCurrent ? totals : prev).checkout_clicks += 1;
+    const bucket = isCurrent ? daily.get(dayKey(ts)) : null;
+    if (bucket) bucket.checkout_clicks += 1;
+  }
+
   const checkoutField = {
     join_submit: 'join_submits',
     join_checkout_ready: 'checkout_ready',
@@ -290,6 +305,7 @@ async function funnelSection(days, now) {
     (isCurrent ? totals : prev)[key] += 1;
     if (!isCurrent) continue;
     const bucket = daily.get(dayKey(ts));
+    if (row.event === 'join_checkout_ready' && bucket) bucket.checkout_ready += 1;
     if (row.event === 'join_submit') {
       if (bucket) bucket.checkout_attempts += 1;
     } else if (row.event === 'join_checkout_departed') {
@@ -398,7 +414,7 @@ async function funnelSection(days, now) {
     join_entries,
     cold_join_entries,
     blocked_windows,
-    truncated: funnelRows.length >= 20000 || errorRows.length >= 20000 || checkoutRows.length >= 20000,
+    truncated: funnelRows.length >= 20000 || errorRows.length >= 20000 || checkoutRows.length >= 20000 || clickRows.length >= 20000,
   };
 }
 

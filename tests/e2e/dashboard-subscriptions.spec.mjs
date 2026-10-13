@@ -50,8 +50,8 @@ function dashboardPayload() {
     funnel: {
       configured: true,
       daily: [
-        { date: '2048-08-21', visits: 12, home_views: 10, join_views: 2, checkout_attempts: 3, checkout_departed: 2, join_errors: 0, confirmations: 2 },
-        { date: '2048-08-22', visits: 18, home_views: 15, join_views: 3, checkout_attempts: 5, checkout_departed: 4, join_errors: 1, confirmations: 3 },
+        { date: '2048-08-21', visits: 12, home_views: 10, join_views: 2, checkout_clicks: 5, checkout_ready: 3, checkout_attempts: 3, checkout_departed: 2, join_errors: 0, confirmations: 2 },
+        { date: '2048-08-22', visits: 18, home_views: 15, join_views: 3, checkout_clicks: 7, checkout_ready: 4, checkout_attempts: 5, checkout_departed: 4, join_errors: 1, confirmations: 3 },
       ],
       steps: [
         { key: 'home', label: 'Homepage', short: 'homepage views', count: 25, of: null },
@@ -71,6 +71,7 @@ function dashboardPayload() {
         confirmations: 5,
         join_errors: 1,
         join_error_codes: { network: 1 },
+        checkout_clicks: 12,
         join_submits: 8,
         checkout_ready: 7,
         checkout_departed: 6,
@@ -83,6 +84,7 @@ function dashboardPayload() {
         join_views: 3,
         confirmations: 3,
         join_errors: 2,
+        checkout_clicks: 8,
         join_submits: 5,
         checkout_ready: 5,
         checkout_departed: 4,
@@ -450,4 +452,14 @@ test('an intentionally unconfigured preview does not raise an RPC failure banner
   await expect(page.locator('#subscriber-kpis')).toContainText('Subscription report unavailable');
   await expect(page.locator('#banner')).not.toContainText('Subscription report unavailable');
   await expect(page.locator('#banner')).not.toContainText('Member Setup Fee reconciliation unavailable');
+});
+
+
+test('acquisition separates button intent from checkout start in totals and daily rows', async ({ page }) => {
+  await page.goto('/dashboard');
+  const kpis = page.locator('#acquisition-kpis');
+  await expect(kpis).toContainText('Continue button clicks');
+  await expect(kpis).toContainText('Checkout started');
+  await expect(page.locator('#daily-table thead')).toHaveText('DateHomepageJoin pageButton clicksSubmittedCheckout startedReached StripeErrorsCompleted');
+  await expect(page.locator('#daily-table tbody tr').first()).toHaveText('2048-08-21102533202');
 });

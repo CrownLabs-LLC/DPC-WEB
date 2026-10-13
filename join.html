@@ -3,7 +3,7 @@
 <head>
 <meta name="dpc-advertising-enabled" content="true">
 <script src="/assets/privacy-controls.v2.js"></script>
-<script src="/assets/meta-pixel.v2.js"></script>
+<script src="/assets/meta-pixel.v3.js"></script>
 <link rel="stylesheet" href="/assets/privacy-footer.v2.css">
 <meta charset="UTF-8">
 <title>Join The Collective | Downtown Pour Collective</title>
@@ -889,7 +889,7 @@ window.DPC_JOIN = {
   }
 };
 </script>
-<script src="assets/analytics.js?v=20260914"></script>
+<script src="assets/analytics.v2.js"></script>
 <script src="assets/join-diagnostics.js?v=20260914"></script>
 <script>
 (function () {
@@ -1291,9 +1291,18 @@ window.DPC_JOIN = {
   }
 
   function track(event, params) {
-    if (window.DPCAnalytics && typeof window.DPCAnalytics.track === 'function') {
-      window.DPCAnalytics.track(event, params || {});
-    }
+    // Neither analytics provider may interrupt validation or checkout navigation.
+    try {
+      if (window.DPCAnalytics && typeof window.DPCAnalytics.track === 'function') {
+        window.DPCAnalytics.track(event, params || {});
+      }
+    } catch (e) {}
+    try {
+      if (window.DPCMetaPixel && typeof window.DPCMetaPixel.track === 'function') {
+        if (event === 'join_checkout_click') window.DPCMetaPixel.track('JoinCheckoutClick');
+        if (event === 'join_checkout_ready') window.DPCMetaPixel.track('InitiateCheckout');
+      }
+    } catch (e) {}
   }
 
   function resetTurnstile() {
@@ -1433,6 +1442,12 @@ window.DPC_JOIN = {
       track('join_interval_selected', { billing_interval: t.value, offer_type: offerType() });
     }
     refreshSummary();
+  });
+
+  // Record intent before validation returns early. Keyboard activation of the
+  // submit button follows this same click path. No form values are transmitted.
+  submitBtn.addEventListener('click', function () {
+    track('join_checkout_click');
   });
 
   form.addEventListener('submit', function (e) {

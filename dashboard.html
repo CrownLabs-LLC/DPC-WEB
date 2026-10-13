@@ -848,8 +848,9 @@ details.tableview summary { cursor: pointer; color: var(--text-secondary); font-
       .join(' · ');
     joinErrorTile.appendChild(el('div', 'delta', breakdown || 'No join failures'));
     box.appendChild(joinErrorTile);
+    box.appendChild(tile('Continue button clicks', fmt(f.totals.checkout_clicks || 0), f.totals.checkout_clicks || 0, f.prev.checkout_clicks || 0, true));
     box.appendChild(tile('Checkout attempts', fmt(f.totals.join_submits || 0), f.totals.join_submits || 0, f.prev.join_submits || 0, true));
-    box.appendChild(tile('Reached checkout handoff', fmt(f.totals.checkout_ready || 0), f.totals.checkout_ready || 0, f.prev.checkout_ready || 0, true));
+    box.appendChild(tile('Checkout started', fmt(f.totals.checkout_ready || 0), f.totals.checkout_ready || 0, f.prev.checkout_ready || 0, true));
     box.appendChild(tile('Departed for Stripe', fmt(f.totals.checkout_departed || 0), f.totals.checkout_departed || 0, f.prev.checkout_departed || 0, true));
     box.appendChild(tile('Checkout completions', fmt(f.totals.confirmations || 0), f.totals.confirmations || 0, f.prev.confirmations || 0, true));
     box.appendChild(tile('Recovery link used', fmt(f.totals.checkout_fallback_clicks || 0), f.totals.checkout_fallback_clicks || 0, f.prev.checkout_fallback_clicks || 0, false));
@@ -1011,7 +1012,7 @@ details.tableview summary { cursor: pointer; color: var(--text-secondary); font-
     var table = el('table');
     var thead = el('thead');
     var hr = el('tr');
-    ['Date', 'Homepage', 'Join page', 'Submitted', 'Reached Stripe', 'Errors', 'Completed'].forEach(function (h, i) {
+    ['Date', 'Homepage', 'Join page', 'Button clicks', 'Submitted', 'Checkout started', 'Reached Stripe', 'Errors', 'Completed'].forEach(function (h, i) {
       hr.appendChild(el('th', i ? 'num' : '', h));
     });
     thead.appendChild(hr);
@@ -1020,7 +1021,7 @@ details.tableview summary { cursor: pointer; color: var(--text-secondary); font-
     daily.forEach(function (r) {
       var tr = el('tr');
       tr.appendChild(el('td', '', r.date));
-      [r.home_views, r.join_views, r.checkout_attempts, r.checkout_departed, r.join_errors, r.confirmations]
+      [r.home_views, r.join_views, r.checkout_clicks || 0, r.checkout_attempts, r.checkout_ready || 0, r.checkout_departed, r.join_errors, r.confirmations]
         .forEach(function (v) { tr.appendChild(el('td', 'num', fmt(v))); });
       tbody.appendChild(tr);
     });

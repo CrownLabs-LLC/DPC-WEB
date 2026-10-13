@@ -153,13 +153,13 @@ check('all public pages expose a static opt-out link and load controls before an
     assert.doesNotMatch(html, /privacy-controls\.v1\.js/);
     if (file !== 'privacy-choices.html') assert.match(html, /privacy-footer\.v2\.css/);
     if (file !== 'privacy-choices.html') assert.match(html, /<a href="\/privacy-choices">Do Not Sell or Share My Personal Information<\/a>/);
-    const analytics = html.indexOf('src="assets/analytics.js"');
+    const analytics = html.search(/src="assets\/analytics(?:\.v2)?\.js/);
     if (analytics !== -1) assert.ok(html.indexOf('privacy-controls.v2.js') < analytics);
     if (pixelPages.has(file)) {
-      assert.match(html, /<script src="\/assets\/meta-pixel\.v2\.js"><\/script>/);
-      assert.ok(html.indexOf('privacy-controls.v2.js') < html.indexOf('meta-pixel.v2.js'));
+      assert.match(html, /<script src="\/assets\/meta-pixel\.v3\.js"><\/script>/);
+      assert.ok(html.indexOf('privacy-controls.v2.js') < html.indexOf('meta-pixel.v3.js'));
     } else {
-      assert.doesNotMatch(html, /meta-pixel\.v2\.js/);
+      assert.doesNotMatch(html, /meta-pixel\.v3\.js/);
       if (file !== 'privacy-choices.html') assert.doesNotMatch(html, /dpc-advertising-enabled/);
     }
     assert.doesNotMatch(html, /connect\.facebook\.net|facebook\.com\/tr[?]|fbq\s*\(/);
