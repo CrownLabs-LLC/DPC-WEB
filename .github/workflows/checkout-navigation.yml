@@ -4,6 +4,9 @@ on:
   pull_request:
     paths:
       - 'join.html'
+      - 'email-preferences.html'
+      - 'assets/email-preferences.*'
+      - 'api/email-preferences-config.js'
       - 'glass-pickup.html'
       - 'glass-comes-back.html'
       - 'glass-comes-back/**'
