@@ -1,5 +1,9 @@
 # Meta Pixel activation — October 5, 2026
 
+The October 11 [Join tracking slice](join-checkout-tracking.md) extends this
+original PageView release with button intent and checkout-start events on Join.
+See that document for the release order and verification.
+
 This release enables Meta Pixel `28569583012647858` on `/`, `/join`, and
 `/subscription-success`, subject to the existing advertising opt-out controls.
 The event scope is **PageView only**. It does not report verified subscriptions,

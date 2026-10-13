@@ -60,7 +60,7 @@ for (const initialDelivery of ['blocked', 'pending']) {
     if (holdBodyInitializer) {
       // Hold parsing before the body initializer: the head tag must capture
       // failure even when no bottom-of-body listener exists yet.
-      await page.route('**/assets/analytics.js*', (route) => { analyticsRoute = route; });
+      await page.route('**/assets/analytics.v2.js*', (route) => { analyticsRoute = route; });
     }
     let calls = 0;
     await page.route('https://challenges.cloudflare.com/turnstile/**', async (route) => {

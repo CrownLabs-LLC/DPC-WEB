@@ -11,7 +11,7 @@ const read = path => readFileSync(new URL('../' + path, import.meta.url), 'utf8'
 const origin = 'https://www.downtownpourcollective.com';
 const pixelId = '28569583012647858';
 const controls = read('assets/privacy-controls.v2.js');
-const loader = process.env.META_PIXEL_LOADER_PATH ? readFileSync(process.env.META_PIXEL_LOADER_PATH, 'utf8') : read('assets/meta-pixel.v2.js');
+const loader = process.env.META_PIXEL_LOADER_PATH ? readFileSync(process.env.META_PIXEL_LOADER_PATH, 'utf8') : read('assets/meta-pixel.v3.js');
 const home = read('index.html');
 const config = process.env.META_PIXEL_CONFIG_PATH
   ? readFileSync(process.env.META_PIXEL_CONFIG_PATH, 'utf8')
@@ -28,7 +28,7 @@ for (const [name, engine, options] of [
 ]) {
   const browser = await engine.launch();
   try {
-    for (const scenario of ['navigation-and-restore', 'cross-tab-opt-out', 'GPC']) {
+    for (const scenario of ['navigation-and-restore', 'cross-tab-opt-out', 'GPC', 'checkout-events']) {
       const context = await browser.newContext({ ...options, serviceWorkers: 'block' });
       try {
         const beacons = [];
@@ -38,9 +38,10 @@ for (const [name, engine, options] of [
           let body;
           let contentType = 'application/javascript';
           if (url.origin === origin && url.pathname === '/') { body = home; contentType = 'text/html'; }
+          else if (url.origin === origin && url.pathname === '/join') { body = read('join.html'); contentType = 'text/html'; }
           else if (url.origin === origin && url.pathname === '/privacy-choices') { body = read('privacy-choices.html'); contentType = 'text/html'; }
           else if (url.origin === origin && url.pathname === '/assets/privacy-controls.v2.js') body = controls;
-          else if (url.origin === origin && url.pathname === '/assets/meta-pixel.v2.js') body = loader;
+          else if (url.origin === origin && url.pathname === '/assets/meta-pixel.v3.js') body = loader;
           else if (url.href === 'https://connect.facebook.net/en_US/fbevents.js') body = sdk;
           else if (url.origin === 'https://connect.facebook.net' && url.pathname === '/signals/config/' + pixelId) { body = config; configRequests.push(url.href); }
           else if (/(^|\.)facebook\.com$/.test(url.hostname) && url.pathname.replace(/\/$/, '') === '/tr') {
@@ -61,6 +62,27 @@ for (const [name, engine, options] of [
         if (process.env.META_PIXEL_CONFIG_PATH) {
           const fbc = (await context.cookies()).find(cookie => cookie.name === '_fbc')?.value;
           assert.ok(fbc?.endsWith('.' + clickId), 'Meta must derive its click-attribution cookie from fbclid');
+        }
+
+        if (scenario === 'checkout-events') {
+          await page.goto(origin + '/join');
+          await expect.poll(() => beacons.length).toBe(2);
+          await page.locator('#firstName').fill('Private');
+          await page.locator('#email').fill('person@example.invalid');
+          await page.evaluate(() => {
+            window.DPCMetaPixel.track('JoinCheckoutClick');
+            window.DPCMetaPixel.track('InitiateCheckout');
+            window.DPCMetaPixel.track('InitiateCheckout');
+            window.DPCMetaPixel.track('Purchase');
+          });
+          await expect.poll(() => beacons.length).toBe(4);
+          assert.deepEqual(beacons.slice(1), [
+            { event: 'PageView', url: origin + '/join' },
+            { event: 'JoinCheckoutClick', url: origin + '/join' },
+            { event: 'InitiateCheckout', url: origin + '/join' },
+          ]);
+          console.log('PASS:', name, scenario, 'real SDK emits only the approved events, with no form values.');
+          continue;
         }
 
         if (scenario === 'cross-tab-opt-out') {
