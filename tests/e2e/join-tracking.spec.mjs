@@ -16,14 +16,17 @@ const files = {
 
 async function fixture(page, context, { failure = false, privacy = null } = {}) {
   const events = [], sdkRequests = [], checkoutRequests = [];
-  // WebKit's request inspector omits Blob beacon bodies. Observe the same Blob
-  // before delegating to the native API, without replacing its send behavior.
+  // WebKit's request inspector omits Blob beacon bodies, so read the Blob here.
+  // Never send it: this page runs on the production origin, and a beacon fired
+  // while the page closes (checkout departure) escapes routing and would reach
+  // the real /api/track.
   await page.exposeFunction('recordTrackingFixture', payload => events.push(payload));
   await page.addInitScript(() => {
     const send = navigator.sendBeacon.bind(navigator);
     navigator.sendBeacon = (url, body) => {
-      if (url === '/api/track') body.text().then(text => window.recordTrackingFixture(JSON.parse(text)));
-      return send(url, body);
+      if (url !== '/api/track') return send(url, body);
+      body.text().then(text => window.recordTrackingFixture(JSON.parse(text)));
+      return true;
     };
   });
   await context.route('**/*', async route => {
