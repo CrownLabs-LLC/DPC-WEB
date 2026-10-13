@@ -74,39 +74,96 @@ async function fillDetails(page) {
 
 for (const circle of CIRCLES) {
   for (const interval of ['monthly', 'annual']) {
-    test(`${circle.key} ${interval} starts at membership only and hands off the selected plan`, async ({ page, context, baseURL }, testInfo) => {
-      const submissions = await setup(page, context, baseURL);
-      await page.goto('/join');
-      await choose(page, circle, interval);
-      const summary = page.locator('#order-summary');
-      await expect(summary).toContainText(`Due today: $${circle[interval]}.`);
-      await expect(summary).toContainText('optional Member Welcome Kit');
-      await expect(summary).toContainText('one-time $49, with no added kit tax');
-      await expect(summary).not.toContainText(`Due today: $${circle[interval] + 49}.`);
-      await expect(page.locator('.deposit-explainer')).toContainText('You can remove it before paying');
-      await fillDetails(page);
-      if (circle.key === 'tap' && interval === 'monthly') {
-        await page.locator('#order-summary').screenshot({ path: testInfo.outputPath('join-membership-only.png') });
-      }
-      await page.locator('#submit-btn').click();
-      await expect(page).toHaveURL(CHECKOUT_URL);
-      await expect(page.getByRole('heading', { name: 'Checkout handoff fixture' })).toBeVisible();
-      expect(submissions).toHaveLength(1);
-      expect(submissions[0]).toMatchObject({ circle: circle.key, billingInterval: interval, offerType: 'standard' });
-      expect(Object.keys(submissions[0]).some(key => /kit|fee|amount|price/i.test(key))).toBe(false);
-    });
+    for (const entry of ['form', 'pricing link']) {
+      test(`${circle.key} ${interval} via ${entry} starts at membership only and hands off the selected plan`, async ({ page, context, baseURL }, testInfo) => {
+        const submissions = await setup(page, context, baseURL);
+        await page.goto(entry === 'pricing link' ? `/join?circle=${circle.key}&billing=${interval}` : '/join');
+        if (entry === 'form') await choose(page, circle, interval);
+        await expect(page.locator(`input[name="circle"][value="${circle.key}"]`)).toBeChecked();
+        await expect(page.locator(`input[name="billingInterval"][value="${interval}"]`)).toBeChecked();
+        await expect(page.locator('#legal')).not.toBeChecked();
+        expect(submissions).toHaveLength(0);
+        const summary = page.locator('#order-summary');
+        await expect(summary).toContainText(`$${circle[interval]} / ${interval === 'annual' ? 'year' : 'month'}`);
+        await expect(summary).toContainText(`Due today: $${circle[interval]}.`);
+        await expect(summary).not.toContainText(`Due today: $${circle[interval] + 49}.`);
+        await expect(page.locator('.checkout-kit')).toContainText('Optional Member Welcome Kit: $49 once, no added kit tax. Add or remove it at checkout.');
+        await fillDetails(page);
+        if (circle.key === 'tap' && interval === 'monthly') {
+          await page.locator('#order-summary').screenshot({ path: testInfo.outputPath('join-membership-only.png') });
+        }
+        await page.locator('#submit-btn').click();
+        await expect(page).toHaveURL(CHECKOUT_URL);
+        await expect(page.getByRole('heading', { name: 'Checkout handoff fixture' })).toBeVisible();
+        expect(submissions).toHaveLength(1);
+        expect(submissions[0]).toMatchObject({ circle: circle.key, billingInterval: interval, offerType: 'standard' });
+        expect(Object.keys(submissions[0]).some(key => /kit|fee|amount|price/i.test(key))).toBe(false);
+      });
+    }
   }
 }
 
-test('changing Circle and billing interval updates only the membership total', async ({ page, context, baseURL }) => {
-  await setup(page, context, baseURL);
-  await page.goto('/join');
+test('missing and invalid pricing parameters preserve independent form defaults', async ({ page, context, baseURL }) => {
+  const submissions = await setup(page, context, baseURL);
+  const errors = [];
+  page.on('pageerror', error => errors.push(error.message));
+  for (const { query, circle = '', interval = 'annual' } of [
+    { query: '' },
+    { query: '?circle=&billing=' },
+    { query: '?circle=unknown&billing=weekly' },
+    { query: '?circle=tap', circle: 'tap' },
+    { query: '?billing=monthly', interval: 'monthly' },
+    { query: '?circle=reserve&billing=invalid', circle: 'reserve' },
+    { query: '?circle=%22%5D&billing=monthly', interval: 'monthly' },
+  ]) {
+    await page.goto('/join' + query);
+    await expect(page.locator('input[name="circle"]:checked')).toHaveCount(circle ? 1 : 0);
+    if (circle) await expect(page.locator(`input[name="circle"][value="${circle}"]`)).toBeChecked();
+    await expect(page.locator(`input[name="billingInterval"][value="${interval}"]`)).toBeChecked();
+    if (!circle) await expect(page.locator('#order-summary')).toBeEmpty();
+    await expect(page.locator('#legal')).not.toBeChecked();
+  }
+  expect(errors).toEqual([]);
+  expect(submissions).toHaveLength(0);
+});
+
+test('changing the linked plan updates the total and real Back never reapplies the link', async ({ page, context, baseURL }) => {
+  const submissions = await setup(page, context, baseURL);
+  // Match production: Back may load a new document instead of restoring bfcache.
+  await page.route(url => url.origin === new URL(baseURL).origin && url.pathname === '/join', async route => {
+    const response = await route.fetch();
+    await route.fulfill({ response, headers: { ...response.headers(), 'cache-control': 'no-store' } });
+  });
+  const entryUrl = '/join?circle=tap&billing=annual';
+  const response = await page.goto(entryUrl);
+  expect(response.headers()['cache-control']).toBe('no-store');
   for (const circle of CIRCLES) {
     for (const interval of ['annual', 'monthly']) {
       await choose(page, circle, interval);
+      await expect(page.locator('#order-summary')).toContainText(`$${circle[interval]} / ${interval === 'annual' ? 'year' : 'month'}`);
       await expect(page.locator('#order-summary')).toContainText(`Due today: $${circle[interval]}.`);
     }
   }
+  await expect(page.locator('input[name="circle"][value="reserve"]')).toBeChecked();
+  await expect(page.locator('input[name="billingInterval"][value="monthly"]')).toBeChecked();
+  await expect(page.locator('#order-summary')).toContainText('Due today: $79.');
+  await fillDetails(page);
+  await page.locator('#submit-btn').click();
+  await expect(page).toHaveURL(CHECKOUT_URL);
+  expect(submissions).toHaveLength(1);
+  expect(submissions[0]).toMatchObject({ circle: 'reserve', billingInterval: 'monthly' });
+  await page.goBack();
+  await expect(page).toHaveURL(new URL(entryUrl, baseURL).href);
+  await expect(page.locator('input[name="circle"][value="tap"]')).not.toBeChecked();
+  if (await page.locator('input[name="circle"]:checked').count()) {
+    await expect(page.locator('input[name="circle"][value="reserve"]')).toBeChecked();
+    await expect(page.locator('input[name="billingInterval"][value="monthly"]')).toBeChecked();
+    await expect(page.locator('#order-summary')).toContainText('Due today: $79.');
+  } else {
+    // WebKit can clear the form on Back. A blank choice must have no quoted total.
+    await expect(page.locator('#order-summary')).toBeEmpty();
+  }
+  expect(submissions).toHaveLength(1);
 });
 
 test('browser back and cancel return to membership-only signup without another submission', async ({ page, context, baseURL }) => {
@@ -166,7 +223,7 @@ for (const { width, fallbackFonts = false } of [
       // mobile layout. The cookie notice and all click actionability remain on.
       await page.addStyleTag({ content: `
         :root { --support: Verdana, sans-serif; --body: Verdana, sans-serif; }
-        .interval-opt__note { font-size: 14px; }
+        .panel__note, .checkout-kit { font-size: 14px; }
       ` });
     }
     await expect(page.locator('#cookie-banner')).toBeVisible();
@@ -175,7 +232,7 @@ for (const { width, fallbackFonts = false } of [
     await expect(page.locator('#order-summary')).toContainText('Due today: $79.');
     await choose(page, CIRCLES[2], 'annual');
     await expect(page.locator('#order-summary')).toContainText('Due today: $790.');
-    for (const selector of ['.interval-opt', '.interval-opt__card', '#order-summary', '.deposit-explainer', '#offer-fineprint', '#turnstile-slot']) {
+    for (const selector of ['.interval-opt', '.interval-opt__card', '#order-summary', '.checkout-kit', '#checkout-next-steps', '#offer-fineprint', '#turnstile-slot']) {
       const boxes = await page.locator(selector).evaluateAll(elements => elements.map(el => {
         const rect = el.getBoundingClientRect();
         return { left: rect.left, right: rect.right, scroll: el.scrollWidth, width: el.clientWidth };

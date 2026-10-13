@@ -62,9 +62,8 @@ assert.doesNotMatch(home, /hero__strip/,
 // closed, and join.html already stops disclosing it on the standard offer. The
 // homepage must not advertise a charge the checkout no longer discloses.
 assert.doesNotMatch(home, /Founding Slot Deposit/);
-// The deposit-holder notice is a /join footnote, not homepage hero copy: it told
-// every cold visitor not to buy, citing a charge they had never heard of, above
-// the fold. Guard the removal so it cannot drift back onto the homepage.
+// The historical deposit-holder notice is retired from public signup copy.
+// Guard its removal so it cannot drift back onto the homepage.
 assert.doesNotMatch(home, /Already paid a \$49 Founding Slot Deposit/);
 // The Pour mechanic. Member venue selection is DISABLED on all three Circles in
 // production (circle_venue_selection_policies.selection_enabled = false), so the
@@ -178,14 +177,16 @@ for (const [page, markup] of [['index.html', home], ['join.html', join]]) {
     `${page} must not advertise the retired mandatory setup fee`);
   assert.match(markup, /optional Member Welcome Kit/i,
     `${page} must describe the kit as optional`);
-  assert.match(markup, /one-time \$49, with no added kit tax/i,
-    `${page} must disclose the one-time non-taxable $49 kit price`);
   assert.doesNotMatch(markup, /When you join, you receive the Member Welcome Kit|Kit is included with/i,
     `${page} must not imply every new membership includes a kit`);
 }
 assert.match(home, /<h3 class="kit__label">OPTIONAL MEMBER WELCOME KIT<\/h3>/);
-assert.match(join, /You can remove it before paying/);
-assert.match(joinFineprint[1], /OPTIONAL \$49 WELCOME KIT/);
+assert.match(home, /one-time \$49, with no added kit tax/i);
+const joinKitDisclosure = join.match(/<p class="checkout-kit">([\s\S]*?)<\/p>/);
+assert.ok(joinKitDisclosure, 'join.html must disclose the optional kit beside checkout');
+assert.match(joinKitDisclosure[1], /Optional Member Welcome Kit: \$49 once, no added kit tax/);
+assert.match(joinKitDisclosure[1], /Add or remove it at checkout/);
+assert.match(joinFineprint[1], /Turn off renewal anytime/);
 // Parse structured data as consumers do so a stale FAQ cannot silently disagree.
 const homeStructuredData = [...home.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)]
   .map(match => JSON.parse(match[1]));
@@ -203,24 +204,12 @@ assert.doesNotMatch(
   /invitation to every member event|Your invitations arrive by email|Members are also invited to/i,
   'homepage sells separately coordinated events as a membership entitlement',
 );
-// Keep the historical founding deposit separate from the optional kit purchase.
-assert.match(join, /\$49 Founding Slot Deposit during the founding window/);
-// A converted deposit retains its Kit entitlement; a refunded deposit does not.
-// Neither changes the membership-only default for a new standard signup.
-assert.match(
-  join,
-  /converted to a membership before the window closed/i,
-  'the depositor footnote must condition historical kit entitlement on conversion',
-);
-assert.match(
-  join,
-  /if your deposit was refunded/i,
-  'the depositor footnote must explain that a refunded deposit carries no kit entitlement',
-);
+// The founding window is closed; public signup no longer needs a depositor footnote.
+const joinMarkup = join.replace(/<(script|style)[\s\S]*?<\/\1>/g, '');
 assert.doesNotMatch(
-  join,
-  /won.?t be charged it again|deposit is already recorded|private membership-confirmation link|don.?t use this public checkout/i,
-  'the depositor footnote must not grant entitlement on historical payment or route refunded depositors to a private path',
+  joinMarkup,
+  /Founding Slot Deposit|depositor-note|private membership-confirmation link|don.?t use this public checkout/i,
+  'public signup must not restore the retired founding-deposit notice',
 );
 
 // Five Pours is the promise, not a ceiling. "Up to five" and supply caveats
