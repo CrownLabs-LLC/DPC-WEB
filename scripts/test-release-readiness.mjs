@@ -101,7 +101,8 @@ for (const [page, markup] of [['index.html', home], ['join.html', join]]) {
     `${page} says "cancel anytime", which implies a prorated annual refund`,
   );
 }
-assert.match(home, /Start with one Circle today/);
+assert.doesNotMatch(home, /(?:start with one Circle|choose one Circle to start)/i,
+  'homepage must not imply members are expected to add Circles later');
 assert.doesNotMatch(home, /Pause feature|add (?:another|more) anytime|Welcome Kit fee|A \$50 value|THE INTRODUCTION/);
 // The Coaster Passport section is on the page; its CSS sat orphaned from
 // 2026-08-13 until it was reinstated. Guard the markup, not just the styles.
