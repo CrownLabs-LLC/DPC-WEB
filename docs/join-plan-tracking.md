@@ -2,7 +2,9 @@
 
 This standalone website slice extends PR #65 with the Join-page event details
 requested in the October 12 Website Conversion Blueprint v0.4 (G3). It starts
-from main `7c04667`, after the homepage pricing links in PR #68.
+from main `7c04667`, after the homepage pricing links in PR #68, and is now
+updated through `446866d`, including the email-preferences page (#67) and the
+tracking-fixture beacon fix (#69).
 
 | Event | Trigger | Parameters |
 | --- | --- | --- |
