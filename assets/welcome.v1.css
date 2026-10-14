@@ -1,0 +1,41 @@
+:root {
+  --navy: #0D1B2A; --cream: #F5F0E8; --gold: #C4A35A; --gold-hover: #D4B370;
+  --secondary: #C9C8C4; --line: #42505C;
+  font-family: 'Barlow', system-ui, sans-serif;
+  color: var(--cream); background: var(--navy); color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; min-height: 100vh; display: flex; flex-direction: column; }
+[hidden] { display: none !important; }
+::selection { color: var(--navy); background: var(--gold); }
+a { color: var(--gold); text-underline-offset: 4px; }
+a:hover { color: var(--gold-hover); }
+a:focus-visible, button:focus-visible { outline: 2px solid var(--gold-hover); outline-offset: 5px; }
+.top { padding: 24px 32px; border-bottom: 1px solid var(--line); }
+.brand { display: inline-flex; min-height: 44px; align-items: center; gap: 12px; text-decoration: none; color: var(--cream); }
+.brand img { width: 44px; height: 44px; }
+.brand span { font-family: 'Barlow Condensed', sans-serif; font-weight: 600; font-size: 18px; letter-spacing: .06em; }
+main { flex: 1; width: min(100%, 704px); margin: 0 auto; padding: 72px 32px 80px; }
+h1 { margin: 0 0 24px; font-family: 'Playfair Display', Georgia, serif; font-size: clamp(36px, 6vw, 60px); line-height: 1.12; text-wrap: balance; }
+p { margin: 0; font-size: 19px; line-height: 1.6; }
+.next { margin-top: 32px; padding-top: 28px; border-top: 1px solid var(--line); }
+.next > p { color: var(--secondary); }
+.kit { margin-top: 28px; }
+h2 { font-family: 'Playfair Display', Georgia, serif; font-size: 26px; line-height: 1.3; margin: 0 0 12px; }
+.follow { display: inline-flex; align-items: center; min-height: 44px; margin-top: 28px; font-size: 17px; }
+.help { color: var(--secondary); margin-top: 40px; font-size: 16px; overflow-wrap: anywhere; }
+.help a { display: inline-block; min-height: 44px; padding: 8px 0; }
+.retry { margin-top: 28px; min-height: 48px; padding: 12px 24px; border: 0; border-radius: 4px; background: var(--gold); color: var(--navy); font: 700 18px 'Barlow Condensed', sans-serif; cursor: pointer; }
+.retry:hover { background: var(--gold-hover); }
+.retry:disabled { cursor: wait; opacity: .65; }
+footer { padding: 24px 32px; border-top: 1px solid var(--line); color: var(--secondary); font-size: 14px; }
+.legal { display: flex; flex-wrap: wrap; gap: 8px 24px; }
+.legal a { display: inline-flex; align-items: center; min-height: 44px; }
+footer p { font-size: 14px; margin-top: 12px; }
+@media (max-width: 600px) {
+  .top { padding: 16px 24px; }
+  main { padding: 48px 24px 56px; }
+  footer { padding: 20px 24px; }
+  p { font-size: 18px; }
+  .brand span { max-width: 220px; }
+}

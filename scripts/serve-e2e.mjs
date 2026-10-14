@@ -41,7 +41,7 @@ createServer(async (req, res) => {
       return;
     }
     // Match the deployed route's security headers in the real browser suite.
-    if (pathname === '/email-preferences' || pathname === '/email-preferences.html') {
+    if (pathname === '/email-preferences' || pathname === '/email-preferences.html' || pathname === '/welcome' || pathname === '/welcome.html') {
       const config = JSON.parse(await readFile(resolve(root, 'vercel.json'), 'utf8'));
       for (const { key, value } of config.headers.find(rule => rule.source === pathname).headers) res.setHeader(key, value);
     }
