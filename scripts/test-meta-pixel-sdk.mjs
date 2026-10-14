@@ -11,7 +11,7 @@ const read = path => readFileSync(new URL('../' + path, import.meta.url), 'utf8'
 const origin = 'https://www.downtownpourcollective.com';
 const pixelId = '28569583012647858';
 const controls = read('assets/privacy-controls.v2.js');
-const loader = process.env.META_PIXEL_LOADER_PATH ? readFileSync(process.env.META_PIXEL_LOADER_PATH, 'utf8') : read('assets/meta-pixel.v3.js');
+const loader = process.env.META_PIXEL_LOADER_PATH ? readFileSync(process.env.META_PIXEL_LOADER_PATH, 'utf8') : read('assets/meta-pixel.v4.js');
 const home = read('index.html');
 const config = process.env.META_PIXEL_CONFIG_PATH
   ? readFileSync(process.env.META_PIXEL_CONFIG_PATH, 'utf8')
@@ -41,13 +41,16 @@ for (const [name, engine, options] of [
           else if (url.origin === origin && url.pathname === '/join') { body = read('join.html'); contentType = 'text/html'; }
           else if (url.origin === origin && url.pathname === '/privacy-choices') { body = read('privacy-choices.html'); contentType = 'text/html'; }
           else if (url.origin === origin && url.pathname === '/assets/privacy-controls.v2.js') body = controls;
-          else if (url.origin === origin && url.pathname === '/assets/meta-pixel.v3.js') body = loader;
+          else if (url.origin === origin && url.pathname === '/assets/meta-pixel.v4.js') body = loader;
           else if (url.href === 'https://connect.facebook.net/en_US/fbevents.js') body = sdk;
           else if (url.origin === 'https://connect.facebook.net' && url.pathname === '/signals/config/' + pixelId) { body = config; configRequests.push(url.href); }
           else if (/(^|\.)facebook\.com$/.test(url.hostname) && url.pathname.replace(/\/$/, '') === '/tr') {
             const params = new URLSearchParams(url.search);
             for (const [key, value] of new URLSearchParams(route.request().postData() || '')) params.set(key, value);
-            beacons.push({ event: params.get('ev'), url: params.get('dl') });
+            const beacon = { event: params.get('ev'), url: params.get('dl') };
+            const data = Object.fromEntries([...params].filter(([key]) => /^cd\[/.test(key)));
+            if (Object.keys(data).length) beacon.data = data;
+            beacons.push(beacon);
             assert.doesNotMatch(params.toString(), /person|example|private|session_id/);
             return route.fulfill({ status: 200, body: '' });
           }
@@ -65,23 +68,24 @@ for (const [name, engine, options] of [
         }
 
         if (scenario === 'checkout-events') {
-          await page.goto(origin + '/join');
-          await expect.poll(() => beacons.length).toBe(2);
+          await page.goto(origin + '/join?circle=cellar&billing=annual');
+          await expect.poll(() => beacons.length).toBe(3);
           await page.locator('#firstName').fill('Private');
           await page.locator('#email').fill('person@example.invalid');
           await page.evaluate(() => {
             window.DPCMetaPixel.track('JoinCheckoutClick');
-            window.DPCMetaPixel.track('InitiateCheckout');
-            window.DPCMetaPixel.track('InitiateCheckout');
+            window.DPCMetaPixel.track('InitiateCheckout', { circle: 'reserve', billingInterval: 'annual', email: 'person@example.invalid', value: 999 });
+            window.DPCMetaPixel.track('InitiateCheckout', { circle: 'reserve', billingInterval: 'annual', email: 'person@example.invalid', value: 999 });
             window.DPCMetaPixel.track('Purchase');
           });
-          await expect.poll(() => beacons.length).toBe(4);
+          await expect.poll(() => beacons.length).toBe(5);
           assert.deepEqual(beacons.slice(1), [
             { event: 'PageView', url: origin + '/join' },
+            { event: 'ViewContent', url: origin + '/join', data: { 'cd[content_name]': 'membership', 'cd[content_category]': 'cellar' } },
             { event: 'JoinCheckoutClick', url: origin + '/join' },
-            { event: 'InitiateCheckout', url: origin + '/join' },
+            { event: 'InitiateCheckout', url: origin + '/join', data: { 'cd[content_name]': 'reserve_annual', 'cd[value]': '790', 'cd[currency]': 'USD' } },
           ]);
-          console.log('PASS:', name, scenario, 'real SDK emits only the approved events, with no form values.');
+          console.log('PASS:', name, scenario, 'real SDK emits only the approved events, with catalog parameters and no personal form values.');
           continue;
         }
 

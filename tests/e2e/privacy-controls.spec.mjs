@@ -7,13 +7,13 @@ const pixelPages = new Map([
   ['/subscription-success', readFileSync(new URL('../../subscription-success.html', import.meta.url), 'utf8')],
 ]);
 const privacyControlsSource = readFileSync(new URL('../../assets/privacy-controls.v2.js', import.meta.url), 'utf8');
-const metaPixelSource = readFileSync(new URL('../../assets/meta-pixel.v3.js', import.meta.url), 'utf8');
+const metaPixelSource = readFileSync(new URL('../../assets/meta-pixel.v4.js', import.meta.url), 'utf8');
 
 async function routeEnabledPixelAssets(page) {
   await page.route('https://www.downtownpourcollective.com/assets/privacy-controls.v2.js', route => {
     return route.fulfill({ status: 200, contentType: 'application/javascript', body: privacyControlsSource });
   });
-  await page.route('https://www.downtownpourcollective.com/assets/meta-pixel.v3.js', route => {
+  await page.route('https://www.downtownpourcollective.com/assets/meta-pixel.v4.js', route => {
     return route.fulfill({ status: 200, contentType: 'application/javascript', body: metaPixelSource });
   });
 }
@@ -135,7 +135,7 @@ test('committed activation sends one PageView per eligible path with only approv
     expect(new URL(page.url()).search).toBe(retained);
     expect(new URL(page.url()).hash).toBe('');
     expect(await page.evaluate(() => localStorage.getItem('dpc_cookie_consent'))).toBeNull();
-    expect(await page.evaluate(() => window.fbq.queue.map(args => Array.from(args)).filter(call => call[0] === 'track'))).toEqual([['track', 'PageView']]);
+    expect(await page.evaluate(() => window.fbq.queue.map(args => Array.from(args)).filter(call => call[0] === 'track'))).toEqual(path === '/join' ? [['track', 'PageView'], ['track', 'ViewContent', { content_name: 'membership' }]] : [['track', 'PageView']]);
   }
   expect(meta).toEqual(Array(3).fill('https://connect.facebook.net/en_US/fbevents.js'));
   expect(meta.join(' ')).not.toMatch(/person|example|utm|private/i);
