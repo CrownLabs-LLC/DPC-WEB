@@ -3,7 +3,7 @@
 <head>
 <meta name="dpc-advertising-enabled" content="true">
 <script src="/assets/privacy-controls.v2.js"></script>
-<script src="/assets/meta-pixel.v3.js"></script>
+<script src="/assets/meta-pixel.v4.js"></script>
 <link rel="stylesheet" href="/assets/privacy-footer.v2.css">
 <meta charset="UTF-8">
 <title>Join The Collective | Downtown Pour Collective</title>
@@ -1242,7 +1242,7 @@ window.DPC_JOIN = {
       hex.slice(16, 20) + '-' + hex.slice(20);
   }
 
-  function handoffToCheckout(url, flowId) {
+  function handoffToCheckout(url, flowId, plan) {
     var departed = false;
     var stalled = false;
     var stallTimer;
@@ -1260,7 +1260,7 @@ window.DPC_JOIN = {
       setError('Checkout did not open automatically. Tap “Open Secure Checkout” to continue.');
     }
 
-    track('join_checkout_ready', detail);
+    track('join_checkout_ready', detail, plan);
     window.addEventListener('beforeunload', markDeparted, { once: true });
     window.addEventListener('pagehide', markDeparted, { once: true });
     document.addEventListener('visibilitychange', function () {
@@ -1290,7 +1290,7 @@ window.DPC_JOIN = {
     }
   }
 
-  function track(event, params) {
+  function track(event, params, metaPlan) {
     // Neither analytics provider may interrupt validation or checkout navigation.
     try {
       if (window.DPCAnalytics && typeof window.DPCAnalytics.track === 'function') {
@@ -1300,7 +1300,7 @@ window.DPC_JOIN = {
     try {
       if (window.DPCMetaPixel && typeof window.DPCMetaPixel.track === 'function') {
         if (event === 'join_checkout_click') window.DPCMetaPixel.track('JoinCheckoutClick');
-        if (event === 'join_checkout_ready') window.DPCMetaPixel.track('InitiateCheckout');
+        if (event === 'join_checkout_ready') window.DPCMetaPixel.track('InitiateCheckout', metaPlan);
       }
     } catch (e) {}
   }
@@ -1533,7 +1533,9 @@ window.DPC_JOIN = {
         var url = body.data && body.data.checkout_url;
 
         if (result.status === 200 && body.success && url) {
-          handoffToCheckout(url, flowId);
+          // Use the submitted plan even if the radios changed during the request.
+          handoffToCheckout(url, flowId, offer === 'standard'
+            ? { circle: circle, billingInterval: billingInterval } : null);
           return;
         }
 

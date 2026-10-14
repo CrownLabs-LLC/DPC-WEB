@@ -156,10 +156,10 @@ check('all public pages expose a static opt-out link and load controls before an
     const analytics = html.search(/src="assets\/analytics(?:\.v2)?\.js/);
     if (analytics !== -1) assert.ok(html.indexOf('privacy-controls.v2.js') < analytics);
     if (pixelPages.has(file)) {
-      assert.match(html, /<script src="\/assets\/meta-pixel\.v3\.js"><\/script>/);
-      assert.ok(html.indexOf('privacy-controls.v2.js') < html.indexOf('meta-pixel.v3.js'));
+      assert.match(html, /<script src="\/assets\/meta-pixel\.v4\.js"><\/script>/);
+      assert.ok(html.indexOf('privacy-controls.v2.js') < html.indexOf('meta-pixel.v4.js'));
     } else {
-      assert.doesNotMatch(html, /meta-pixel\.v3\.js/);
+      assert.doesNotMatch(html, /meta-pixel\.v4\.js/);
       if (file !== 'privacy-choices.html') assert.doesNotMatch(html, /dpc-advertising-enabled/);
     }
     assert.doesNotMatch(html, /connect\.facebook\.net|facebook\.com\/tr[?]|fbq\s*\(/);

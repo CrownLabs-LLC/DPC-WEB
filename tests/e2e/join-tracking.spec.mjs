@@ -1,6 +1,8 @@
 import { test, expect } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 
+const VIEW = ['track', 'ViewContent', { content_name: 'membership' }];
+const CHECKOUT = ['track', 'InitiateCheckout', { content_name: 'tap_monthly', value: 59, currency: 'USD' }];
 const origin = 'https://www.downtownpourcollective.com';
 const checkout = 'https://ebiuspbgzggrdiaswpcc.supabase.co/functions/v1/circle-checkout';
 const checkoutUrl = 'https://checkout.stripe.test/tracking-fixture';
@@ -9,12 +11,12 @@ const files = {
   '/join': ['join.html', 'text/html'],
   '/assets/privacy-controls.v2.js': ['assets/privacy-controls.v2.js', 'application/javascript'],
   '/assets/privacy-footer.v2.css': ['assets/privacy-footer.v2.css', 'text/css'],
-  '/assets/meta-pixel.v3.js': ['assets/meta-pixel.v3.js', 'application/javascript'],
+  '/assets/meta-pixel.v4.js': ['assets/meta-pixel.v4.js', 'application/javascript'],
   '/assets/analytics.v2.js': ['assets/analytics.v2.js', 'application/javascript'],
   '/assets/join-diagnostics.js': ['assets/join-diagnostics.js', 'application/javascript'],
 };
 
-async function fixture(page, context, { failure = false, privacy = null } = {}) {
+async function fixture(page, context, { failure = false, privacy = null, search = '', checkoutGate = null } = {}) {
   const events = [], sdkRequests = [], checkoutRequests = [];
   // WebKit's request inspector omits Blob beacon bodies. Observe the same Blob
   // before delegating to the native API, without replacing its send behavior.
@@ -47,6 +49,7 @@ async function fixture(page, context, { failure = false, privacy = null } = {}) 
     }
     if (url.href === checkout) {
       checkoutRequests.push(route.request().postDataJSON());
+      if (checkoutGate) await checkoutGate;
       return route.fulfill({ status: failure ? 503 : 200, contentType: 'application/json', body: JSON.stringify(failure
         ? { success: false, error: { code: 'CHECKOUT_NOT_ENABLED' } }
         : { success: true, data: { checkout_url: checkoutUrl } }) });
@@ -58,7 +61,7 @@ async function fixture(page, context, { failure = false, privacy = null } = {}) 
     if (signal === 'GPC') Object.defineProperty(navigator, 'globalPrivacyControl', { value: true });
     else localStorage.setItem('dpc_advertising_opt_out', '1');
   }, privacy);
-  await page.goto(origin + '/join');
+  await page.goto(origin + '/join' + search);
   await expect(page.locator('#submit-btn')).toBeEnabled();
   await expect(page.locator('#turnstile-slot')).toHaveAttribute('data-solved', 'true');
   // Use the established navigation seam; the real handoff and events still run.
@@ -86,7 +89,7 @@ test('button intent precedes validation; only successful checkout creates Initia
   expect(f.checkoutRequests).toHaveLength(0);
   expect(f.events.some(e => e.event === 'join_submit')).toBe(false);
   await expect.poll(() => metaEvents(page)).toEqual([
-    ['track', 'PageView'], ['trackCustom', 'JoinCheckoutClick']
+    ['track', 'PageView'], VIEW, ['trackCustom', 'JoinCheckoutClick']
   ]);
   await fillValidForm(page);
   await page.locator('#submit-btn').press('Enter');
@@ -95,7 +98,7 @@ test('button intent precedes validation; only successful checkout creates Initia
     'join_checkout_click', 'join_checkout_click', 'join_submit', 'join_checkout_ready'
   ]);
   await expect.poll(() => metaEvents(page)).toEqual([
-    ['track', 'PageView'], ['trackCustom', 'JoinCheckoutClick'], ['track', 'InitiateCheckout']
+    ['track', 'PageView'], VIEW, ['trackCustom', 'JoinCheckoutClick'], CHECKOUT
   ]);
   expect(f.checkoutRequests).toHaveLength(1);
   expect(await page.evaluate(() => window.fixtureCheckoutUrl)).toBe(checkoutUrl);
@@ -134,4 +137,44 @@ test('analytics exceptions never block checkout', async ({ page, context }) => {
   await page.locator('#submit-btn').click();
   await expect(page.locator('#checkout-fallback')).toHaveAttribute('href', checkoutUrl);
   expect(f.checkoutRequests).toHaveLength(1);
+});
+
+for (const [circle, monthly, annual] of [['tap', 59, 590], ['cellar', 69, 690], ['reserve', 79, 790]]) {
+  for (const [billing, value] of [['monthly', monthly], ['annual', annual]]) {
+    test(`${circle} ${billing} preselection sends one content view and the checkout catalog price`, async ({ page, context }) => {
+      const f = await fixture(page, context, { search: `?circle=${circle}&billing=${billing}&email=private%40example.invalid` });
+      await expect.poll(() => metaEvents(page)).toEqual([
+        ['track', 'PageView'], ['track', 'ViewContent', { content_name: 'membership', content_category: circle }]
+      ]);
+      expect(new URL(page.url()).search).toBe('');
+      await expect(page.locator('input[name="legal"]')).not.toBeChecked();
+      await page.locator('#firstName').fill('Fixture');
+      await page.locator('#lastName').fill('Visitor');
+      await page.locator('#email').fill('fixture@example.invalid');
+      await page.locator('label.check').click();
+      await page.locator('#submit-btn').click();
+      await expect(page.locator('#checkout-fallback')).toHaveAttribute('href', checkoutUrl);
+      await expect.poll(() => metaEvents(page)).toEqual([
+        ['track', 'PageView'], ['track', 'ViewContent', { content_name: 'membership', content_category: circle }],
+        ['trackCustom', 'JoinCheckoutClick'], ['track', 'InitiateCheckout', { content_name: `${circle}_${billing}`, value, currency: 'USD' }]
+      ]);
+      expect(f.checkoutRequests[0]).toMatchObject({ circle, billingInterval: billing });
+      expect(JSON.stringify(await metaEvents(page))).not.toMatch(/Fixture|Visitor|private|example|session|token/);
+    });
+  }
+}
+
+test('checkout event keeps the submitted plan while a pending request lets the member change selection', async ({ page, context }) => {
+  let release;
+  const checkoutGate = new Promise(resolve => { release = resolve; });
+  const f = await fixture(page, context, { checkoutGate });
+  try {
+    await fillValidForm(page);
+    await page.locator('#submit-btn').click();
+    await expect.poll(() => f.checkoutRequests.length).toBe(1);
+    await page.getByText('Reserve', { exact: true }).click();
+    await page.getByText('Annual', { exact: true }).click();
+  } finally { release(); }
+  await expect(page.locator('#checkout-fallback')).toHaveAttribute('href', checkoutUrl);
+  await expect.poll(async () => (await metaEvents(page)).filter(call => call[1] === 'InitiateCheckout')).toEqual([CHECKOUT]);
 });

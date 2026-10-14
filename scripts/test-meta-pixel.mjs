@@ -2,14 +2,17 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 
-const source = readFileSync(new URL('../assets/meta-pixel.v3.js', import.meta.url), 'utf8');
+const source = readFileSync(new URL('../assets/meta-pixel.v4.js', import.meta.url), 'utf8');
+const VIEW = ['track', 'ViewContent', { content_name: 'membership' }];
+const PLAN = { circle: 'tap', billingInterval: 'monthly' };
+const CHECKOUT = ['track', 'InitiateCheckout', { content_name: 'tap_monthly', value: 59, currency: 'USD' }];
 const PIXEL_ID = '28569583012647858';
 let checks = 0;
 function check(name, run) { run(); checks++; console.log('PASS:', name); }
 
 function browser({
   path = '/', search = '', hash = '', referrer = '', privacyAllowed = false,
-  origin = 'https://www.downtownpourcollective.com', readyState = 'complete', scrubThrows = false
+  origin = 'https://www.downtownpourcollective.com', readyState = 'complete', scrubThrows = false, selectedCircle = ''
 } = {}) {
   const listeners = {};
   const inserted = [];
@@ -42,6 +45,7 @@ function browser({
     readyState,
     title: 'DPC',
     referrer,
+    querySelector() { return selectedCircle ? { value: selectedCircle } : null; },
     createElement(tag) { return { tag }; },
     getElementsByTagName(tag) { return tag === 'script' ? [firstScript] : []; },
     addEventListener(type, listener) { listeners[type] = listener; }
@@ -74,7 +78,7 @@ check('enabled path requests the exact SDK without advanced matching and emits P
     ['init', PIXEL_ID]
   ]);
   b.inserted[0].onload();
-  assert.deepEqual(queuedCalls(b).filter(call => call[0] === 'track'), [['track', 'PageView']]);
+  assert.deepEqual(queuedCalls(b).filter(call => call[0] === 'track'), [['track', 'PageView'], VIEW]);
   assert.equal(b.window.DPCMetaPixel.track('PageView'), false);
   assert.equal(b.window.DPCMetaPixel.track('Purchase'), false);
 });
@@ -111,7 +115,7 @@ check('validated Meta click IDs and numeric campaign tags survive the SDK bounda
   assert.equal(b.location.search, retained);
   assert.equal(b.location.hash, '');
   b.inserted[0].onload();
-  assert.deepEqual(queuedCalls(b).filter(call => call[0] === 'track'), [['track', 'PageView']]);
+  assert.deepEqual(queuedCalls(b).filter(call => call[0] === 'track'), [['track', 'PageView'], VIEW]);
 });
 
 check('duplicate, malformed, free-text and oversized attribution values are discarded', () => {
@@ -212,19 +216,19 @@ check('source contains no noscript beacon, customer data, purchase event or CAPI
   assert.doesNotMatch(source, /<noscript|facebook\.com\/tr|fetch\s*\(|sendBeacon/i);
   assert.doesNotMatch(source, /fbq\(['"]track['"],\s*['"](?:Purchase|Subscribe|Lead|CompleteRegistration)['"]/);
   assert.doesNotMatch(source, /fbq\(['"]init['"],\s*PIXEL_ID\s*,/);
-  assert.match(source, /ALLOWED_EVENTS = Object\.freeze\(\['PageView', 'JoinCheckoutClick', 'InitiateCheckout'\]\)/);
+  assert.match(source, /ALLOWED_EVENTS = Object\.freeze\(\['PageView', 'ViewContent', 'JoinCheckoutClick', 'InitiateCheckout'\]\)/);
 });
 
-check('join intent uses a custom event; checkout start uses the standard event without form values', () => {
+check('join intent uses a custom event; checkout start derives standard price without personal form values', () => {
   const b = browser({ path: '/join', privacyAllowed: true });
   b.inserted[0].onload();
   assert.equal(b.window.DPCMetaPixel.track('JoinCheckoutClick', { email: 'private@example.invalid' }), true);
-  assert.equal(b.window.DPCMetaPixel.track('InitiateCheckout', { value: 79 }), true);
+  assert.equal(b.window.DPCMetaPixel.track('InitiateCheckout', { ...PLAN, value: 999, email: 'private@example.invalid' }), true);
   assert.deepEqual(queuedCalls(b).filter(call => /^track/.test(call[0])), [
-    ['track', 'PageView'], ['trackCustom', 'JoinCheckoutClick'], ['track', 'InitiateCheckout']
+    ['track', 'PageView'], VIEW, ['trackCustom', 'JoinCheckoutClick'], CHECKOUT
   ]);
   assert.equal(b.window.DPCMetaPixel.track('JoinCheckoutClick'), false);
-  assert.equal(b.window.DPCMetaPixel.track('InitiateCheckout'), false);
+  assert.equal(b.window.DPCMetaPixel.track('InitiateCheckout', PLAN), false);
   assert.equal(b.window.DPCMetaPixel.track('Purchase'), false);
 });
 
@@ -233,34 +237,34 @@ check('checkout events cannot fire on the homepage, return page or excluded path
     const b = browser({ path, privacyAllowed: true });
     if (b.inserted[0]) b.inserted[0].onload();
     for (const event of ['JoinCheckoutClick', 'InitiateCheckout']) {
-      assert.equal(b.window.DPCMetaPixel.track(event), false, path);
+      assert.equal(b.window.DPCMetaPixel.track(event, PLAN), false, path);
     }
   }
 });
 
-check('slow SDK buffers only bounded event names locally, then flushes in funnel order', () => {
+check('slow SDK buffers only bounded catalog selections locally, then flushes in funnel order', () => {
   const b = browser({ path: '/join', privacyAllowed: true });
   for (const event of ['JoinCheckoutClick', 'InitiateCheckout']) {
-    assert.equal(b.window.DPCMetaPixel.track(event), true);
-    assert.equal(b.window.DPCMetaPixel.track(event), false);
+    assert.equal(b.window.DPCMetaPixel.track(event, PLAN), true);
+    assert.equal(b.window.DPCMetaPixel.track(event, PLAN), false);
   }
   assert.equal(queuedCalls(b).filter(call => /^track/.test(call[0])).length, 0);
   b.inserted[0].onload();
   b.inserted[0].onload();
   assert.deepEqual(queuedCalls(b).filter(call => /^track/.test(call[0])), [
-    ['track', 'PageView'], ['trackCustom', 'JoinCheckoutClick'], ['track', 'InitiateCheckout']
+    ['track', 'PageView'], VIEW, ['trackCustom', 'JoinCheckoutClick'], CHECKOUT
   ]);
 });
 
 check('opt-out during SDK loading discards pending checkout events and never rearms', () => {
   const b = browser({ path: '/join', privacyAllowed: true });
   b.window.DPCMetaPixel.track('JoinCheckoutClick');
-  b.window.DPCMetaPixel.track('InitiateCheckout');
+  b.window.DPCMetaPixel.track('InitiateCheckout', PLAN);
   b.window.DPCPrivacy.canLoadAdvertising = () => false;
   b.listeners['dpc:privacy-change']();
   b.window.DPCPrivacy.canLoadAdvertising = () => true;
   b.inserted[0].onload();
-  assert.equal(b.window.DPCMetaPixel.track('InitiateCheckout'), false);
+  assert.equal(b.window.DPCMetaPixel.track('InitiateCheckout', PLAN), false);
   assert.equal(queuedCalls(b).filter(call => /^track/.test(call[0])).length, 0);
 });
 
@@ -268,7 +272,7 @@ check('checkout events fail closed for privacy, unsafe URLs, script failure and 
   for (const options of [{ privacyAllowed: false }, { privacyAllowed: true, referrer: 'https://example.com/private' }]) {
     const b = browser({ path: '/join', ...options });
     assert.equal(b.window.DPCMetaPixel.track('JoinCheckoutClick'), false);
-    assert.equal(b.window.DPCMetaPixel.track('InitiateCheckout'), false);
+    assert.equal(b.window.DPCMetaPixel.track('InitiateCheckout', PLAN), false);
   }
   for (const event of ['error', 'restore']) {
     const b = browser({ path: '/join', privacyAllowed: true });
@@ -276,9 +280,59 @@ check('checkout events fail closed for privacy, unsafe URLs, script failure and 
     if (event === 'error') b.inserted[0].onerror();
     else b.listeners.pageshow({ persisted: true });
     b.inserted[0].onload();
-    assert.equal(b.window.DPCMetaPixel.track('InitiateCheckout'), false);
+    assert.equal(b.window.DPCMetaPixel.track('InitiateCheckout', PLAN), false);
     assert.equal(queuedCalls(b).filter(call => /^track/.test(call[0])).length, 0);
   }
+});
+
+
+check('ViewContent snapshots only an allowed displayed Circle', () => {
+  for (const circle of ['tap', 'cellar', 'reserve', 'private@example.invalid', '__proto__']) {
+    const b = browser({ path: '/join', privacyAllowed: true, selectedCircle: circle });
+    b.inserted[0].onload();
+    const params = { content_name: 'membership' };
+    if (['tap', 'cellar', 'reserve'].includes(circle)) params.content_category = circle;
+    assert.deepEqual(queuedCalls(b).filter(call => call[1] === 'ViewContent'), [['track', 'ViewContent', params]]);
+    assert.equal(b.window.DPCMetaPixel.track('ViewContent', { circle: 'reserve' }), false);
+  }
+});
+
+check('all six checkout selections report catalog amount and USD, ignoring caller-supplied fields', () => {
+  for (const [circle, monthly, annual] of [['tap', 59, 590], ['cellar', 69, 690], ['reserve', 79, 790]]) {
+    for (const [billingInterval, value] of [['monthly', monthly], ['annual', annual]]) {
+      const b = browser({ path: '/join', privacyAllowed: true });
+      b.inserted[0].onload();
+      assert.equal(b.window.DPCMetaPixel.track('InitiateCheckout', {
+        circle, billingInterval, value: 999, currency: 'EUR', email: 'private@example.invalid',
+        content_name: 'private', checkout_url: 'https://checkout.stripe.com/private'
+      }), true);
+      assert.deepEqual(queuedCalls(b).filter(call => call[1] === 'InitiateCheckout'), [
+        ['track', 'InitiateCheckout', { content_name: circle + '_' + billingInterval, value, currency: 'USD' }]
+      ]);
+    }
+  }
+});
+
+check('missing or malformed plans cannot consume checkout event deduplication', () => {
+  const b = browser({ path: '/join', privacyAllowed: true });
+  b.inserted[0].onload();
+  for (const input of [null, {}, { circle: 'tap' }, { circle: '__proto__', billingInterval: 'monthly' },
+    { circle: 'reserve', billingInterval: 'constructor' }, { circle: 'Tap', billingInterval: 'monthly' },
+    { circle: ['tap'], billingInterval: 'monthly' }, { circle: 'tap', billingInterval: ['monthly'] }]) {
+    assert.equal(b.window.DPCMetaPixel.track('InitiateCheckout', input), false);
+  }
+  assert.equal(b.window.DPCMetaPixel.track('InitiateCheckout', PLAN), true);
+});
+
+check('slow SDK retains an immutable copy of approved choices and discards extras', () => {
+  const b = browser({ path: '/join', privacyAllowed: true, selectedCircle: 'cellar' });
+  const input = { ...PLAN, email: 'private@example.invalid' };
+  assert.equal(b.window.DPCMetaPixel.track('InitiateCheckout', input), true);
+  input.circle = 'reserve';
+  input.billingInterval = 'annual';
+  b.inserted[0].onload();
+  assert.deepEqual(queuedCalls(b).filter(call => call[1] === 'InitiateCheckout'), [CHECKOUT]);
+  assert.doesNotMatch(JSON.stringify(queuedCalls(b)), /private|example|email/);
 });
 
 console.log('\n' + checks + ' Meta Pixel checks passed.');
