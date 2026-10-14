@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en-US">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<meta name="referrer" content="no-referrer">
+<title>Manage Pour reminders | Downtown Pour Collective</title>
+<script id="preference-bootstrap">
+(function () {
+  'use strict';
+  // Read only the opaque fragment, then remove it before loading any assets.
+  // Neither query parameters nor browser storage can authorize a preference.
+  function takeToken() {
+    let value = /^#token=(r1\.[A-Za-z0-9_-]{1,40}\.[A-Za-z0-9_-]{16}\.[A-Za-z0-9_-]+)$/.exec(window.location.hash)?.[1] || '';
+    if (value.length > 2048) value = '';
+    try { window.history.replaceState(null, '', window.location.pathname); }
+    catch { value = ''; }
+    return value;
+  }
+  let token = takeToken();
+
+  document.addEventListener('DOMContentLoaded', function () {
+    const form = document.getElementById('preference-form');
+    const fieldset = document.getElementById('choices');
+    const current = document.getElementById('current');
+    const status = document.getElementById('status');
+    const error = document.getElementById('error');
+    const retry = document.getElementById('retry');
+    const save = document.getElementById('save');
+    const on = document.getElementById('reminders-on');
+    const off = document.getElementById('reminders-off');
+    let apiUrl = '';
+    let state = null;
+    let busy = false;
+    let retryAction = null;
+    let revision = 0;
+
+    function notice(message, problem = false) {
+      status.textContent = problem ? '' : message;
+      error.textContent = problem ? message : '';
+    }
+    function unavailable() {
+      form.hidden = true;
+      retry.hidden = true;
+      notice('Pour reminder preferences are temporarily unavailable. Please try your email link again later.', true);
+    }
+    function invalidLink() {
+      token = '';
+      form.hidden = true;
+      retry.hidden = true;
+      notice('This link is unavailable or has expired. Open the link in your latest Pour reminder email, or contact support.', true);
+    }
+    function updateSave() {
+      const choice = on.checked ? 'enabled' : off.checked ? 'disabled' : null;
+      save.disabled = busy || !choice || choice === state?.state;
+    }
+    function showPreference(value) {
+      state = value;
+      current.textContent = value.state === 'enabled' ? 'Pour reminders are on.'
+        : value.state === 'disabled' ? 'Pour reminders are off.' : 'No reminder preference is saved.';
+      on.checked = value.state === 'enabled';
+      off.checked = value.state === 'disabled';
+      form.hidden = false;
+      fieldset.disabled = false;
+      retry.hidden = true;
+      updateSave();
+    }
+    async function request(url, options = {}) {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 10000);
+      try {
+        const response = await fetch(url, { ...options, signal: controller.signal,
+          credentials: 'omit', cache: 'no-store', referrerPolicy: 'no-referrer', redirect: 'error' });
+        const value = await response.json();
+        return { response, value };
+      } finally { clearTimeout(timeout); }
+    }
+    async function preference(action, extra = {}) {
+      return request(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, action, ...extra }) });
+    }
+    function validState(value) {
+      return value && ['enabled', 'disabled', 'unknown'].includes(value.state) &&
+        Number.isSafeInteger(value.version) && value.version >= 0;
+    }
+    function offerRead(message) {
+      form.hidden = true;
+      notice(message, true);
+      retry.textContent = 'Check preference';
+      retryAction = readPreference;
+      retry.hidden = false;
+    }
+    async function readPreference() {
+      if (busy) return;
+      const activeRevision = revision;
+      busy = true;
+      form.hidden = true;
+      retry.hidden = true;
+      notice('Checking your preference…');
+      try {
+        const { response, value } = await preference('read');
+        if (activeRevision !== revision) return;
+        if (response.ok && validState(value)) { showPreference(value); notice(''); }
+        else if (response.status === 400 || response.status === 403) invalidLink();
+        else offerRead('We could not load your preference. Please try again.');
+      } catch { if (activeRevision === revision) offerRead('We could not connect. Check your connection and try again.'); }
+      finally { if (activeRevision === revision) { busy = false; updateSave(); } }
+    }
+    async function start() {
+      if (busy) return;
+      const activeRevision = revision;
+      busy = true;
+      retry.hidden = true;
+      notice('Checking availability…');
+      try {
+        const { response, value } = await request('/api/email-preferences-config');
+        if (activeRevision !== revision) return;
+        const allowed = [
+          'https://ebiuspbgzggrdiaswpcc.supabase.co/functions/v1/pour-reminder-preferences',
+          'https://hohbsqkmrlhkstojfdgx.supabase.co/functions/v1/pour-reminder-preferences',
+        ];
+        if (!response.ok || value?.enabled !== true || !allowed.includes(value.apiUrl)) { unavailable(); return; }
+        apiUrl = value.apiUrl;
+        if (!token) { invalidLink(); return; }
+      } catch { if (activeRevision === revision) unavailable(); return; }
+      finally { if (activeRevision === revision) busy = false; }
+      await readPreference();
+    }
+    form.addEventListener('change', updateSave);
+    form.addEventListener('submit', async function (event) {
+      event.preventDefault();
+      if (busy || save.disabled || !state) return;
+      const activeRevision = revision;
+      busy = true;
+      fieldset.disabled = true;
+      save.disabled = true;
+      notice('Saving your preference…');
+      const action = on.checked ? 'enable' : 'disable';
+      try {
+        const { response, value } = await preference(action, { requestId: crypto.randomUUID(), version: state.version });
+        if (activeRevision !== revision) return;
+        if (response.ok && validState(value) && value.state !== 'unknown') {
+          showPreference(value);
+          notice(value.state === 'enabled' ? 'Saved. Pour reminders are on.' : 'Saved. Pour reminders are off.');
+        } else if (response.status === 400 || response.status === 403) invalidLink();
+        else if (response.status === 409) offerRead('Your preference changed since this page loaded. Check it again before making another change.');
+        else offerRead('We could not confirm your change. Check your preference before trying again.');
+      } catch { if (activeRevision === revision) offerRead('We could not confirm your change. Check your connection, then check your preference.'); }
+      finally { if (activeRevision === revision) { busy = false; updateSave(); } }
+    });
+    retry.addEventListener('click', () => { if (!busy && retryAction) retryAction(); });
+    // A restored page must re-read state before offering another explicit save.
+    window.addEventListener('pageshow', event => { if (event.persisted && token && apiUrl) readPreference(); });
+    // Opening a second email link in the same tab can be a fragment-only
+    // navigation. Scrub it too and fence responses from the previous link.
+    window.addEventListener('hashchange', () => {
+      revision++;
+      token = takeToken();
+      state = null;
+      apiUrl = '';
+      busy = false;
+      form.hidden = true;
+      start();
+    });
+    start();
+  }, { once: true });
+})();
+</script>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/assets/glass-fonts.v1.css">
+<link rel="stylesheet" href="/assets/email-preferences.v1.css">
+</head>
+<body>
+<!-- THESIS: A member reviews one email choice and deliberately saves it.
+OWN-WORLD: Existing DPC navy, cream, aged gold, Playfair headings and Barlow body; flat rules and generous controls.
+STORY: Read the saved state, choose on or off, save, and receive a clear result.
+FIRST VIEWPORT: Small brand header; narrow left-aligned heading and explanation; one form with two large radio rows and a gold save button; essential-email note below.
+FORM: Precisely scoped utility-page extension of DPC-WEB; code-led, no new visual world or concept seed.
+FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, and DESIGN.md -->
+<header class="top"><a href="/">Downtown Pour Collective</a></header>
+<main>
+  <h1>Manage Pour reminders</h1>
+  <p class="intro">Choose whether to receive emails before your unused Membership Pours expire. This choice applies across all your Circles.</p>
+  <p id="status" class="notice" role="status" aria-live="polite" aria-atomic="true">Pour reminder preferences have not loaded. Enable JavaScript and reopen your email link, or contact support.</p>
+  <p id="error" class="notice" role="alert"></p>
+  <button id="retry" type="button" hidden>Check preference</button>
+  <form id="preference-form" class="preference" hidden>
+    <p id="current" class="current"></p>
+    <fieldset id="choices" aria-describedby="essential-note">
+      <legend>Email me Pour reminders</legend>
+      <label class="choice" for="reminders-on"><input id="reminders-on" name="reminder-choice" type="radio" value="enabled"><span>On<small>Remind me before my Pours expire.</small></span></label>
+      <label class="choice" for="reminders-off"><input id="reminders-off" name="reminder-choice" type="radio" value="disabled"><span>Off<small>Do not send me Pour reminder emails.</small></span></label>
+    </fieldset>
+    <button id="save" class="save" type="submit" disabled>Save preference</button>
+  </form>
+  <p id="essential-note" class="essential">You will still receive sign-in codes, redemption receipts, and other essential account emails.</p>
+  <p class="help">Need help? <a href="/support">Contact DPC support</a>.</p>
+</main>
+<footer><div class="footer-inner"><a href="/privacy">Privacy Policy</a><a href="/terms">Terms of Service</a><a href="/privacy-choices">Do Not Sell or Share My Personal Information</a></div></footer>
+</body>
+</html>

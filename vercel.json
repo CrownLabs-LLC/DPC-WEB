@@ -21,6 +21,56 @@
   ],
   "headers": [
     {
+      "source": "/email-preferences.html",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "no-referrer"
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow, noarchive"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'none'; script-src 'sha256-rMlra0uk+grNbe3qT1B7ru1qSQqfZ3o38+5i9OVUv0I='; style-src 'self'; img-src 'self'; font-src 'self'; connect-src 'self' https://ebiuspbgzggrdiaswpcc.supabase.co/functions/v1/pour-reminder-preferences https://hohbsqkmrlhkstojfdgx.supabase.co/functions/v1/pour-reminder-preferences; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+        }
+      ]
+    },
+    {
+      "source": "/email-preferences",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "no-referrer"
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow, noarchive"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'none'; script-src 'sha256-rMlra0uk+grNbe3qT1B7ru1qSQqfZ3o38+5i9OVUv0I='; style-src 'self'; img-src 'self'; font-src 'self'; connect-src 'self' https://ebiuspbgzggrdiaswpcc.supabase.co/functions/v1/pour-reminder-preferences https://hohbsqkmrlhkstojfdgx.supabase.co/functions/v1/pour-reminder-preferences; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+        }
+      ]
+    },
+    {
       "source": "/glass-comes-back/(.*)",
       "headers": [
         { "key": "Cache-Control", "value": "no-store" },
