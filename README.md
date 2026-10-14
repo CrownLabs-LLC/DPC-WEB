@@ -10,6 +10,7 @@ supporting pages, deployed to Vercel.
 | `/privacy` | `privacy.html` | Privacy Policy |
 | `/terms` | `terms.html` | Terms of Service |
 | `/depositor-confirmation` | `depositor-confirmation.html` | Private historical-depositor conversion (noindex; token in scrubbed URL fragment) |
+| `/email-preferences` | `email-preferences.html` | Signed-link Pour reminder preference controls (noindex, default unavailable) |
 | `/reserved-confirmation` | `reserved-confirmation.html` | Post-deposit confirmation (noindex) |
 | `/stripe-connect/refresh` | `stripe-connect/refresh.html` | Stripe Connect Account Link expired/invalid (noindex) |
 | `/stripe-connect/return` | `stripe-connect/return.html` | Stripe Connect Account Link return (noindex) |
@@ -64,6 +65,10 @@ DNS, Vercel).
 Production deploys through Vercel's Git integration when a reviewed change is
 merged to GitHub `main`. The repository does not support uploading a local
 checkout to production; use pull-request previews for pre-merge verification.
+
+The signed-link reminder page has a separate default-off gate. See
+[`docs/email-preferences-release.md`](docs/email-preferences-release.md) for its
+API contract, staging proof and distinct production approval requirements.
 
 ## Source of truth
 The handoff brief that produced these files is preserved in
