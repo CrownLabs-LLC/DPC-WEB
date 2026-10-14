@@ -74,10 +74,16 @@ async function fillDetails(page) {
 
 for (const circle of CIRCLES) {
   for (const interval of ['monthly', 'annual']) {
-    for (const entry of ['form', 'pricing link']) {
+    for (const entry of ['form', 'pricing link', 'homepage']) {
       test(`${circle.key} ${interval} via ${entry} starts at membership only and hands off the selected plan`, async ({ page, context, baseURL }, testInfo) => {
         const submissions = await setup(page, context, baseURL);
-        await page.goto(entry === 'pricing link' ? `/join?circle=${circle.key}&billing=${interval}` : '/join');
+        if (entry === 'homepage') {
+          await page.goto('/');
+          await page.getByRole('link', { name: `Join ${interval}: ${circle.key.charAt(0).toUpperCase() + circle.key.slice(1)} Circle`, exact: true }).click();
+          await expect(page).toHaveURL(new URL(`/join?circle=${circle.key}&billing=${interval}`, baseURL).href);
+        } else {
+          await page.goto(entry === 'pricing link' ? `/join?circle=${circle.key}&billing=${interval}` : '/join');
+        }
         if (entry === 'form') await choose(page, circle, interval);
         await expect(page.locator(`input[name="circle"][value="${circle.key}"]`)).toBeChecked();
         await expect(page.locator(`input[name="billingInterval"][value="${interval}"]`)).toBeChecked();
