@@ -137,10 +137,10 @@
     if (eventName === 'Purchase') {
       if (!circle || BILLING.indexOf(input.billingInterval) === -1 || input.livemode !== true
         || input.status !== 'paid' || input.currency !== 'usd'
-        || typeof input.sessionId !== 'string' || !/^cs_live_[A-Za-z0-9]{20,240}$/.test(input.sessionId)
+        || typeof input.eventId !== 'string' || !/^(?!cs_(?:live|test)_)[A-Za-z0-9_-]{43}$/.test(input.eventId)
         || !Number.isSafeInteger(input.amountPaid) || input.amountPaid < 0 || input.amountPaid > 99999999) return null;
       return { circle: circle, billingInterval: input.billingInterval, amountPaid: input.amountPaid,
-        currency: 'usd', status: 'paid', livemode: true, sessionId: input.sessionId };
+        currency: 'usd', status: 'paid', livemode: true, eventId: input.eventId };
     }
     if (eventName === 'ViewContent') return circle ? { circle: circle } : {};
     if (eventName === 'InitiateCheckout') {
@@ -185,7 +185,7 @@
       // Fail closed if the once-per-session guard cannot be read and persisted.
       // Mark only at actual SDK dispatch, never while queued or opted out.
       try {
-        var purchaseKey = 'dpc_purchase:' + selection.sessionId;
+        var purchaseKey = 'dpc_purchase:' + selection.eventId;
         if (window.sessionStorage.getItem(purchaseKey)) return false;
         window.sessionStorage.setItem(purchaseKey, '1');
         if (window.sessionStorage.getItem(purchaseKey) !== '1') return false;
@@ -193,7 +193,7 @@
     }
     tracked[key] = true;
     var params = eventParameters(eventName, selection);
-    if (eventName === 'Purchase') window.fbq('track', eventName, params, { eventID: selection.sessionId });
+    if (eventName === 'Purchase') window.fbq('track', eventName, params, { eventID: selection.eventId });
     else if (params) window.fbq('track', eventName, params);
     else window.fbq(eventName === 'JoinCheckoutClick' ? 'trackCustom' : 'track', eventName);
     return true;

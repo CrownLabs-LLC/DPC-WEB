@@ -44,6 +44,7 @@
         && data.currency === 'usd' && typeof data.livemode === 'boolean'
         && data.livemode === sessionId.startsWith('cs_live_')
         && typeof data.welcomeKit === 'boolean'
+        && typeof data.eventId === 'string' && /^(?!cs_(?:live|test)_)[A-Za-z0-9_-]{43}$/.test(data.eventId)
         && Number.isSafeInteger(data.amountPaid) && data.amountPaid >= 0 && data.amountPaid <= 99999999;
     }
     async function verify() {
@@ -70,7 +71,11 @@
           kit.hidden = !data.welcomeKit;
           // The paid summary came from the same-origin verifier, never the URL.
           // The pixel independently validates fields, privacy and deduplication.
-          if (window.DPCMetaPixel) window.DPCMetaPixel.track('Purchase', Object.assign({}, data, { sessionId: sessionId }));
+          if (window.DPCMetaPixel) window.DPCMetaPixel.track('Purchase', {
+            status: data.status, circle: data.circle, billingInterval: data.billingInterval,
+            amountPaid: data.amountPaid, currency: data.currency, livemode: data.livemode,
+            eventId: data.eventId
+          });
         } else throw new Error('unavailable');
       } catch (e) {
         show('We couldn’t confirm this checkout.', 'If you’ve already paid, check your confirmation email. You can try this check again or email us for help.', true);

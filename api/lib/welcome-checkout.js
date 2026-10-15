@@ -1,5 +1,7 @@
 // Read-only projection of a Stripe checkout. No membership/fulfillment writes.
 // Catalog source: DPC billing/circleCheckout.ts at 087532cc (2026-10-14).
+import { createHmac } from 'node:crypto';
+
 export const CATALOG = {
   live: {
     tap_monthly: ['price_1TwogWCtQ9S99QuEJ1dxL1IN', 'price_1TwogWCtQ9S99QuEqwo52ubO'],
@@ -27,7 +29,7 @@ export const SESSION_ID = /^cs_(live|test)_[A-Za-z0-9]{20,240}$/;
 const UUID = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const idOf = value => typeof value === 'string' ? value : value?.id;
 
-export function checkoutSummary(session, sessionId, live) {
+export function checkoutSummary(session, sessionId, live, eventIdSecret) {
   const metadata = session?.metadata || {};
   const { dpc_circle: circle, dpc_billing_interval: billingInterval, dpc_offer_type: offer } = metadata;
   if (!['tap', 'cellar', 'reserve'].includes(circle)
@@ -67,5 +69,7 @@ export function checkoutSummary(session, sessionId, live) {
   return {
     status: 'paid', circle, billingInterval, amountPaid: invoice.amount_paid,
     currency: 'usd', welcomeKit: prices.includes(catalog.kit), livemode: live,
+    // Meta receives this opaque deduplication ID, never the bearer reference.
+    eventId: createHmac('sha256', eventIdSecret).update(session.id).digest('base64url'),
   };
 }

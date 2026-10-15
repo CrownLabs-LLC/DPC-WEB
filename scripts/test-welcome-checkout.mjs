@@ -5,6 +5,9 @@ import { createWelcomeHandler } from '../api/welcome-checkout.js';
 import { CATALOG, checkoutSummary } from '../api/lib/welcome-checkout.js';
 
 const id = 'cs_live_' + 'a'.repeat(40);
+const eventIdSecret = 'welcome-event-test-secret-32-bytes-minimum';
+// Independently calculated with Python hmac/hashlib; UTF-8 key and message, no padding.
+const eventIds = { live: 'UKuoT8FuzSiSrKBcx6v_vZJoH9dTkZ30tMoEo-qqFmg', test: 'ZYIua0mzC_WEM9B80EKmgVoOHKJsOvKnRYifitln0B8' };
 const uuid = '01020304-1234-4567-8901-123456789012';
 const catalog = CATALOG.live;
 let checks = 0;
@@ -32,7 +35,7 @@ function response() {
   return { headers: {}, status(code) { this.code = code; return this; },
     setHeader(k, v) { this.headers[k] = v; }, json(value) { this.body = value; return this; } };
 }
-const env = { VERCEL_ENV: 'production', STRIPE_SECRET_KEY: 'rk_live_fixture' };
+const env = { VERCEL_ENV: 'production', STRIPE_SECRET_KEY: 'rk_live_fixture', WELCOME_EVENT_ID_SECRET: eventIdSecret };
 async function invoke({ req = request(), data = session(), environment = env, rateLimit = () => true, retrieve } = {}) {
   const res = response(); let reads = 0;
   await createWelcomeHandler({ env: environment, rateLimit,
@@ -43,14 +46,14 @@ async function invoke({ req = request(), data = session(), environment = env, ra
 await check('all twelve live/test Circle plans and founding offers produce only the public projection', () => {
   for (const live of [true, false]) for (const circle of ['tap', 'cellar', 'reserve']) for (const billing of ['monthly', 'annual']) for (const offer of ['standard', 'founding']) {
     const s = session({ live, circle, billing, offer });
-    assert.deepEqual(checkoutSummary(s, s.id, live), { status: 'paid', circle, billingInterval: billing,
-      amountPaid: 5900, currency: 'usd', welcomeKit: false, livemode: live });
+    assert.deepEqual(checkoutSummary(s, s.id, live, eventIdSecret), { status: 'paid', circle, billingInterval: billing,
+      amountPaid: 5900, currency: 'usd', welcomeKit: false, livemode: live, eventId: eventIds[live ? 'live' : 'test'] });
   }
 });
 await check('actual paid invoice includes kit and differs from catalog/Checkout totals after adjustments', () => {
   const s = session({ kit: true }); s.amount_total = 10800; s.invoice.amount_paid = 9850;
-  assert.equal(checkoutSummary(s, id, true).amountPaid, 9850);
-  assert.equal(checkoutSummary(s, id, true).welcomeKit, true);
+  assert.equal(checkoutSummary(s, id, true, eventIdSecret).amountPaid, 9850);
+  assert.equal(checkoutSummary(s, id, true, eventIdSecret).welcomeKit, true);
 });
 await check('the verifier rejects unrelated, unbound, wrong-mode and malformed Stripe objects', () => {
   const mutations = [
@@ -70,19 +73,20 @@ await check('the verifier rejects unrelated, unbound, wrong-mode and malformed S
     s => s.invoice.amount_paid = -1, s => s.invoice.amount_paid = 1.2, s => s.invoice.amount_paid = '5900',
     s => s.invoice.amount_paid = 100000000,
   ];
-  for (const mutate of mutations) { const s = session(); mutate(s); assert.equal(checkoutSummary(s, id, true), null, String(mutate)); }
+  for (const mutate of mutations) { const s = session(); mutate(s); assert.equal(checkoutSummary(s, id, true, eventIdSecret), null, String(mutate)); }
 });
 await check('open, unpaid and no-payment-required sessions never produce a Purchase summary', () => {
   for (const [status, payment_status] of [['open', 'unpaid'], ['expired', 'unpaid'], ['complete', 'unpaid'], ['complete', 'no_payment_required']]) {
     const s = session(); Object.assign(s, { status, payment_status });
-    assert.deepEqual(checkoutSummary(s, id, true), { status: 'pending' });
+    assert.deepEqual(checkoutSummary(s, id, true, eventIdSecret), { status: 'pending' });
   }
 });
-await check('endpoint returns no PII, IDs or raw Stripe data and forbids caches', async () => {
+await check('endpoint returns only an opaque event ID, no PII or raw Stripe data and forbids caches', async () => {
   const r = await invoke(); assert.equal(r.code, 200);
+  assert.equal(r.body.eventId, eventIds.live);
   assert.equal(r.headers['Cache-Control'], 'private, no-store');
   assert.equal(r.headers['Vercel-CDN-Cache-Control'], 'no-store');
-  assert.doesNotMatch(JSON.stringify(r.body), /private|customer|metadata|cs_live|sub_|in_fixture|01020304/);
+  assert.doesNotMatch(JSON.stringify(r.body), /private|customer|metadata|cs_(live|test)_|sub_|in_fixture|01020304/);
 });
 await check('method, origin, content type and strict body reject before Stripe access', async () => {
   const requests = [
@@ -97,9 +101,35 @@ await check('deployment/key/session modes fail closed and previews require test 
     const r = await invoke({ environment }); assert.equal(r.code, 503); assert.equal(r.reads, 0);
   }
   const s = session({ live: false });
-  const good = await invoke({ environment: { VERCEL_ENV: 'preview', STRIPE_SECRET_KEY: 'rk_test_fixture' }, req: request({ sessionId: s.id }), data: s });
+  const good = await invoke({ environment: { ...env, VERCEL_ENV: 'preview', STRIPE_SECRET_KEY: 'rk_test_fixture' }, req: request({ sessionId: s.id }), data: s });
   assert.equal(good.code, 200); assert.equal(good.body.livemode, false);
+  assert.equal(good.body.eventId, eventIds.test);
+  assert.doesNotMatch(JSON.stringify(good.body), /cs_(live|test)_/);
   assert.equal((await invoke({ req: request({ sessionId: s.id }) })).code, 404);
+});
+await check('event IDs are stable per session, distinct across sessions and keyed by the dedicated secret', async () => {
+  const first = await invoke(); const repeated = await invoke();
+  assert.equal(first.body.eventId, eventIds.live);
+  assert.equal(repeated.body.eventId, first.body.eventId);
+  const s = session(); s.id = 'cs_live_' + 'b'.repeat(40);
+  const second = await invoke({ req: request({ sessionId: s.id }), data: s });
+  assert.equal(second.code, 200); assert.match(second.body.eventId, /^[A-Za-z0-9_-]{43}$/);
+  assert.notEqual(second.body.eventId, first.body.eventId);
+  const changedKey = await invoke({ environment: { ...env, WELCOME_EVENT_ID_SECRET: 'a-different-dedicated-secret-for-this-test' } });
+  assert.notEqual(changedKey.body.eventId, first.body.eventId);
+  // An advertised event ID cannot be exchanged for the original checkout summary.
+  const lookup = await invoke({ req: request({ sessionId: first.body.eventId }) });
+  assert.equal(lookup.code, 400); assert.equal(lookup.reads, 0);
+});
+await check('missing or blank event secret fails closed with 503 before Stripe in production and preview', async () => {
+  for (const live of [true, false]) for (const secret of [undefined, '', '  \t\n']) {
+    const s = session({ live });
+    const environment = { VERCEL_ENV: live ? 'production' : 'preview',
+      STRIPE_SECRET_KEY: live ? 'rk_live_fixture' : 'rk_test_fixture', WELCOME_EVENT_ID_SECRET: secret };
+    const r = await invoke({ environment, req: request({ sessionId: s.id }), data: s });
+    assert.equal(r.code, 503); assert.equal(r.reads, 0);
+    assert.deepEqual(r.body, { status: 'unavailable' });
+  }
 });
 await check('rate limiting avoids provider calls and provider errors expose no sensitive messages', async () => {
   const limited = await invoke({ rateLimit: () => false });

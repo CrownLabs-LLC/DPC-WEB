@@ -39,6 +39,8 @@ export function createWelcomeHandler({ retrieve, rateLimit = allowed, env = proc
     const live = env.VERCEL_ENV === 'production';
     const key = env.STRIPE_SECRET_KEY || '';
     if (!(live ? /^(sk|rk)_live_/ : /^(sk|rk)_test_/).test(key)) return fail(503, 'unavailable');
+    const eventIdSecret = env.WELCOME_EVENT_ID_SECRET;
+    if (typeof eventIdSecret !== 'string' || !eventIdSecret.trim()) return fail(503, 'unavailable');
     if (!body.sessionId.startsWith(live ? 'cs_live_' : 'cs_test_')) return fail(404, 'unavailable');
     const ip = req.headers['x-vercel-forwarded-for'] || req.socket?.remoteAddress;
     if (!rateLimit(ip)) {
@@ -52,7 +54,7 @@ export function createWelcomeHandler({ retrieve, rateLimit = allowed, env = proc
       const session = await (retrieve || ((id) => stripe.checkout.sessions.retrieve(id, {
         expand: ['line_items', 'invoice'],
       })))(body.sessionId);
-      const summary = checkoutSummary(session, body.sessionId, live);
+      const summary = checkoutSummary(session, body.sessionId, live, eventIdSecret);
       return summary ? res.status(200).json(summary) : fail(404, 'unavailable');
     } catch (error) {
       return fail(error?.code === 'resource_missing' ? 404 : 503, 'unavailable');
