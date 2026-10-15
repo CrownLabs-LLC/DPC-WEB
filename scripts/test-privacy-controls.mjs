@@ -146,7 +146,7 @@ check('all public pages expose a static opt-out link and load controls before an
   const files = readdirSync(root).filter(f => f.endsWith('.html') && !['dashboard.html','google92d1118acab8f389.html'].includes(f));
   files.push('stripe-connect/return.html', 'stripe-connect/refresh.html');
   files.push(...readdirSync(new URL('glass-comes-back/', root)).filter(f => f.endsWith('.html')).map(f => 'glass-comes-back/' + f));
-  const pixelPages = new Set(['index.html', 'join.html', 'subscription-success.html']);
+  const pixelPages = new Set(['index.html', 'join.html', 'subscription-success.html', 'welcome.html']);
   for (const file of files) {
     const html = readFileSync(new URL(file, root), 'utf8');
     // Signed capability page has no advertising or analytics and must load no
@@ -163,8 +163,9 @@ check('all public pages expose a static opt-out link and load controls before an
     const analytics = html.search(/src="assets\/analytics(?:\.v2)?\.js/);
     if (analytics !== -1) assert.ok(html.indexOf('privacy-controls.v2.js') < analytics);
     if (pixelPages.has(file)) {
-      assert.match(html, /<script src="\/assets\/meta-pixel\.v4\.js"><\/script>/);
-      assert.ok(html.indexOf('privacy-controls.v2.js') < html.indexOf('meta-pixel.v4.js'));
+      const pixelFile = file === 'welcome.html' ? 'meta-pixel.v5.js' : 'meta-pixel.v4.js';
+      assert.ok(html.includes('<script src="/assets/' + pixelFile + '"></script>'));
+      assert.ok(html.indexOf('privacy-controls.v2.js') < html.indexOf(pixelFile));
     } else {
       assert.doesNotMatch(html, /meta-pixel\.v4\.js/);
       if (file !== 'privacy-choices.html') assert.doesNotMatch(html, /dpc-advertising-enabled/);
