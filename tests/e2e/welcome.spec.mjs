@@ -31,7 +31,7 @@ async function fixture(page, context, { data = sessionId => ({ ...paid, eventId:
       contentType: 'text/html', body: read('welcome.html'), headers: Object.fromEntries(headers.map(h => [h.key, h.value])) });
     if (url.origin === origin && (url.pathname.startsWith('/assets/') || url.pathname === '/favicon.svg')) {
       const file = url.pathname.slice(1);
-      if (!/^assets\/(?:welcome\.v1\.(?:js|css)|privacy-controls\.v2\.js|privacy-footer\.v2\.css|meta-pixel\.v5\.js|glass-fonts\.v1\.css|fonts\/glass-brand-[1-6]\.ttf)$/.test(file) && file !== 'favicon.svg') {
+      if (!/^assets\/(?:welcome\.v2\.js|welcome\.v1\.css|privacy-controls\.v2\.js|privacy-footer\.v2\.css|meta-pixel\.v5\.js|glass-fonts\.v1\.css|fonts\/glass-brand-[1-6]\.ttf)$/.test(file) && file !== 'favicon.svg') {
         escaped.push(url.href); return route.abort();
       }
       const contentType = file.endsWith('.js') ? 'application/javascript' : file.endsWith('.css') ? 'text/css' : file.endsWith('.ttf') ? 'font/ttf' : 'image/svg+xml';
@@ -117,7 +117,7 @@ test('each history entry keeps its own session and a fresh bare visit never reus
   expect(f.reads.at(-1).body.sessionId).toBe(id);
   const before = f.reads.length;
   await page.goto(origin + '/welcome');
-  await expect(page.locator('h1')).toHaveText('Check your confirmation email.');
+  await expect(page.locator('h1')).toHaveText('Looking for your membership confirmation?');
   expect(f.reads).toHaveLength(before);
   expect(f.events.filter(c => c[1] === 'Purchase').map(c => c[3].eventID)).toEqual([eventIdFor(id), eventIdFor(second)]);
   const storageKeys = await page.evaluate(() => Object.keys(sessionStorage));
@@ -132,9 +132,9 @@ for (const [name, options, heading] of [
   ['missing event ID', { data: { ...paid, eventId: undefined } }, 'We couldn’t confirm this checkout.'],
   ['raw live ID as event ID', { data: { ...paid, eventId: 'cs_live_' + 'a'.repeat(35) } }, 'We couldn’t confirm this checkout.'],
   ['raw test ID as event ID', { data: { ...paid, eventId: 'cs_test_' + 'a'.repeat(35) } }, 'We couldn’t confirm this checkout.'],
-  ['invalid link', { search: '?session_id=invalid' }, 'Check your confirmation email.'],
-  ['duplicate ID', { search: '?session_id=' + id + '&session_id=' + id }, 'Check your confirmation email.'],
-  ['bare page', { search: '' }, 'Check your confirmation email.'],
+  ['invalid link', { search: '?session_id=invalid' }, 'Looking for your membership confirmation?'],
+  ['duplicate ID', { search: '?session_id=' + id + '&session_id=' + id }, 'Looking for your membership confirmation?'],
+  ['bare page', { search: '' }, 'Looking for your membership confirmation?'],
 ]) test(name + ' never claims a purchase or emits Purchase', async ({ page, context }) => {
   const f = await fixture(page, context, options);
   await expect(page.locator('h1')).toHaveText(heading);
