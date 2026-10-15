@@ -149,11 +149,12 @@ check('all public pages expose a static opt-out link and load controls before an
   const pixelPages = new Set(['index.html', 'join.html', 'subscription-success.html', 'welcome.html']);
   for (const file of files) {
     const html = readFileSync(new URL(file, root), 'utf8');
-    // Signed capability page has no advertising or analytics and must load no
-    // unrelated scripts. Keep the static privacy link without the site loader.
-    if (file === 'email-preferences.html') {
+    // Reminder utility pages have no advertising or analytics. Keep their
+    // static privacy links without adding the site loader.
+    if (file === 'email-preferences.html' || file === 'app.html') {
       assert.match(html, /<a href="\/privacy-choices">Do Not Sell or Share My Personal Information<\/a>/);
       assert.doesNotMatch(html, /privacy-controls|meta-pixel|analytics|connect\.facebook\.net|fbq\s*\(/);
+      if (file === 'app.html') assert.doesNotMatch(html, /<script\b/i);
       continue;
     }
     assert.match(html, /privacy-controls\.v2\.js/);
