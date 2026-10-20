@@ -1,0 +1,63 @@
+.site-header nav a[aria-current="page"] { text-decoration: underline; text-decoration-thickness: 2px; }
+.events-hero { display: grid; grid-template-columns: .95fr 1.05fr; gap: 64px; align-items: center; padding-top: 64px; padding-bottom: 72px; }
+.events-hero h1 { max-width: 570px; font-size: clamp(44px, 4.7vw, 68px); letter-spacing: -.025em; }
+.events-hero__copy > p { max-width: 440px; margin-top: 24px; font-size: 21px; }
+.events-hero__copy > p + p { margin-top: 14px; font-size: 18px; }
+.events-hero figure img { width: 100%; }
+.events-jumps { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; margin-top: 28px; }
+.events-jumps > a:not(.btn) { padding-block: 12px; font: 400 18px/1.4 var(--body); }
+.upcoming { background: var(--navy); color: var(--cream); --focus-color: var(--cream); }
+.upcoming__inner { display: grid; grid-template-columns: 1fr 1fr; gap: 100px; }
+.upcoming h2 { max-width: 450px; }
+.next-event { margin-top: 36px; }
+.next-event h3 { font-size: 32px; }
+.next-event__venue { margin-top: 6px; font-size: 22px; }
+.upcoming__status { margin-top: 20px; color: var(--gold); font: 600 24px/1.4 var(--support); font-variant-numeric: tabular-nums; }
+.upcoming__status + p { max-width: 49ch; margin-top: 20px; }
+.next-event__attendance { margin-top: 14px; font-weight: 600; }
+.next-event .btn { margin-top: 28px; }
+.next-event__question { display: block; width: fit-content; margin-top: 12px; padding-block: 10px; color: var(--gold); }
+.event-formats h3 { margin-bottom: 20px; font-size: 27px; }
+.event-formats dl { margin: 0; }
+.event-formats dl > div { padding-block: 16px; border-top: 1px solid #42505c; }
+.event-formats dt { font: 600 23px/1.4 var(--support); }
+.event-formats dd { margin: 4px 0 0; color: var(--cream-muted); font-size: 16px; }
+.event-formats > p { margin-top: 12px; color: var(--cream-muted); font-size: 14px; }
+.event-archive > .section-heading { max-width: 800px; margin-bottom: 56px; }
+.event-story { display: grid; grid-template-columns: 1.2fr 1fr; gap: 56px; padding-top: 40px; border-top: 1px solid var(--line); }
+.event-story + .event-story { margin-top: 72px; }
+.event-story__photo img { width: 100%; }
+.event-date { color: var(--ink-muted); font-size: 15px; font-variant-numeric: tabular-nums; }
+.event-story h3 { margin-top: 16px; font: 700 clamp(29px, 3vw, 40px)/1.15 var(--display); }
+.event-venue { font-weight: 600; margin-top: 14px; }
+.event-story__copy > p:not(.event-date):not(.event-venue) { margin-top: 20px; font-size: 17px; }
+.event-album { margin-top: 24px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.event-album summary { cursor: pointer; min-height: 52px; padding-block: 14px; font: 400 18px/1.4 var(--body); }
+.event-album summary:hover { text-decoration: underline; text-underline-offset: .22em; }
+.event-album > figure, .event-album__photos { padding: 8px 0 24px; }
+.event-album > figure { max-width: 340px; }
+.event-album__photos { display: grid; gap: 28px; }
+.event-album img { width: 100%; }
+.events-invitation { background: #e9e3d8; }
+.events-invitation .section-wrap { display: flex; align-items: center; justify-content: space-between; gap: 48px; }
+.events-invitation p { max-width: 520px; margin-top: 22px; font-size: 20px; }
+.events-invitation .btn { flex-shrink: 0; }
+@media (max-width: 1100px) {
+  .events-hero { gap: 36px; }
+  .upcoming__inner { gap: 56px; }
+  .event-story { gap: 36px; }
+}
+@media (max-width: 760px) {
+  .events-hero { grid-template-columns: 1fr; gap: 36px; padding-top: 40px; padding-bottom: 40px; }
+  .events-hero h1 { font-size: clamp(40px, 9vw, 60px); }
+  .events-hero__copy > p { font-size: 19px; margin-top: 22px; }
+  .events-hero__copy > p + p { font-size: 17px; }
+  .events-jumps { gap: 6px 20px; margin-top: 22px; }
+  .upcoming__inner { grid-template-columns: 1fr; gap: 44px; }
+  .event-archive > .section-heading { margin-bottom: 36px; }
+  .event-story { grid-template-columns: 1fr; gap: 24px; padding-top: 28px; }
+  .event-story + .event-story { margin-top: 48px; }
+  .event-story h3 { font-size: 32px; }
+  .events-invitation .section-wrap { flex-direction: column; align-items: flex-start; gap: 28px; }
+  .events-invitation p { font-size: 18px; }
+}

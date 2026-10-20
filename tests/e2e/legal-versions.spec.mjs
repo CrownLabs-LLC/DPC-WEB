@@ -7,7 +7,7 @@
 // confirm. Every case here is a way that could go wrong.
 import { test, expect } from '@playwright/test';
 
-const CHECKOUT_ENDPOINT = 'https://ebiuspbgzggrdiaswpcc.supabase.co/functions/v1/circle-checkout';
+const CHECKOUT_ENDPOINT = 'https://hohbsqkmrlhkstojfdgx.supabase.co/functions/v1/circle-checkout-homepage-preview';
 const CHECKOUT_URL = 'https://checkout.stripe.com/c/pay/cs_test_legal_versions';
 const CURRENT = { tos: '3.0', privacy: '4.2', memberTerms: '3.0', autoRenewalTerms: '3.0' };
 const BUMPED = { ...CURRENT, privacy: '4.3' };

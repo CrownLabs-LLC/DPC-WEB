@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-const CHECKOUT_ENDPOINT = 'https://ebiuspbgzggrdiaswpcc.supabase.co/functions/v1/circle-checkout';
+const CHECKOUT_ENDPOINT = 'https://hohbsqkmrlhkstojfdgx.supabase.co/functions/v1/circle-checkout-homepage-preview';
 const CHECKOUT_URL = 'https://checkout.stripe.test/c/pay/cs_test_navigation_gate';
 
 test('a successful checkout handoff reaches Stripe with correlated lifecycle events', async ({ page, context, baseURL }) => {

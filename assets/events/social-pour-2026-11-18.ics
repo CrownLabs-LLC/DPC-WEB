@@ -1,0 +1,17 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Downtown Pour Collective//DPC Events//EN
+CALSCALE:GREGORIAN
+BEGIN:VEVENT
+UID:social-pour-20261118@downtownpourcollective.com
+DTSTAMP:20261020T204050Z
+DTSTART:20261119T010000Z
+DTEND:20261119T040000Z
+SUMMARY:The Social Pour | Downtown Pour Collective
+LOCATION:Wood Family Vineyards
+DESCRIPTION:Free to attend for DPC members\, guests and partners. RSVP invi
+ tations are sent by email. November 18\, 5 to 8 PM Pacific.
+URL:https://www.downtownpourcollective.com/events
+STATUS:CONFIRMED
+END:VEVENT
+END:VCALENDAR

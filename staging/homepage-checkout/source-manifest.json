@@ -1,0 +1,12 @@
+{
+  "sourceProject": "hohbsqkmrlhkstojfdgx",
+  "sourceFunction": "circle-checkout-staging",
+  "sourceVersion": 47,
+  "providerBundleSha256": "4075f427996526a56d4ef7191041cdf00f4a0f11cd7e69e1fe1f133eb34ce16f",
+  "billingFiles": {
+    "checkoutRpc.ts": "e507eb0153151516b387d1d8b114fcdd8b64185f77ab8e1646a24f23b24b6c70",
+    "circleCheckout.ts": "4dd12f28e03316c55981710f82914c11e978263161d3fcfd4d8e1bbbf6f46249",
+    "circleCheckoutRuntime.ts": "3eea28f3ee5b88fe87a3c8dd25a72a975cb681f3a000cf650d92cf130dbea591"
+  },
+  "reviewedBillingCommit": "7bd9142abea342deb9063f22397a8ca7e084a8e1"
+}

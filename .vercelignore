@@ -1,0 +1,7 @@
+.impeccable/
+docs/
+staging/
+tests/
+scripts/
+assets/stripe-products/
+dpc-auth-monitor-redirect-fix/

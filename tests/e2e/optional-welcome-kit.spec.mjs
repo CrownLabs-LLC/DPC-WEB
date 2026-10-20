@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-const CHECKOUT_ENDPOINT = 'https://ebiuspbgzggrdiaswpcc.supabase.co/functions/v1/circle-checkout';
+const CHECKOUT_ENDPOINT = 'https://hohbsqkmrlhkstojfdgx.supabase.co/functions/v1/circle-checkout-homepage-preview';
 const CHECKOUT_URL = 'https://checkout.stripe.test/c/pay/cs_test_optional_kit_handoff';
 const CIRCLES = [
   { key: 'tap', label: 'Beer drinkers', monthly: 59, annual: 590 },
@@ -199,7 +199,7 @@ test('home copy and FAQ describe an optional one-time kit; success makes no kit 
   await setup(page, context, baseURL);
   await page.goto('/');
   await expect(page.locator('.kit__body')).toContainText('optional Member Welcome Kit');
-  await expect(page.locator('.kit__body')).toContainText('The Kit costs $49 once, with no added kit tax.');
+  await expect(page.locator('.kit__body')).toContainText('The Kit costs $49 once and does not renew with your membership.');
   await page.locator('.kit__body').screenshot({ path: testInfo.outputPath('home-optional-kit.png') });
   const faq = await page.locator('script[type="application/ld+json"]').evaluateAll(scripts =>
     scripts.map(script => JSON.parse(script.textContent)).find(data => data['@type'] === 'FAQPage'));

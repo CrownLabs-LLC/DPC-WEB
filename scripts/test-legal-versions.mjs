@@ -159,6 +159,23 @@ for (const [label, body] of [
   check('405 is never cached', out.headers['Cache-Control'] === 'no-store', out.headers);
 }
 
+/* ---------------- preview isolation ---------------- */
+process.env.VERCEL_ENV = 'preview';
+process.env.SUPABASE_URL = 'https://ebiuspbgzggrdiaswpcc.supabase.co';
+{
+  const { out, calls } = await run({ method: 'GET', query: { fresh: '1' } }, ok);
+  check('preview rejects live project before contacting it', out.status === 503 && calls.length === 0
+    && out.headers['X-DPC-Failure-Kind'] === 'configuration', out);
+}
+process.env.SUPABASE_URL = 'https://hohbsqkmrlhkstojfdgx.supabase.co';
+{
+  const { out, calls } = await run({ method: 'GET', query: { fresh: '1' } }, ok);
+  check('preview reads current terms only from staging', out.status === 200
+    && calls[0]?.url === 'https://hohbsqkmrlhkstojfdgx.supabase.co/rest/v1/rpc/current_checkout_legal_versions'
+    && out.headers['Cache-Control'] === 'no-store', out);
+}
+delete process.env.VERCEL_ENV;
+
 if (failures) {
   console.error(`\n${failures} check(s) failed.`);
   process.exit(1);
