@@ -6,8 +6,8 @@ Result: **pass for the hosted visual/navigation gate.** All six membership
 plans reached real Stripe sandbox checkout with the correct membership-only
 totals. Monthly and annual kit add/remove, browser Back/retry and Stripe
 cancel/Return to Join passed. No payment details were entered and no payment
-was submitted. Physical-device/accessibility checks and clean final CI remain
-separate release gates.
+was submitted. Full CI is green. Physical-device/accessibility checks and the remaining
+publication items are separate release gates.
 
 - [Hosted preview](https://dpc-web-git-codex-homepage-rebuild-brandis-projects-65a11cb6.vercel.app)
 - [Draft DPC-WEB #74](https://github.com/CrownLabs-LLC/DPC-WEB/pull/74)
@@ -94,8 +94,14 @@ Nick's separate member-support/venue-eligibility report.
   requires the desktop menu to close before resizing back; all original checks
   remain. No header/site behavior changed and no timeout or retry was added.
   Repeated targeted verification passed **90/90**, with two workers, ten
-  repetitions and no retries (55.5 seconds). The full CI follow-up remains
-  pending; the staging checkout result above is unaffected.
+  repetitions and no retries (55.5 seconds).
+- **Final CI pass:** [run 39506731776](https://github.com/CrownLabs-LLC/DPC-WEB/actions/runs/39506731776)
+  on `a40d963e5f9ab384fe8dcec96f5401260bde3de8`: `npm test`, all database
+  suites and the full browser suite passed. **546 browser tests passed in
+  5.9 minutes, nine skipped, no failures or flaky cases reported.** The nine
+  skips are opt-in Glass event/pickup/tasting screenshot captures, not checkout
+  or header coverage. All functional source is unchanged by the following
+  documentation-only closeout; `git diff --check` passed for that closeout.
 
 Sanitized `orders.json`, database counts, legal responses, deployment/source
 readbacks and screenshots are under
