@@ -1,82 +1,89 @@
 # Hosted Join verification — October 20, 2026
 
-## Staging preview follow-up
+## Completed staging checkout verification
 
-Result: **preview deployed; actual Stripe handoff remains blocked by Vercel
-Preview configuration.** Brandi authorized this isolated Git-integrated preview
-with production unchanged. No Checkout Session or payment was created in this
-follow-up; only readiness and rejection probes were sent to the QA endpoint.
+Result: **pass for the hosted visual/navigation gate.** All six membership
+plans reached real Stripe sandbox checkout with the correct membership-only
+totals. Monthly and annual kit add/remove, browser Back/retry and Stripe
+cancel/Return to Join passed. No payment details were entered and no payment
+was submitted. Physical-device/accessibility checks and clean final CI remain
+separate release gates.
 
 - [Hosted preview](https://dpc-web-git-codex-homepage-rebuild-brandis-projects-65a11cb6.vercel.app)
 - [Draft DPC-WEB #74](https://github.com/CrownLabs-LLC/DPC-WEB/pull/74)
-- Verified implementation commit: `9572762fa52c71348e27764d39ea63c580994422`.
-  GitHub Preview deployment `7211417473`; Vercel deployment
-  `3SPoVBwGtyw2BofR2TWowE4u9M7n`. Subsequent documentation-only updates do not
-  alter the verified Home, Events, Join or backend source.
-- `/`, `/events` and `/join` are hosted and byte-identical to that candidate.
-  Real browser navigation confirmed the community-first Home, original logo,
-  Events attendance details and photography credits. Join remains disabled
-  when the current-terms lookup is unavailable.
+- Implementation source: `9572762fa52c71348e27764d39ea63c580994422`;
+  hosted checkout-tested Git revision:
+  `664eeac2152bc464043adcde94fb2b638ac4b769` (documentation-only successor).
+- Configured Vercel deployment `dpl_BkxXMnjsRn6xLPTPrbH1erhmEEhy`, created
+  October 20 at 2:52 PM Pacific, **target Preview / Ready**. Its stable branch
+  alias is the preview link above. This rebuilt the existing Git deployment;
+  no local source upload or production deployment was performed.
+- Subsequent cancellation-copy correction removes the retired founding-hold
+  statement without changing checkout, layout, prices or backend behavior.
 
-### Isolation and hosted results
+### Isolation and current configuration
 
 | Check | Result |
 | --- | --- |
-| Production routing | Only the two production domains select live checkout; team preview hosts select the dedicated staging function. Unknown hosts fail closed. |
-| Preview legal isolation | Rejects a production Supabase URL before making an upstream call. Current preview returns uncached 503 `configuration`; no staging server credentials have been added to Vercel yet. |
-| Staging legal tuple | Exact reviewed Privacy 4.9 migration applied under original version `20260918210346`. Current tuple is `3.0 / 4.9 / 3.0 / 3.0`; existing-member access retains both Privacy 4.2 and 4.9. No acceptance history rewritten. |
-| Dedicated QA endpoint | `circle-checkout-homepage-preview` **v1**, ACTIVE, staging project `hohbsqkmrlhkstojfdgx`. Bundle SHA-256 `26da3d4ce7705db330c6f37a43476a5fe241f4a1610c380c75c0959b21c488ec`. Hosted source exactly matches the submitted five files. |
-| Runtime guard/readiness | GET returns 200, test Stripe mode, official test Turnstile configuration validated at startup, optional kit enabled, and the exact preview return origin. This is configuration evidence, not a Stripe session readback. |
-| Origin / identity rejection | Approved-origin OPTIONS returns 204. Production-origin OPTIONS returns 403 `PREVIEW_ORIGIN_REQUIRED`. A non-QA `example.com` identity returns 403 `SYNTHETIC_QA_IDENTITY_REQUIRED` before the billing handler. |
-| Billing source | Handler/runtime/RPC reused unchanged from staging v47, independently byte-compared against reviewed DPC commit `7bd9142abea342deb9063f22397a8ca7e084a8e1`; manifest pins each SHA-256. Existing staging and production checkout functions unchanged. |
-| Six real Stripe handoffs, kit add/remove, Back/cancel/retry | **Still pending.** Do not mark complete from mock tests or endpoint readiness. No test checkout was submitted while legal lookup was disabled. |
-| Production unchanged | Public Join SHA-256 remains `7202dcd7118673d48bd56626763e96a476c352fcec15830e94f80626217376a4`; web main remains `a4b4e0b9e613dc7058f142f1b290908bb4f6fc43`; production checkout remains v26 with bundle `852d9787875d2b515313d4e61726021ebf0ce36bb64346d1d324d53ff3635784`. No merge or production environment edit. |
+| Vercel authentication | Completed through Safari's saved passkey with Brandi's Touch ID. Normal CLI login completed; no password/recovery method changed. |
+| Branch variables | Staging `SUPABASE_URL` and the existing server-only `SUPABASE_SERVICE_ROLE_KEY` added to **Preview / codex/homepage-rebuild only**. Key marked sensitive. Readback confirmed branch scope. Temporary credential files removed. |
+| Fresh legal lookup | HTTP 200, `Cache-Control: no-store`, tuple `3.0 / 4.9 / 3.0 / 3.0`. The preview rejects live-project configuration. Earlier 503 is resolved. |
+| Staging legal migration | Exact reviewed Privacy 4.9 migration applied under original version `20260918210346`; existing-member access retains 4.2 and 4.9. No acceptance history rewritten. |
+| Dedicated QA endpoint | `circle-checkout-homepage-preview` **v1**, ACTIVE in `hohbsqkmrlhkstojfdgx`; bundle `26da3d4ce7705db330c6f37a43476a5fe241f4a1610c380c75c0959b21c488ec`. Hosted source exactly matches the submitted five files. |
+| Guards | Requires staging project, test Stripe key, official test Turnstile mode, exact preview Origin and synthetic QA identities. Approved OPTIONS 204; production-origin OPTIONS 403; non-QA identity POST 403 before billing. |
+| Reviewed billing implementation | Handler/runtime/RPC reused unchanged from staging v47, byte-compared with DPC `7bd9142abea342deb9063f22397a8ca7e084a8e1`; hashes pinned in the source manifest. Existing staging and production checkout functions unchanged. |
+| Production isolation | Only production domains route to live checkout; unknown hosts fail closed. Production main, public Join and checkout v26 remain the unchanged baseline below. |
 
-### Verification
+### Actual Stripe sandbox results
 
-- `npm test`: passed locally and in both CI attempts, including preview legal
-  isolation and synthetic staging guards.
+These were real hosted form submissions with synthetic identities, current
+legal consent and Cloudflare's official test verification. No provider response
+was mocked. Stripe displayed **Sandbox**, and its read-only order-summary tool
+returned `livemode: false` for every recorded scenario.
+
+| Circle | Monthly default | Annual default | Default items |
+| --- | --- | --- | --- |
+| Tap | $59 | $590 | Membership only |
+| Cellar | $69 | $690 | Membership only |
+| Reserve | $79 | $790 | Membership only |
+
+| Scenario | Result |
+| --- | --- |
+| Monthly kit | Tap $59 → **$108** with one $49 Member Welcome Kit → **$59** after Remove / Confirm remove. Stripe states subsequent renewal is **$59/month**. |
+| Annual kit | Tap $590 → **$639** with one $49 kit → **$590** after removal. Stripe states subsequent renewal is **$590/year**. |
+| Browser Back and retry | Returned to Join with the selected plan and entered synthetic form details intact; Continue recovered and reached sandbox checkout at $59. No duplicate durable Tap-monthly intent was created. |
+| Stripe cancel | Stripe's Back-to-merchant link returned to the preview's `/subscription-cancelled`, not production. Return to Join opened the preview form with consent unchecked; a new annual selection then reached $590 test checkout. |
+| Cancel copy | Removed obsolete “founding reservation…24 hours” wording discovered during this path. Existing design and return links retained. Static release-readiness regression updated and passed. |
+| Durable staging evidence | Six synthetic member rows, six open checkout intents (one per Circle/interval), all six `cs_test_` sessions; zero completed checkouts, zero subscription IDs and zero Circle memberships for these fixtures. Open sessions are unpaid QA evidence. |
+
+No payment completion, new webhook/onboarding delivery, real member renewal
+cancellation, or mobile physical-device proof is claimed. Previously accepted
+paid sandbox evidence remains recorded below. This check does not resolve
+Nick's separate member-support/venue-eligibility report.
+
+### Local and CI verification
+
+- `npm test`: passed locally and in both initial CI attempts.
 - `npm run test:db`: all three suites passed locally in disposable containers,
   including concurrency/transaction/RLS checks.
 - Checkout/legal/optional-kit browser regression: **219 passed**, one worker,
-  no retries; Home/Events/header regression: **27 passed** with the same policy.
-  These are mocked Chromium/WebKit checks, not hosted Stripe or device evidence.
-- `deno check /tmp/dpc-homepage-preview-runtime/index.ts`: passed.
-- `git diff --cached --check`: passed. Calendar CRLF is preserved and declared
-  in `.gitattributes`.
-- App `npx tsc --noEmit` gate: not applicable to this JavaScript website. No
-  DPC application module source or cross-module internal import changed.
-- [CI run 39500079926](https://github.com/CrownLabs-LLC/DPC-WEB/actions/runs/39500079926)
-  failed twice before database execution: the registry rejected the pinned
+  no retries; Home/Events/header regression: **27 passed**. These are separate
+  mocked Chromium/WebKit checks, not substitutes for the hosted results above.
+- Deno entrypoint check and `git diff --check`: passed. Calendar CRLF is
+  preserved in `.gitattributes`. No DPC app module source or cross-module
+  internal import changed; app `npx tsc --noEmit` is not applicable here.
+- Cancellation-copy follow-up: `node scripts/test-release-readiness.mjs` passed.
+- [Initial CI run 39500079926](https://github.com/CrownLabs-LLC/DPC-WEB/actions/runs/39500079926)
+  failed twice before DB execution because the registry rejected the pinned
   `public.ecr.aws/supabase/postgres:17.6.1.167` download with
-  `toomanyrequests: Data limit exceeded`. Browser CI was skipped after that
-  setup failure. One retry was attempted; the final CI gate remains open.
+  `toomanyrequests: Data limit exceeded`. Browser CI was skipped after setup
+  failure. The final clean CI gate stays open until the final revision passes.
 
-### Next required step
-
-Vercel's CLI login expired. Safari used the saved GitHub sign-in and reached
-Vercel's saved passkey, but Touch ID was not completed before the prompt timed
-out. The account owner must complete that biometric step. No password or
-recovery method was changed. After normal Vercel authentication:
-
-1. Set `SUPABASE_URL` and the existing staging server-only
-   `SUPABASE_SERVICE_ROLE_KEY` for **Preview / codex/homepage-rebuild only**.
-   Keep Production and other branches unchanged.
-2. Redeploy this Git preview and require `/api/legal-versions?fresh=1` to return
-   the current staging tuple with `no-store`.
-3. Use unique `dpc-homepage-qa-20261020-<label>@example.com` identities to verify
-   all six Stripe **test-mode** handoffs, membership-only totals, removable
-   one-time $49 kit, recurrence and cancel/Back/retry. No payment completion is
-   required for this visual/navigation gate; retain the accepted historical
-   paid sandbox evidence below.
-4. Obtain clean CI and complete the physical-device/accessibility and release
-   gates in the checklist. No production publication is authorized by this pass.
-
-Implementation and configuration details:
+Sanitized `orders.json`, database counts, legal responses, deployment/source
+readbacks and screenshots are under
+`.impeccable/review/staging-join-2026-10-20/`. No credentials, payment details or
+Checkout URLs are included in the saved order evidence. Configuration details:
 [staging QA harness](../staging/homepage-checkout/README.md).
-Sanitized readbacks, source hashes, browser screenshots and test logs are under
-`.impeccable/review/staging-join-2026-10-20/`. Temporary staging credential
-material was not logged, committed or deployed to the client.
 
 ## Earlier read-only baseline
 

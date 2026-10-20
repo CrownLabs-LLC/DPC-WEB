@@ -317,7 +317,8 @@ for (const [page, markup] of [
 }
 
 assert.match(success, /account-setup and app-download instructions/);
-assert.match(cancelled, /remain held for up to 24 hours/);
+assert.doesNotMatch(cancelled, /founding reservation|remain held for up to 24 hours/);
+assert.match(cancelled, /No payment or membership activation was completed during this visit/);
 assert.match(terms, /September 1, 2026 at 12:00 AM Pacific Time/);
 assert.match(terms, /will not be charged again/);
 assert.match(terms, /Membership Pause is not currently available/);

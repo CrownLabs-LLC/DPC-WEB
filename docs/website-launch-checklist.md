@@ -24,7 +24,7 @@ Production remains unchanged. No payment has been submitted in this verification
 | [ ] | Resolve the reported member cancellation/eligibility confusion | Nick + app/support owner | Check the current member-facing cancellation route and give clear instructions; confirm the reported venue's eligible selections agree with the app and staff guidance. Join now explains venue-specific eligibility, but that does not resolve the reported operational problem. No membership was cancelled during this website task. |
 | [x] | Verify current hosted Join terms, displayed prices and backend policy | Implementation | October 20: production legal endpoints return 200 and the current four-version tuple; fresh lookup is `no-store`. All six plan summaries show correct membership-only totals ($59/$590, $69/$690, $79/$790); consent stays unchecked. Production `circle-checkout` v26 is active with checkout and optional-kit flags true. These checks cover the existing live page, not the rebuilt release candidate or a new Stripe session. |
 | [x] | Deploy the isolated staging candidate | Implementation | October 20: draft PR #74 and Git-integrated Preview are ready at implementation commit `9572762`. Home/Events/Join match the tested source. Dedicated staging checkout v1 has test-key, exact-Origin and synthetic-identity guards; readiness and rejection probes pass. Staging current legal tuple is `3.0 / 4.9 / 3.0 / 3.0`. Production main, Join source and checkout v26 are unchanged. |
-| [ ] | Finish hosted checkout verification of the rebuilt pages | Release owner + Brandi | **Blocked on sign-in/configuration:** Safari reached Vercel's saved passkey; Brandi must complete Touch ID. Then add the staging server-only variables to Preview / `codex/homepage-rebuild`, redeploy, require fresh legal lookup 200, and test six Stripe test-mode handoffs, the one-time $49 kit and Back/cancel/retry. Current preview legal lookup is safely disabled with 503 `configuration`. No Checkout Session or payment was created; readiness and mock tests do not close this gate. See the [hosted verification report](hosted-join-verification-2026-10-20.md). |
+| [x] | Finish hosted checkout verification of the rebuilt pages | Implementation | October 20: branch-only staging credentials configured; fresh legal lookup 200/no-store. All six real Stripe sandbox handoffs have correct membership-only totals. Monthly/annual one-time $49 kit add/remove and recurring amounts pass; browser Back/retry and Stripe cancel/Return to Join pass. Six unpaid test sessions, no completed checkout or Circle membership. Stale founding-reservation cancel copy removed. See the [hosted verification report](hosted-join-verification-2026-10-20.md). |
 | [ ] | Complete physical-device and accessibility closeout | Release owner | Physical iPhone Safari and Android Chrome pass the Join handoff/return checks; keyboard focus, VoiceOver/form announcements and 200% text resizing are checked after the contrast correction. Include the in-app social browser if used for the launch campaign. Emulation is not physical-device evidence. |
 | [ ] | Obtain a clean final verification gate | Implementation | October 20 staging candidate: `npm test`, local disposable database suites, Deno check and diff check pass; 219 checkout and 27 Home/Events browser cases pass with one worker and no retries. CI run `39500079926` passed unit tests but failed twice downloading the pinned database image from the registry (`toomanyrequests: Data limit exceeded`), before DB/browser execution. Clean exact-revision CI is still required. Local mocks do not prove hosted payment, email or onboarding. |
 | [ ] | Finish release metadata and remove preview treatment | Implementation + Brandi | Once assets/copy are approved, remove Home/Events review notices and `noindex, nofollow`. Ribbon watermarked-review captions are already removed after replacement. Add Events and intended public routes to the sitemap, refresh truthful modification dates and verify canonical/social previews on the hosted site. Preserve private-page noindex rules. |
@@ -69,6 +69,9 @@ Production remains unchanged. No payment has been submitted in this verification
 - [x] Clean ribbon originals installed on Home and Events with Meli Miller
   Photography credit at all three placements; full frames retained.
 - [x] Chamber posting approval received; Ron Essex attribution wording accepted.
+- [x] Git-integrated staging preview, current terms, six real sandbox handoffs,
+  optional kit add/remove and checkout return/retry verified.
+- [x] Retired founding-reservation wording removed from the checkout cancel page.
 
 ## Nick's October 20 updates
 
@@ -107,7 +110,7 @@ The subsequent Join corrections and verification are recorded in
 Ribbon replacement provenance, screenshots and focused browser-check results
 are under `.impeccable/review/ribbon-originals-2026-10-20/`.
 Hosted Join checks, environment identity, prior release evidence and the
-staging deployment, authentication blocker and CI limitation are recorded in
+staging deployment, completed sandbox verification and CI limitation are recorded in
 [hosted-join-verification-2026-10-20.md](hosted-join-verification-2026-10-20.md).
 Sanitized HTTP results, the six-plan matrix and browser captures are under
 `.impeccable/review/hosted-join-2026-10-20/`.
@@ -118,9 +121,9 @@ production outage. The browser suite mocks legal/security/checkout providers,
 and no real personal data or payment is submitted.
 Separately, today's real production legal endpoint passed. The older hosted
 preview's 503 is an observed configuration failure, not the expected local
-static-server limitation. The rebuilt candidate is now hosted, but its legal lookup remains disabled
-until branch-specific staging variables are configured. Neither local mock tests
-nor the existing live-page checks close its hosted checkout gate.
+static-server limitation. The rebuilt candidate now passes its real hosted sandbox handoff/navigation
+gate with branch-specific staging variables. No payment was completed; this
+does not replace physical-device, final CI or controlled-publication checks.
 
 The native app captures are real implemented screen components with synthetic
 data. They are complete as marketing examples, not evidence of a successful
