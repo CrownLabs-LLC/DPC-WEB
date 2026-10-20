@@ -1,42 +1,82 @@
 # Hosted Join verification — October 20, 2026
 
-## Staging preview setup in progress
+## Staging preview follow-up
 
-Brandi authorized an isolated Git-integrated preview and sandbox checkout
-verification, with production unchanged. The earlier read-only findings below
-remain historical baseline evidence; they are not the result of this follow-up.
+Result: **preview deployed; actual Stripe handoff remains blocked by Vercel
+Preview configuration.** Brandi authorized this isolated Git-integrated preview
+with production unchanged. No Checkout Session or payment was created in this
+follow-up; only readiness and rejection probes were sent to the QA endpoint.
 
-Prepared changes:
+- [Hosted preview](https://dpc-web-git-codex-homepage-rebuild-brandis-projects-65a11cb6.vercel.app)
+- [Draft DPC-WEB #74](https://github.com/CrownLabs-LLC/DPC-WEB/pull/74)
+- Verified implementation commit: `9572762fa52c71348e27764d39ea63c580994422`.
+  GitHub Preview deployment `7211417473`; Vercel deployment
+  `3SPoVBwGtyw2BofR2TWowE4u9M7n`. Subsequent documentation-only updates do not
+  alter the verified Home, Events, Join or backend source.
+- `/`, `/events` and `/join` are hosted and byte-identical to that candidate.
+  Real browser navigation confirmed the community-first Home, original logo,
+  Events attendance details and photography credits. Join remains disabled
+  when the current-terms lookup is unavailable.
 
-- Join selects the production checkout endpoint only on the two production
-  domains. Approved team preview hosts select a dedicated staging QA function;
-  unknown hosts fail closed. Production host behavior is unchanged.
-- Preview legal lookup rejects a production Supabase URL before making a call.
-  The preview branch requires its own staging server-only credentials.
-- The dedicated `circle-checkout-homepage-preview` entrypoint accepts only the
-  exact configured preview Origin and synthetic `example.com` QA identities.
-  It rejects a production project, live Stripe key, or non-test Turnstile mode.
-- The billing handler/runtime/RPC files are unchanged from staging v47 and were
-  independently compared byte-for-byte with reviewed DPC commit
-  `7bd9142abea342deb9063f22397a8ca7e084a8e1`. The source manifest records their
-  hashes. Only the isolated entrypoint adds guards and preview return URLs.
-- The exact reviewed Privacy 4.9 data migration was applied to staging under
-  original version `20260918210346`. The current tuple now reads
-  `3.0 / 4.9 / 3.0 / 3.0`; the existing-member access allowlist retains both
-  `4.2` and `4.9`. No production legal setting or acceptance record changed.
+### Isolation and hosted results
 
-Local checks: `npm test`, `npm run test:db`, staging policy guards and
-`deno check` passed. The checkout/legal/optional-kit browser suite passed all
-219 cases with one worker and no retries; Home/Events/header regression passed
-27 more cases. `git diff --check` passed. This JavaScript website has no
-TypeScript project, so the app slice `npx tsc --noEmit` gate is not applicable;
-the isolated Deno entrypoint check passed. No app module source changed.
-Git preview setup is in progress.
-Vercel's saved CLI session expired; Safari's saved passkey is waiting for the
-account owner's Touch ID. No hosted QA checkout has been submitted yet.
+| Check | Result |
+| --- | --- |
+| Production routing | Only the two production domains select live checkout; team preview hosts select the dedicated staging function. Unknown hosts fail closed. |
+| Preview legal isolation | Rejects a production Supabase URL before making an upstream call. Current preview returns uncached 503 `configuration`; no staging server credentials have been added to Vercel yet. |
+| Staging legal tuple | Exact reviewed Privacy 4.9 migration applied under original version `20260918210346`. Current tuple is `3.0 / 4.9 / 3.0 / 3.0`; existing-member access retains both Privacy 4.2 and 4.9. No acceptance history rewritten. |
+| Dedicated QA endpoint | `circle-checkout-homepage-preview` **v1**, ACTIVE, staging project `hohbsqkmrlhkstojfdgx`. Bundle SHA-256 `26da3d4ce7705db330c6f37a43476a5fe241f4a1610c380c75c0959b21c488ec`. Hosted source exactly matches the submitted five files. |
+| Runtime guard/readiness | GET returns 200, test Stripe mode, official test Turnstile configuration validated at startup, optional kit enabled, and the exact preview return origin. This is configuration evidence, not a Stripe session readback. |
+| Origin / identity rejection | Approved-origin OPTIONS returns 204. Production-origin OPTIONS returns 403 `PREVIEW_ORIGIN_REQUIRED`. A non-QA `example.com` identity returns 403 `SYNTHETIC_QA_IDENTITY_REQUIRED` before the billing handler. |
+| Billing source | Handler/runtime/RPC reused unchanged from staging v47, independently byte-compared against reviewed DPC commit `7bd9142abea342deb9063f22397a8ca7e084a8e1`; manifest pins each SHA-256. Existing staging and production checkout functions unchanged. |
+| Six real Stripe handoffs, kit add/remove, Back/cancel/retry | **Still pending.** Do not mark complete from mock tests or endpoint readiness. No test checkout was submitted while legal lookup was disabled. |
+| Production unchanged | Public Join SHA-256 remains `7202dcd7118673d48bd56626763e96a476c352fcec15830e94f80626217376a4`; web main remains `a4b4e0b9e613dc7058f142f1b290908bb4f6fc43`; production checkout remains v26 with bundle `852d9787875d2b515313d4e61726021ebf0ce36bb64346d1d324d53ff3635784`. No merge or production environment edit. |
 
-Implementation and deployment instructions:
+### Verification
+
+- `npm test`: passed locally and in both CI attempts, including preview legal
+  isolation and synthetic staging guards.
+- `npm run test:db`: all three suites passed locally in disposable containers,
+  including concurrency/transaction/RLS checks.
+- Checkout/legal/optional-kit browser regression: **219 passed**, one worker,
+  no retries; Home/Events/header regression: **27 passed** with the same policy.
+  These are mocked Chromium/WebKit checks, not hosted Stripe or device evidence.
+- `deno check /tmp/dpc-homepage-preview-runtime/index.ts`: passed.
+- `git diff --cached --check`: passed. Calendar CRLF is preserved and declared
+  in `.gitattributes`.
+- App `npx tsc --noEmit` gate: not applicable to this JavaScript website. No
+  DPC application module source or cross-module internal import changed.
+- [CI run 39500079926](https://github.com/CrownLabs-LLC/DPC-WEB/actions/runs/39500079926)
+  failed twice before database execution: the registry rejected the pinned
+  `public.ecr.aws/supabase/postgres:17.6.1.167` download with
+  `toomanyrequests: Data limit exceeded`. Browser CI was skipped after that
+  setup failure. One retry was attempted; the final CI gate remains open.
+
+### Next required step
+
+Vercel's CLI login expired. Safari used the saved GitHub sign-in and reached
+Vercel's saved passkey, but Touch ID was not completed before the prompt timed
+out. The account owner must complete that biometric step. No password or
+recovery method was changed. After normal Vercel authentication:
+
+1. Set `SUPABASE_URL` and the existing staging server-only
+   `SUPABASE_SERVICE_ROLE_KEY` for **Preview / codex/homepage-rebuild only**.
+   Keep Production and other branches unchanged.
+2. Redeploy this Git preview and require `/api/legal-versions?fresh=1` to return
+   the current staging tuple with `no-store`.
+3. Use unique `dpc-homepage-qa-20261020-<label>@example.com` identities to verify
+   all six Stripe **test-mode** handoffs, membership-only totals, removable
+   one-time $49 kit, recurrence and cancel/Back/retry. No payment completion is
+   required for this visual/navigation gate; retain the accepted historical
+   paid sandbox evidence below.
+4. Obtain clean CI and complete the physical-device/accessibility and release
+   gates in the checklist. No production publication is authorized by this pass.
+
+Implementation and configuration details:
 [staging QA harness](../staging/homepage-checkout/README.md).
+Sanitized readbacks, source hashes, browser screenshots and test logs are under
+`.impeccable/review/staging-join-2026-10-20/`. Temporary staging credential
+material was not logged, committed or deployed to the client.
 
 ## Earlier read-only baseline
 

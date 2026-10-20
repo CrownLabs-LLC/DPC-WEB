@@ -7,8 +7,9 @@ read-only production baseline, and the authorized staging preview setup.
 This is the current cross-page readiness record. It supersedes old open-item
 lists that still request app screenshots, Bruno's logo or an upcoming event.
 Historical deployment notes are evidence of prior work, not proof of today's
-production configuration. Production remains unchanged; staging setup is in
-progress. No payment has been submitted in this verification.
+production configuration. The [staging preview](https://dpc-web-git-codex-homepage-rebuild-brandis-projects-65a11cb6.vercel.app)
+is deployed through [draft PR #74](https://github.com/CrownLabs-LLC/DPC-WEB/pull/74).
+Production remains unchanged. No payment has been submitted in this verification.
 
 ## Fix or confirm before public release
 
@@ -22,9 +23,10 @@ progress. No payment has been submitted in this verification.
 | [x] | Confirm kickoff attribution wording | Nick | October 20, 1:41 PM: Nick confirmed the proposed “Photo: Ron Essex Photography” wording is fine. Existing attribution is accepted; website use and photographed-person permission were already confirmed. |
 | [ ] | Resolve the reported member cancellation/eligibility confusion | Nick + app/support owner | Check the current member-facing cancellation route and give clear instructions; confirm the reported venue's eligible selections agree with the app and staff guidance. Join now explains venue-specific eligibility, but that does not resolve the reported operational problem. No membership was cancelled during this website task. |
 | [x] | Verify current hosted Join terms, displayed prices and backend policy | Implementation | October 20: production legal endpoints return 200 and the current four-version tuple; fresh lookup is `no-store`. All six plan summaries show correct membership-only totals ($59/$590, $69/$690, $79/$790); consent stays unchecked. Production `circle-checkout` v26 is active with checkout and optional-kit flags true. These checks cover the existing live page, not the rebuilt release candidate or a new Stripe session. |
-| [ ] | Finish hosted checkout verification of the rebuilt pages | Release owner + Brandi | **In progress October 20:** staging routing, exact-Origin/synthetic-identity guards and preview legal isolation are prepared. The reviewed Privacy 4.9 migration is applied to staging and its current tuple verified. Local unit/database checks pass. Git-integrated preview, branch-scoped Vercel staging credentials and actual Stripe test handoffs remain to complete; Safari sign-in awaits Touch ID. Verify all six plans, membership-only default, removable one-time $49 kit and Back/cancel/retry before closing. See the [hosted verification report](hosted-join-verification-2026-10-20.md). |
+| [x] | Deploy the isolated staging candidate | Implementation | October 20: draft PR #74 and Git-integrated Preview are ready at implementation commit `9572762`. Home/Events/Join match the tested source. Dedicated staging checkout v1 has test-key, exact-Origin and synthetic-identity guards; readiness and rejection probes pass. Staging current legal tuple is `3.0 / 4.9 / 3.0 / 3.0`. Production main, Join source and checkout v26 are unchanged. |
+| [ ] | Finish hosted checkout verification of the rebuilt pages | Release owner + Brandi | **Blocked on sign-in/configuration:** Safari reached Vercel's saved passkey; Brandi must complete Touch ID. Then add the staging server-only variables to Preview / `codex/homepage-rebuild`, redeploy, require fresh legal lookup 200, and test six Stripe test-mode handoffs, the one-time $49 kit and Back/cancel/retry. Current preview legal lookup is safely disabled with 503 `configuration`. No Checkout Session or payment was created; readiness and mock tests do not close this gate. See the [hosted verification report](hosted-join-verification-2026-10-20.md). |
 | [ ] | Complete physical-device and accessibility closeout | Release owner | Physical iPhone Safari and Android Chrome pass the Join handoff/return checks; keyboard focus, VoiceOver/form announcements and 200% text resizing are checked after the contrast correction. Include the in-app social browser if used for the launch campaign. Emulation is not physical-device evidence. |
-| [ ] | Obtain a clean final verification gate | Implementation | Join follow-up: `npm test` and 96 targeted browser cases passed, including WebKit, with one worker and no retries. Required final CI/revision checks still need to pass; earlier three-worker WebKit failures remain recorded, with cause unestablished. Local mocked tests do not prove payment, email or onboarding delivery. |
+| [ ] | Obtain a clean final verification gate | Implementation | October 20 staging candidate: `npm test`, local disposable database suites, Deno check and diff check pass; 219 checkout and 27 Home/Events browser cases pass with one worker and no retries. CI run `39500079926` passed unit tests but failed twice downloading the pinned database image from the registry (`toomanyrequests: Data limit exceeded`), before DB/browser execution. Clean exact-revision CI is still required. Local mocks do not prove hosted payment, email or onboarding. |
 | [ ] | Finish release metadata and remove preview treatment | Implementation + Brandi | Once assets/copy are approved, remove Home/Events review notices and `noindex, nofollow`. Ribbon watermarked-review captions are already removed after replacement. Add Events and intended public routes to the sitemap, refresh truthful modification dates and verify canonical/social previews on the hosted site. Preserve private-page noindex rules. |
 | [ ] | Final review and controlled publication | Brandi + release owner | Brandi approves the final copy/assets and reviewed PR. Publish through the existing Git-integrated process; verify the deployed commit, routes, checkout health and rollback readiness using the current runbook. No local production upload. |
 
@@ -105,7 +107,7 @@ The subsequent Join corrections and verification are recorded in
 Ribbon replacement provenance, screenshots and focused browser-check results
 are under `.impeccable/review/ribbon-originals-2026-10-20/`.
 Hosted Join checks, environment identity, prior release evidence and the
-remaining staging blocker are recorded in
+staging deployment, authentication blocker and CI limitation are recorded in
 [hosted-join-verification-2026-10-20.md](hosted-join-verification-2026-10-20.md).
 Sanitized HTTP results, the six-plan matrix and browser captures are under
 `.impeccable/review/hosted-join-2026-10-20/`.
@@ -116,8 +118,9 @@ production outage. The browser suite mocks legal/security/checkout providers,
 and no real personal data or payment is submitted.
 Separately, today's real production legal endpoint passed. The older hosted
 preview's 503 is an observed configuration failure, not the expected local
-static-server limitation. Neither local mock tests nor the existing live-page
-checks close the rebuilt candidate's hosted checkout gate.
+static-server limitation. The rebuilt candidate is now hosted, but its legal lookup remains disabled
+until branch-specific staging variables are configured. Neither local mock tests
+nor the existing live-page checks close its hosted checkout gate.
 
 The native app captures are real implemented screen components with synthetic
 data. They are complete as marketing examples, not evidence of a successful
