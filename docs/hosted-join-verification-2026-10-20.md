@@ -18,8 +18,11 @@ separate release gates.
   October 20 at 2:52 PM Pacific, **target Preview / Ready**. Its stable branch
   alias is the preview link above. This rebuilt the existing Git deployment;
   no local source upload or production deployment was performed.
-- Subsequent cancellation-copy correction removes the retired founding-hold
-  statement without changing checkout, layout, prices or backend behavior.
+- Cancellation-copy follow-up `93adbe5f860d49671aa98b36ae19dc114d423059`
+  is deployed at Vercel `Ezn2GNzKDmmD8WD1dYhRkrGVLJfY`. The corrected page
+  was reached through Stripe’s cancel link and verified in the browser. Home,
+  Events, Join and cancellation HTML match this final implementation; fresh
+  legal lookup still returns 200/no-store. Checkout, prices and backend are unchanged.
 
 ### Isolation and current configuration
 
@@ -32,7 +35,12 @@ separate release gates.
 | Dedicated QA endpoint | `circle-checkout-homepage-preview` **v1**, ACTIVE in `hohbsqkmrlhkstojfdgx`; bundle `26da3d4ce7705db330c6f37a43476a5fe241f4a1610c380c75c0959b21c488ec`. Hosted source exactly matches the submitted five files. |
 | Guards | Requires staging project, test Stripe key, official test Turnstile mode, exact preview Origin and synthetic QA identities. Approved OPTIONS 204; production-origin OPTIONS 403; non-QA identity POST 403 before billing. |
 | Reviewed billing implementation | Handler/runtime/RPC reused unchanged from staging v47, byte-compared with DPC `7bd9142abea342deb9063f22397a8ca7e084a8e1`; hashes pinned in the source manifest. Existing staging and production checkout functions unchanged. |
-| Production isolation | Only production domains route to live checkout; unknown hosts fail closed. Production main, public Join and checkout v26 remain the unchanged baseline below. |
+| Production isolation | Only production domains route to live checkout; unknown hosts fail closed. Production main, public Join and the checkout source bundle match the baseline below. |
+
+Final production source readback reports version **27**, whereas the earlier
+read reported **26**. Both report the same October 16 update time, identical
+source files and the same bundle SHA-256. The metadata discrepancy is recorded
+without attributing a cause; this task made no production write or deployment.
 
 ### Actual Stripe sandbox results
 
@@ -77,7 +85,17 @@ Nick's separate member-support/venue-eligibility report.
   failed twice before DB execution because the registry rejected the pinned
   `public.ecr.aws/supabase/postgres:17.6.1.167` download with
   `toomanyrequests: Data limit exceeded`. Browser CI was skipped after setup
-  failure. The final clean CI gate stays open until the final revision passes.
+  failure. The new [implementation CI run 39505001703](https://github.com/CrownLabs-LLC/DPC-WEB/actions/runs/39505001703)
+  passed unit/database tests and then reported 544 browser passes, one failed
+  Events/WebKit header test, one flaky Home/WebKit header test and nine optional
+  screenshot skips. The retry trace kept the menu `open` at the desktop width
+  and changed back to mobile about 52 ms after the desktop resize began, before
+  the breakpoint-close update had been observed. The test now explicitly
+  requires the desktop menu to close before resizing back; all original checks
+  remain. No header/site behavior changed and no timeout or retry was added.
+  Repeated targeted verification passed **90/90**, with two workers, ten
+  repetitions and no retries (55.5 seconds). The full CI follow-up remains
+  pending; the staging checkout result above is unaffected.
 
 Sanitized `orders.json`, database counts, legal responses, deployment/source
 readbacks and screenshots are under
@@ -87,6 +105,10 @@ Checkout URLs are included in the saved order evidence. Configuration details:
 
 ## Earlier read-only baseline
 
+**Superseded baseline:** the following records observations before staging was
+configured. Its checkout blockers are resolved by the completed verification
+above; use the launch checklist for the remaining release gates.
+
 Result: **partial pass; rebuilt candidate's end-to-end checkout gate remains
 blocked.** The current public Join page passes the legal-version and six-plan
 display checks. The rebuilt Home/Events/Join revision has no hosted preview yet.
@@ -94,7 +116,7 @@ The latest existing PR preview cannot load legal versions because its server
 configuration is unavailable. No Checkout Session, membership, payment, consent
 record or onboarding email was created by this verification.
 
-## Targets and identity
+### Targets and identity
 
 | Target | Identity | Scope |
 | --- | --- | --- |
@@ -109,7 +131,7 @@ The local rebuilt Join differs:
 `5e2841858f4eda7303536109a4385721193c172e463bdad2d151ac357b41812b`.
 Passing the existing live page therefore does not sign off the rebuilt UI.
 
-## Checks performed
+### Checks performed
 
 | Check | Result | Evidence / limit |
 | --- | --- | --- |
@@ -136,7 +158,7 @@ All six displayed the selected Circle and billing interval correctly, kept
 consent unchecked and showed no form error during selection. The page discloses
 the optional Member Welcome Kit as $49 once, with no added kit tax.
 
-## Existing release evidence reconciled
+### Existing release evidence reconciled
 
 - [DPC-WEB #55](https://github.com/CrownLabs-LLC/DPC-WEB/pull/55) is **merged**,
   merge `ab3936d04810bad243129d8d6f6b5a92cd4f27ba`. Historical HOLD MERGE notes in
@@ -156,7 +178,7 @@ the optional Member Welcome Kit as $49 once, with no added kit tax.
   `/welcome?session_id={CHECKOUT_SESSION_ID}` success return. No full runtime
   file-to-commit attestation or new welcome/payment flow is claimed here.
 
-## Required to finish this gate
+### Historical next steps; current status is above
 
 1. Prepare and approve a reviewable Git-integrated preview for the rebuilt
    revision, following the repository's PR/release process. Keep production
@@ -181,7 +203,7 @@ The missing preview/configuration work belongs to implementation/release,
 not Nick. Nick's two requested photo confirmations are now complete in the
 [launch checklist](website-launch-checklist.md).
 
-## Evidence retained
+### Evidence retained
 
 `.impeccable/review/hosted-join-2026-10-20/` contains the sanitized legal endpoint
 responses/headers, hosted source identities, production backend readback,

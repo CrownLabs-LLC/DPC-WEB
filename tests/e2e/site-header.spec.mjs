@@ -46,6 +46,10 @@ for (const route of ['/', '/events']) {
 
     await toggle.click();
     await page.setViewportSize({ width: 1000, height: 900 });
+    // CSS can hide the toggle before the media-query change handler runs.
+    // Observe the desktop close before resizing back, or WebKit can coalesce
+    // the two viewport changes and never deliver the intermediate breakpoint.
+    await expect(menu).not.toHaveAttribute('open', '');
     await expect(toggle).toBeHidden();
     await expect(partners).toBeVisible();
     await page.setViewportSize({ width: 390, height: 844 });
