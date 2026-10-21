@@ -11,6 +11,18 @@ production configuration. The [staging preview](https://dpc-web-git-codex-homepa
 is deployed through [draft PR #74](https://github.com/CrownLabs-LLC/DPC-WEB/pull/74).
 Production remains unchanged. No payment has been submitted in this verification.
 
+## October 21 release preparation
+
+Brandi requested committing the approved website changes and publishing within
+ten minutes. Home and Events preview notices and public-page noindex tags are
+removed; the sitemap includes Home, Events and Join with October 21 dates.
+Events now uses the same cache-versioned shared stylesheet as Home. Private
+page noindex rules and all checkout routing/security settings are unchanged.
+The newest CI failure was an ECR image-download limit, not a failing database
+assertion; a new complete gate is required. Physical-device/accessibility
+closeout remains unverified. Publication status below must be updated only
+after deployment and production health verification.
+
 ## October 21 copy review
 
 Brandi requested these refinements to the staging candidate: identify the roster
@@ -25,9 +37,28 @@ Events attendance details still welcome members, guests and partners.
 
 Brandi explicitly requested “5 Membership Pours” instead of “up to five.” This
 preview follows that copy direction, including its search/FAQ consistency.
-It does **not** change the app's issuance policy: Decisions #37 and #58 still
-permit fewer issued Pours under venue shortage or incomplete member choices.
-Resolve that public promise against the actual policy before publication.
+It does **not** change the app's issuance policy: Decision #37 still permits
+fewer issued Pours under venue shortage. Correction after the October 21
+backend review: Decision #58's no-auto-fill member-choice model is an
+uncommitted, unmerged proposal, not a deployed exception. It must not be
+presented as current production behavior.
+
+Brandi has clarified the intended rule: members should always receive five.
+A read-only production check found selection disabled for all three Circles,
+with 10 assignable Tap venues, 10 Cellar venues and 7 Reserve venues. All 45
+current issuance-eligible periods reviewed had exactly five issued Pours and
+selection-disabled snapshots. This check excluded newly created periods less
+than ten minutes old; it examined issued counts, not remaining unused Pours.
+No current shortfall was found in that scope.
+
+To make five an enforceable guarantee, formalize the paid-per-Circle monthly
+promise, retain automatic five-Pour assignment, define the business fallback
+when fewer than five distinct eligible venues exist, and implement safe
+shortfall/replacement recovery with ledger/audit evidence and regression tests.
+Optional swaps can preserve member choice without making issuance depend on
+participation. Unpaid/past-due issuance restrictions remain a separate rule.
+No backend policy, schema, credits, assignments or production settings were
+changed in this read-only review.
 
 Validation: `npm test` and `git diff --check` passed. The existing Home and
 optional-kit browser suites passed **99/99 cases**, across desktop Chromium,
@@ -71,14 +102,14 @@ observed but not rewritten during this narrow refinement.
 | [x] | Replace ribbon photography and apply attribution | Implementation | October 20: Nick's two supplied originals were inspected, optimized and installed on Home and Events. The outdoor replacement is a different frame of the same ribbon-cutting scene. All three placements credit **Meli Miller Photography**; obsolete watermarked-review captions are removed. |
 | [x] | Record separate Chamber confirmation | Nick | October 20: Nick forwarded Christy Malsack's October 19 reply approving posting the ribbon-cutting photographs. The Chamber says event photos may be made public; it does not individually confirm permission with attendees. Record this as the Chamber's approval, not individual signed releases. Photographer website permission is separately recorded. |
 | [x] | Confirm kickoff attribution wording | Nick | October 20, 1:41 PM: Nick confirmed the proposed “Photo: Ron Essex Photography” wording is fine. Existing attribution is accepted; website use and photographed-person permission were already confirmed. |
-| [ ] | Reconcile the five-Pour public promise with issuance policy | Brandi + product/app owner | October 21 preview uses the explicitly requested “5 Membership Pours.” Confirm the public commitment and align the authoritative policy/operational guarantee, or revise the claim before publication. Decisions #37/#58 still permit fewer issued Pours; no backend rule was changed by this copy pass. |
+| [ ] | Implement the confirmed five-Pour guarantee and shortage recovery | Brandi + product/app owner | Brandi confirmed that members should always receive five. Formalize the paid-per-Circle monthly rule, decide a supported fallback when five distinct eligible venues cannot be assigned, and implement ledgered shortfall/replacement recovery with tests and staging proof. Live Decision #37 permits shortage; Decision #58 is an unmerged future proposal. Read-only October 21 check found all 45 reviewed current eligible periods already had five issued. No backend rule has been changed. |
 | [ ] | Resolve the reported member cancellation/eligibility confusion | Nick + app/support owner | Check the current member-facing cancellation route and give clear instructions; confirm the reported venue's eligible selections agree with the app and staff guidance. Join now explains venue-specific eligibility, but that does not resolve the reported operational problem. No membership was cancelled during this website task. |
 | [x] | Verify current hosted Join terms, displayed prices and backend policy | Implementation | October 20: production legal endpoints return 200 and the current four-version tuple; fresh lookup is `no-store`. All six plan summaries show correct membership-only totals ($59/$590, $69/$690, $79/$790); consent stays unchecked. The production checkout source has checkout and optional-kit flags true; the report records the unchanged source bundle and provider version readbacks. These checks cover the existing live page, not the rebuilt release candidate or a new Stripe session. |
 | [x] | Deploy the isolated staging candidate | Implementation | October 20: draft PR #74 and Git-integrated Preview are ready at implementation commit `9572762`. Home/Events/Join match the tested source. Dedicated staging checkout v1 has test-key, exact-Origin and synthetic-identity guards; readiness and rejection probes pass. Staging current legal tuple is `3.0 / 4.9 / 3.0 / 3.0`. Production main, Join source and checkout source bundle match the baseline; no production writes were made. |
 | [x] | Finish hosted checkout verification of the rebuilt pages | Implementation | October 20: branch-only staging credentials configured; fresh legal lookup 200/no-store. All six real Stripe sandbox handoffs have correct membership-only totals. Monthly/annual one-time $49 kit add/remove and recurring amounts pass; browser Back/retry and Stripe cancel/Return to Join pass. Six unpaid test sessions, no completed checkout or Circle membership. Stale founding-reservation cancel copy removed. See the [hosted verification report](hosted-join-verification-2026-10-20.md). |
 | [ ] | Complete physical-device and accessibility closeout | Release owner | Physical iPhone Safari and Android Chrome pass the Join handoff/return checks; keyboard focus, VoiceOver/form announcements and 200% text resizing are checked after the contrast correction. Include the in-app social browser if used for the launch campaign. Emulation is not physical-device evidence. |
 | [ ] | Obtain a clean verification gate for this preview | Implementation | October 20 implementation: [CI run `39506731776`](https://github.com/CrownLabs-LLC/DPC-WEB/actions/runs/39506731776) on `a40d963` passed unit tests, all database suites and the full browser suite: **546 passed, nine optional screenshot captures skipped, no failures/flaky cases reported**. The WebKit resize test now waits for the actual desktop-close state; 90 repeated cases also passed without retries. Initial registry/timing failures are retained in the report. October 21: npm test and 99 targeted browser cases passed; full PR CI run 39637865682 is blocked by ECR’s Postgres image-download data limit before DB/browser execution. The earlier CI result remains historical checkout evidence. |
-| [ ] | Finish release metadata and remove preview treatment | Implementation + Brandi | Once assets/copy are approved, remove Home/Events review notices and `noindex, nofollow`. Ribbon watermarked-review captions are already removed after replacement. Add Events and intended public routes to the sitemap, refresh truthful modification dates and verify canonical/social previews on the hosted site. Preserve private-page noindex rules. |
+| [x] | Finish release metadata and remove preview treatment | Implementation + Brandi | October 21: approved Home/Events preview notices and public-page noindex tags removed. Sitemap now includes Home, Events and Join with current modification dates. Production canonicals and social URLs are correct in source. Events shares Home’s versioned stylesheet. Private-page noindex rules are preserved. Hosted production readback remains part of publication verification. |
 | [ ] | Final review and controlled publication | Brandi + release owner | Brandi approves the final copy/assets and reviewed PR. Publish through the existing Git-integrated process; verify the deployed commit, routes, checkout health and rollback readiness using the current runbook. No local production upload. |
 
 ## Recommended improvements; not launch blockers
