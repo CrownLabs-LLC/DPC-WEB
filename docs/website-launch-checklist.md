@@ -1,6 +1,6 @@
 # Home, Events and Join launch checklist
 
-Updated October 20, 2026 (America/Los_Angeles).
+Updated October 21, 2026 (America/Los_Angeles).
 
 Scope: the `codex/homepage-rebuild` Home/Events/Join candidate, the October 20
 read-only production baseline, and the completed staging checkout verification.
@@ -11,22 +11,58 @@ production configuration. The [staging preview](https://dpc-web-git-codex-homepa
 is deployed through [draft PR #74](https://github.com/CrownLabs-LLC/DPC-WEB/pull/74).
 Production remains unchanged. No payment has been submitted in this verification.
 
+## October 21 copy review
+
+Brandi requested these refinements to the staging candidate: identify the roster
+as businesses that have joined, with more coming soon; remove its redundant
+Pour reminder; use “monthly venues,” “Choose your Circle” and “After joining”;
+state beverage flexibility explicitly; give the timing note two readable
+paragraphs; list the four included benefits on Home and Join; and link optional
+Welcome Kit mentions to the Home kit section. The Join link opens a new tab to
+preserve the in-progress form. Existing design, logo, partner roster and pricing
+are retained. Social Pour invitations are an included benefit; the confirmed
+Events attendance details still welcome members, guests and partners.
+
+Brandi explicitly requested “5 Membership Pours” instead of “up to five.” This
+preview follows that copy direction, including its search/FAQ consistency.
+It does **not** change the app's issuance policy: Decisions #37 and #58 still
+permit fewer issued Pours under venue shortage or incomplete member choices.
+Resolve that public promise against the actual policy before publication.
+
+Validation: `npm test` and `git diff --check` passed. The existing Home and
+optional-kit browser suites passed **99/99 cases**, across desktop Chromium,
+mobile Chromium and mobile WebKit, with two workers and no retries. Desktop
+(1440px) and mobile (390px) visual checks confirmed the benefit lists; the
+desktop timing note is two complete lines, and visible FAQ answers match their
+structured data. The Home kit anchor resolves, and Join's kit link targets that
+anchor in a separate tab. Header logo, partner roster and Join scripts are
+byte-for-byte unchanged. No new payment or backend verification was needed for
+this copy/layout-only change. Screenshots are saved locally under
+`.impeccable/review/copy-2026-10-21/`.
+
+Impeccable's mechanical detector used its degraded regex parser and returned
+68 advisory entries for existing font/color/radius values. It did not evaluate
+computed contrast; this pass preserves the existing palette and typography.
+The older surface brief/design sidecar contains historical drift, which was
+observed but not rewritten during this narrow refinement.
+
 ## Fix or confirm before public release
 
 | Status | Item | Owner | Done when |
 | --- | --- | --- | --- |
 | [x] | Correct Join contrast | Implementation | October 20: muted-gold control borders measure at least 4.32:1; cream keyboard-focus rings 13.56:1; selected annual price notes 5.68:1; copyright 7.07:1. Selected/unselected, hover, Circle/billing keyboard selection and text-field focus verified. |
-| [x] | Reconcile Join's membership explanation and share descriptions | Implementation | October 20: compact recap defines the included eligible drink, up to five Pours per membership month, assigned venues and expiry/no rollover. Keyboard-accessible details contain redemption times and excluded selections, with a Home FAQ link. All three search/share descriptions use qualified wording. |
+| [x] | Reconcile Join's membership explanation and share descriptions | Implementation | October 20: compact recap defines the included eligible drink, up to five Pours per membership month, assigned venues and expiry/no rollover. Keyboard-accessible details contain redemption times and excluded selections, with a Home FAQ link. October 21 wording now follows Brandi’s requested five-Pour promise; the policy reconciliation below is still open. |
 | [x] | Complete Social Pour attendance instructions | Brandi + Implementation | Brandi confirmed October 20: no cost to attend; members, guests and partners are welcome; RSVP invitations arrive by email. Events and the calendar download reflect this. No public RSVP URL is needed. |
 | [x] | Replace ribbon photography and apply attribution | Implementation | October 20: Nick's two supplied originals were inspected, optimized and installed on Home and Events. The outdoor replacement is a different frame of the same ribbon-cutting scene. All three placements credit **Meli Miller Photography**; obsolete watermarked-review captions are removed. |
 | [x] | Record separate Chamber confirmation | Nick | October 20: Nick forwarded Christy Malsack's October 19 reply approving posting the ribbon-cutting photographs. The Chamber says event photos may be made public; it does not individually confirm permission with attendees. Record this as the Chamber's approval, not individual signed releases. Photographer website permission is separately recorded. |
 | [x] | Confirm kickoff attribution wording | Nick | October 20, 1:41 PM: Nick confirmed the proposed “Photo: Ron Essex Photography” wording is fine. Existing attribution is accepted; website use and photographed-person permission were already confirmed. |
+| [ ] | Reconcile the five-Pour public promise with issuance policy | Brandi + product/app owner | October 21 preview uses the explicitly requested “5 Membership Pours.” Confirm the public commitment and align the authoritative policy/operational guarantee, or revise the claim before publication. Decisions #37/#58 still permit fewer issued Pours; no backend rule was changed by this copy pass. |
 | [ ] | Resolve the reported member cancellation/eligibility confusion | Nick + app/support owner | Check the current member-facing cancellation route and give clear instructions; confirm the reported venue's eligible selections agree with the app and staff guidance. Join now explains venue-specific eligibility, but that does not resolve the reported operational problem. No membership was cancelled during this website task. |
 | [x] | Verify current hosted Join terms, displayed prices and backend policy | Implementation | October 20: production legal endpoints return 200 and the current four-version tuple; fresh lookup is `no-store`. All six plan summaries show correct membership-only totals ($59/$590, $69/$690, $79/$790); consent stays unchecked. The production checkout source has checkout and optional-kit flags true; the report records the unchanged source bundle and provider version readbacks. These checks cover the existing live page, not the rebuilt release candidate or a new Stripe session. |
 | [x] | Deploy the isolated staging candidate | Implementation | October 20: draft PR #74 and Git-integrated Preview are ready at implementation commit `9572762`. Home/Events/Join match the tested source. Dedicated staging checkout v1 has test-key, exact-Origin and synthetic-identity guards; readiness and rejection probes pass. Staging current legal tuple is `3.0 / 4.9 / 3.0 / 3.0`. Production main, Join source and checkout source bundle match the baseline; no production writes were made. |
 | [x] | Finish hosted checkout verification of the rebuilt pages | Implementation | October 20: branch-only staging credentials configured; fresh legal lookup 200/no-store. All six real Stripe sandbox handoffs have correct membership-only totals. Monthly/annual one-time $49 kit add/remove and recurring amounts pass; browser Back/retry and Stripe cancel/Return to Join pass. Six unpaid test sessions, no completed checkout or Circle membership. Stale founding-reservation cancel copy removed. See the [hosted verification report](hosted-join-verification-2026-10-20.md). |
 | [ ] | Complete physical-device and accessibility closeout | Release owner | Physical iPhone Safari and Android Chrome pass the Join handoff/return checks; keyboard focus, VoiceOver/form announcements and 200% text resizing are checked after the contrast correction. Include the in-app social browser if used for the launch campaign. Emulation is not physical-device evidence. |
-| [x] | Obtain a clean verification gate for this preview | Implementation | Final [CI run `39506731776`](https://github.com/CrownLabs-LLC/DPC-WEB/actions/runs/39506731776) on `a40d963` passed unit tests, all database suites and the full browser suite: **546 passed, nine optional screenshot captures skipped, no failures/flaky cases reported**. The WebKit resize test now waits for the actual desktop-close state; 90 repeated cases also passed without retries. Initial registry/timing failures are retained in the report. The closeout after this commit changes documentation only. |
+| [ ] | Obtain a clean verification gate for this preview | Implementation | October 20 implementation: [CI run `39506731776`](https://github.com/CrownLabs-LLC/DPC-WEB/actions/runs/39506731776) on `a40d963` passed unit tests, all database suites and the full browser suite: **546 passed, nine optional screenshot captures skipped, no failures/flaky cases reported**. The WebKit resize test now waits for the actual desktop-close state; 90 repeated cases also passed without retries. Initial registry/timing failures are retained in the report. October 21: npm test and 99 targeted browser cases passed; the new full PR CI run remains to complete. The earlier CI result remains historical checkout evidence. |
 | [ ] | Finish release metadata and remove preview treatment | Implementation + Brandi | Once assets/copy are approved, remove Home/Events review notices and `noindex, nofollow`. Ribbon watermarked-review captions are already removed after replacement. Add Events and intended public routes to the sitemap, refresh truthful modification dates and verify canonical/social previews on the hosted site. Preserve private-page noindex rules. |
 | [ ] | Final review and controlled publication | Brandi + release owner | Brandi approves the final copy/assets and reviewed PR. Publish through the existing Git-integrated process; verify the deployed commit, routes, checkout health and rollback readiness using the current runbook. No local production upload. |
 
@@ -123,8 +159,9 @@ Separately, today's real production legal endpoint passed. The older hosted
 preview's 503 is an observed configuration failure, not the expected local
 static-server limitation. The rebuilt candidate now passes its real hosted sandbox handoff/navigation
 gate with branch-specific staging variables. No payment was completed; this
-does not replace physical-device or controlled-publication checks. CI is green
-for this implementation; rerun the applicable checks if release code changes.
+does not replace physical-device or controlled-publication checks. The October 20 full CI result is historical evidence. October 21 local validation
+is recorded above; the latest PR revision must have a green required CI check
+before publication.
 
 The native app captures are real implemented screen components with synthetic
 data. They are complete as marketing examples, not evidence of a successful

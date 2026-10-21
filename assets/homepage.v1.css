@@ -33,6 +33,9 @@ p { text-wrap: pretty; }
 .section-heading { max-width: 720px; margin-bottom: 48px; }
 .section-heading p { margin-top: 20px; font-size: 20px; }
 .section-foot { max-width: 72ch; margin-top: 32px; color: var(--ink-muted); font-size: 16px; }
+.how__timing { max-width: none; }
+.how__timing p + p { margin-top: 6px; }
+.how__timing a { white-space: nowrap; }
 .btn { display: inline-flex; min-height: 48px; align-items: center; justify-content: center; padding: 13px 25px; border: 1px solid var(--gold); border-radius: 4px; background: var(--gold); color: var(--navy); font: 400 18px/1.3 var(--body); text-decoration: none; text-align: center; }
 .btn:hover { background: var(--gold-hover); border-color: var(--gold-hover); text-decoration: none; }
 .btn:active { background: #b0915c; }
@@ -114,6 +117,9 @@ p { text-wrap: pretty; }
 .circle__overview { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin: 0 0 40px; }
 .circle__overview dt { font: 600 23px/1.3 var(--support); }
 .circle__overview dd { margin: 10px 0 0; color: var(--cream-muted); font-size: 17px; }
+.circle__inclusions { margin: 0; padding-left: 1.25em; }
+.circle__inclusions li + li { margin-top: 10px; }
+.circle__inclusions li::marker { color: var(--gold); }
 .anchor-alias { position: absolute; top: 0; }
 .circle__grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 28px; }
 .circle-card { display: flex; flex-direction: column; border-top: 2px solid var(--gold); padding-top: 28px; }

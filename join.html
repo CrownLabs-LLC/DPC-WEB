@@ -9,17 +9,17 @@
 <meta charset="UTF-8">
 <title>Join The Collective | Downtown Pour Collective</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="Join a community supporting downtown Livermore. Choose your Circle for up to five Membership Pours per membership month at assigned participating venues.">
+<meta name="description" content="Join a community supporting downtown Livermore. Choose your Circle for 5 Membership Pours per membership month at your monthly venues.">
 <link rel="canonical" href="https://www.downtownpourcollective.com/join">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://www.downtownpourcollective.com/join">
 <meta property="og:title" content="Join The Collective | Downtown Pour Collective">
-<meta property="og:description" content="Join a community supporting downtown Livermore. Choose your Circle for up to five Membership Pours per membership month at assigned participating venues.">
+<meta property="og:description" content="Join a community supporting downtown Livermore. Choose your Circle for 5 Membership Pours per membership month at your monthly venues.">
 <meta property="og:image" content="https://www.downtownpourcollective.com/assets/og-image.jpg">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Join The Collective | Downtown Pour Collective">
-<meta name="twitter:description" content="Join a community supporting downtown Livermore. Choose your Circle for up to five Membership Pours per membership month at assigned participating venues.">
+<meta name="twitter:description" content="Join a community supporting downtown Livermore. Choose your Circle for 5 Membership Pours per membership month at your monthly venues.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Barlow+Condensed:wght@600;700&family=Barlow:ital,wght@0,400;0,500;1,400" rel="stylesheet">
@@ -148,6 +148,11 @@ a:focus-visible, button:focus-visible, input:focus-visible, [tabindex]:focus-vis
   color: var(--cream);
 }
 .join__inclusions p { margin: 0 0 8px; }
+.join__inclusions ul { margin: 0 0 16px; padding-left: 1.25em; }
+.join__inclusions li + li { margin-top: 8px; }
+.join__inclusions li::marker { color: var(--gold); }
+.checkout-kit a { color: inherit; text-underline-offset: 3px; }
+.checkout-kit a:focus-visible { outline: 2px solid var(--cream); outline-offset: 4px; }
 .join__inclusions summary {
   width: fit-content;
   max-width: 100%;
@@ -725,12 +730,17 @@ body:has(.cookie:not([hidden])) .page {
 
     <section class="join__inclusions" aria-labelledby="inclusions-title">
       <h2 id="inclusions-title">Included with every Circle</h2>
-      <p>Up to five Membership Pours per membership month at your assigned venues. Each Pour is an eligible standard drink included with your plan. Availability varies by venue; check your Pour in the app before you order.</p>
+      <ul>
+        <li>5 Membership Pours per membership month at your monthly venues. Each Pour is an eligible standard drink included with your plan.</li>
+        <li>A Birthday Pour when eligible.</li>
+        <li>The physical Coaster Passport.</li>
+        <li>An invitation to an exclusive monthly Social Pour event.</li>
+      </ul>
       <p>Unused standard Pours expire each membership month. They don’t roll over.</p>
       <details>
         <summary>Pour times and membership details</summary>
         <p>During venue hours: Sunday through Thursday anytime; Friday and Saturday strictly before 4 PM Pacific. Blackout dates can apply.</p>
-        <p>Premium, top-shelf, vintage, and specialty selections are outside the program. <a href="/#faq">Read the membership FAQs</a>.</p>
+        <p>Eligible selections depend on your Circle and the venue’s program. Premium, top-shelf, vintage, and specialty selections are outside the program. <a href="/#faq">Read the membership FAQs</a>.</p>
       </details>
     </section>
 
@@ -824,7 +834,7 @@ body:has(.cookie:not([hidden])) .page {
         <div class="turnstile-wrap" id="turnstile-slot"></div>
         <div class="actions">
           <p class="summary" id="order-summary" aria-live="polite"></p>
-          <p class="checkout-kit">Optional Member Welcome Kit: $49 once, no added kit tax. Add or remove it at checkout.</p>
+          <p class="checkout-kit">Optional <a href="/#welcome-kit" target="_blank" rel="noopener" aria-label="Member Welcome Kit (opens in a new tab)">Member Welcome Kit</a>: $49 once, no added kit tax. Add or remove it at checkout.</p>
           <button class="btn" type="submit" id="submit-btn" aria-describedby="checkout-next-steps">Continue to Checkout</button>
           <p class="panel__note" id="checkout-next-steps">After payment, your app setup email arrives within a few minutes.</p>
           <p class="checkout-handoff" id="checkout-handoff" role="status" hidden>Secure checkout is ready. If it does not open automatically, tap below.</p>

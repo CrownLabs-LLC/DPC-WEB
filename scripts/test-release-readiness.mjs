@@ -69,7 +69,7 @@ assert.doesNotMatch(home, /Already paid a \$49 Founding Slot Deposit/);
 // production (circle_venue_selection_policies.selection_enabled = false), so the
 // system assigns all five venues and nobody picks anything. Any copy offering the
 // member a choice of spots puts the page in conflict with the app.
-assert.match(home, /at spots we pick for you/);
+assert.match(home, /at your monthly venues/);
 // The entitlement is five Pours. The old line also hard-promised five distinct
 // spots, which was already wrong at eight partners and is wronger at ten, so the
 // count comes off while the assignment mechanic stays.
@@ -78,7 +78,7 @@ assert.doesNotMatch(home, /one at each of five spots|five of downtown Livermore'
 const homeHero = home.match(/<section class="hero"[\s\S]*?<\/section>/)?.[0];
 assert.ok(homeHero, "homepage keeps its introductory offer");
 assert.match(homeHero, /local membership club/);
-assert.match(homeHero, /up to five Membership Pours/);
+assert.match(homeHero, /5 Membership Pours/);
 assert.doesNotMatch(home, /five of downtown Livermore/);
 // No dashes in visible copy. The body font renders a double hyphen as a dash
 // glyph, so `--` is caught here too, not just the em and en dash characters.
@@ -178,7 +178,7 @@ assert.match(
 for (const [page, markup] of [['index.html', home], ['join.html', join]]) {
   assert.doesNotMatch(markup, /Member Setup Fee|Welcome Kit fee|add more anytime/i,
     `${page} must not advertise the retired mandatory setup fee`);
-  assert.match(markup, /optional Member Welcome Kit/i,
+  assert.match(markup.replace(/<[^>]+>/g, ''), /optional Member Welcome Kit/i,
     `${page} must describe the kit as optional`);
   assert.doesNotMatch(markup, /When you join, you receive the Member Welcome Kit|Kit is included with/i,
     `${page} must not imply every new membership includes a kit`);
@@ -188,7 +188,7 @@ assert.match(home, /one-time \$49/);
 assert.doesNotMatch(home, /no added kit tax|tax included/i, 'homepage tax claim awaits verified checkout treatment');
 const joinKitDisclosure = join.match(/<p class="checkout-kit">([\s\S]*?)<\/p>/);
 assert.ok(joinKitDisclosure, 'join.html must disclose the optional kit beside checkout');
-assert.match(joinKitDisclosure[1], /Optional Member Welcome Kit: \$49 once, no added kit tax/);
+assert.match(joinKitDisclosure[1].replace(/<[^>]+>/g, ''), /Optional Member Welcome Kit: \$49 once, no added kit tax/);
 assert.match(joinKitDisclosure[1], /Add or remove it at checkout/);
 assert.match(joinFineprint[1], /Turn off renewal anytime/);
 // Parse structured data as consumers do so a stale FAQ cannot silently disagree.
@@ -217,9 +217,9 @@ assert.doesNotMatch(
   'public signup must not restore the retired founding-deposit notice',
 );
 
-// Decision #37 permits fewer Pours during supply shortage. The homepage
-// rebuild reconciles that rule; the Join surface is outside this visual slice.
-assert.match(home, /up to five Pours per membership month/);
+// Brandi requested five-Pour marketing copy on October 21. The launch
+// checklist retains the Decision #37/#58 policy reconciliation before release.
+assert.match(home, /5 Membership Pours per membership month/);
 assert.doesNotMatch(home, /a sixth Pour|for you or a guest|pause by email/i);
 assert.doesNotMatch(join, /Membership checkout opens August 1/);
 // Launch-day framing goes stale the moment the founding window closes, and the
