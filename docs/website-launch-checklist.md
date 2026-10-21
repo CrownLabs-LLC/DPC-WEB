@@ -2,26 +2,52 @@
 
 Updated October 21, 2026 (America/Los_Angeles).
 
-Scope: the `codex/homepage-rebuild` Home/Events/Join candidate, the October 20
-read-only production baseline, and the completed staging checkout verification.
-This is the current cross-page readiness record. It supersedes old open-item
-lists that still request app screenshots, Bruno's logo or an upcoming event.
-Historical deployment notes are evidence of prior work, not proof of today's
-production configuration. The [staging preview](https://dpc-web-git-codex-homepage-rebuild-brandis-projects-65a11cb6.vercel.app)
-is deployed through [draft PR #74](https://github.com/CrownLabs-LLC/DPC-WEB/pull/74).
-Production remains unchanged. No payment has been submitted in this verification.
+## Production release — October 21
 
-## October 21 release preparation
+**Home, Events and Join are live.** Brandi requested publication of the approved
+website and explicitly deferred the physical iPhone/Android handoff check for
+this launch. That check is deferred, not passed. VoiceOver/text-resize closeout
+remains unverified.
 
-Brandi requested committing the approved website changes and publishing within
-ten minutes. Home and Events preview notices and public-page noindex tags are
-removed; the sitemap includes Home, Events and Join with October 21 dates.
-Events now uses the same cache-versioned shared stylesheet as Home. Private
-page noindex rules and all checkout routing/security settings are unchanged.
-The newest CI failure was an ECR image-download limit, not a failing database
-assertion; a new complete gate is required. Physical-device/accessibility
-closeout remains unverified. Publication status below must be updated only
-after deployment and production health verification.
+- [PR #74](https://github.com/CrownLabs-LLC/DPC-WEB/pull/74) merged at 10:12 AM
+  Pacific. Website implementation: `cd57dfe7e12f733eb404c46958a025a0acd7916a`;
+  production merge: `067304b694f6492f08a629b071d1b7262b026adf`.
+- Vercel automatically deployed GitHub `main` to production as
+  `dpl_6ha1Ue5C5j4xy5RXrqVPpA8EWkem`. READY status, exact Git SHA and both public
+  domain aliases were verified. No local production upload was used.
+- [Final CI run](https://github.com/CrownLabs-LLC/DPC-WEB/actions/runs/39640515100)
+  passed unit/static checks, all three disposable database suites, and
+  **546 browser cases** (nine opt-in screenshot captures skipped; no failed or
+  flaky cases reported).
+- Public Home, Events, Join and sitemap returned HTTP 200 and matched the
+  committed source byte-for-byte. Preview notices and public-page noindex tags
+  are gone. Private confirmation-page noindex headers remain.
+- Fresh production legal lookup returned HTTP 200 with `no-store` and tuple
+  `3.0 / 4.9 / 3.0 / 3.0`. Checkout OPTIONS returned 204 with POST allowed;
+  malformed JSON returned 400 / `INVALID_REQUEST`. No member data, valid
+  payment request or Stripe payment was submitted.
+- Home/Events share the cache-versioned stylesheet. The original logo, partner
+  roster, approved photography and existing production checkout configuration
+  are retained. No DPC app/backend policy or environment variable changed.
+- Rollback target recorded before release:
+  `dpl_E9qW1wfg1e8eTadpeWLfzNHmiBHp`, previous main
+  `a4b4e0b9e613dc7058f142f1b290908bb4f6fc43`.
+
+Production health at 10:05 AM Pacific, before release, showed healthy checkout
+canaries, legal lookup, Stripe capabilities and database access. It also showed
+an existing **SEV-2 warning for non-critical undelivered Stripe events**. This
+predates the release and remains an operations follow-up. The aggregate health
+result must not be described as entirely green while that warning remains.
+Sensitive Vercel cron/dashboard tokens are not retrievable; no token was
+rotated or exposed. Scheduled durable production observations, plus direct
+non-transactional canaries, provide the post-release health evidence.
+The first scheduled post-release check at 10:15 AM Pacific recorded 34 healthy
+observations and only the same pre-existing SEV-2 warning. No error rows were
+recorded between publication and the 10:16 AM readback.
+
+This checklist is the current readiness record; older staging/deployment notes
+below are historical evidence. The five-Pour guarantee still needs separate
+backend work, as detailed below.
 
 ## October 21 copy review
 
@@ -83,8 +109,8 @@ query on Home’s stylesheet refreshes the new list spacing and timing layout.
 passed `npm test` but stopped before database/browser tests: the ECR registry
 rejected the disposable Postgres image download with
 `toomanyrequests: Data limit exceeded`. This is an external download blocker,
-not a failed database assertion against the app. A green full CI run remains
-required before publication; the 99 local browser passes remain valid.
+not a failed database assertion against the app. The later final CI run
+`39640515100`, recorded above, passed the complete release gate.
 
 Impeccable's mechanical detector used its degraded regex parser and returned
 68 advisory entries for existing font/color/radius values. It did not evaluate
@@ -92,7 +118,7 @@ computed contrast; this pass preserves the existing palette and typography.
 The older surface brief/design sidecar contains historical drift, which was
 observed but not rewritten during this narrow refinement.
 
-## Fix or confirm before public release
+## Release status and remaining follow-ups
 
 | Status | Item | Owner | Done when |
 | --- | --- | --- | --- |
@@ -107,10 +133,11 @@ observed but not rewritten during this narrow refinement.
 | [x] | Verify current hosted Join terms, displayed prices and backend policy | Implementation | October 20: production legal endpoints return 200 and the current four-version tuple; fresh lookup is `no-store`. All six plan summaries show correct membership-only totals ($59/$590, $69/$690, $79/$790); consent stays unchecked. The production checkout source has checkout and optional-kit flags true; the report records the unchanged source bundle and provider version readbacks. These checks cover the existing live page, not the rebuilt release candidate or a new Stripe session. |
 | [x] | Deploy the isolated staging candidate | Implementation | October 20: draft PR #74 and Git-integrated Preview are ready at implementation commit `9572762`. Home/Events/Join match the tested source. Dedicated staging checkout v1 has test-key, exact-Origin and synthetic-identity guards; readiness and rejection probes pass. Staging current legal tuple is `3.0 / 4.9 / 3.0 / 3.0`. Production main, Join source and checkout source bundle match the baseline; no production writes were made. |
 | [x] | Finish hosted checkout verification of the rebuilt pages | Implementation | October 20: branch-only staging credentials configured; fresh legal lookup 200/no-store. All six real Stripe sandbox handoffs have correct membership-only totals. Monthly/annual one-time $49 kit add/remove and recurring amounts pass; browser Back/retry and Stripe cancel/Return to Join pass. Six unpaid test sessions, no completed checkout or Circle membership. Stale founding-reservation cancel copy removed. See the [hosted verification report](hosted-join-verification-2026-10-20.md). |
-| [ ] | Complete physical-device and accessibility closeout | Release owner | Physical iPhone Safari and Android Chrome pass the Join handoff/return checks; keyboard focus, VoiceOver/form announcements and 200% text resizing are checked after the contrast correction. Include the in-app social browser if used for the launch campaign. Emulation is not physical-device evidence. |
-| [ ] | Obtain a clean verification gate for this preview | Implementation | October 20 implementation: [CI run `39506731776`](https://github.com/CrownLabs-LLC/DPC-WEB/actions/runs/39506731776) on `a40d963` passed unit tests, all database suites and the full browser suite: **546 passed, nine optional screenshot captures skipped, no failures/flaky cases reported**. The WebKit resize test now waits for the actual desktop-close state; 90 repeated cases also passed without retries. Initial registry/timing failures are retained in the report. October 21: npm test and 99 targeted browser cases passed; full PR CI run 39637865682 is blocked by ECR’s Postgres image-download data limit before DB/browser execution. The earlier CI result remains historical checkout evidence. |
-| [x] | Finish release metadata and remove preview treatment | Implementation + Brandi | October 21: approved Home/Events preview notices and public-page noindex tags removed. Sitemap now includes Home, Events and Join with current modification dates. Production canonicals and social URLs are correct in source. Events shares Home’s versioned stylesheet. Private-page noindex rules are preserved. Hosted production readback remains part of publication verification. |
-| [ ] | Final review and controlled publication | Brandi + release owner | Brandi approves the final copy/assets and reviewed PR. Publish through the existing Git-integrated process; verify the deployed commit, routes, checkout health and rollback readiness using the current runbook. No local production upload. |
+| Deferred | Complete physical-device and accessibility closeout | Release owner | Brandi explicitly deferred physical iPhone/Android handoff checks for the October 21 launch. Keep them open for follow-up; VoiceOver/form announcements and 200% text resizing are also unverified. Emulation is not physical-device evidence. |
+| [x] | Obtain a clean verification gate for the release | Implementation | October 21 final CI `39640515100` on `cd57dfe` passed unit/static checks, all three database suites and 546 browser cases; nine optional screenshots skipped, no failed/flaky cases reported. This supersedes earlier registry-download failures. |
+| [x] | Finish release metadata and remove preview treatment | Implementation + Brandi | October 21: approved Home/Events preview notices and public-page noindex tags removed. Sitemap now includes Home, Events and Join with current modification dates. Production canonicals and social URLs are correct in source. Events shares Home’s versioned stylesheet. Private-page noindex rules are preserved. Hosted production readback passed. |
+| [x] | Final review and controlled publication | Brandi + release owner | Brandi authorized publication. PR #74 merged; Vercel automatically deployed main commit `067304b`. Public routes, source identity, legal versions, indexing and non-transactional checkout canaries passed. Production configuration and the DPC backend were unchanged. Rollback target retained. |
+| [ ] | Investigate existing undelivered Stripe-event warning | Operations owner | The pre-release scheduled health monitor reported SEV-2 non-critical undelivered events. Checkout, legal and provider-capability probes were healthy. Resolve separately; do not describe aggregate health as fully green until cleared. |
 
 ## Recommended improvements; not launch blockers
 
@@ -205,9 +232,9 @@ Separately, today's real production legal endpoint passed. The older hosted
 preview's 503 is an observed configuration failure, not the expected local
 static-server limitation. The rebuilt candidate now passes its real hosted sandbox handoff/navigation
 gate with branch-specific staging variables. No payment was completed; this
-does not replace physical-device or controlled-publication checks. The October 20 full CI result is historical evidence. October 21 local validation
-is recorded above; the latest PR revision must have a green required CI check
-before publication.
+does not replace physical-device checks. The final October 21 CI gate and
+controlled production publication passed as recorded above; physical-phone
+checks were explicitly deferred by Brandi.
 
 The native app captures are real implemented screen components with synthetic
 data. They are complete as marketing examples, not evidence of a successful
