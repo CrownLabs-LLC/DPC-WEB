@@ -126,6 +126,12 @@ export default async function handler(req, res) {
     res.setHeader('Cache-Control', UNCACHED);
     return res.status(503).json({ error: 'legal versions unavailable' });
   };
+  // Preview credentials and current terms must belong to staging. A preview
+  // must never silently read the live project even if its env was misconfigured.
+  if (process.env.VERCEL_ENV === 'preview'
+      && process.env.SUPABASE_URL !== 'https://hohbsqkmrlhkstojfdgx.supabase.co') {
+    return unavailable('configuration');
+  }
   if (!supabaseConfigured()) return unavailable('configuration');
   let tuple;
   try {

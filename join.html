@@ -5,20 +5,21 @@
 <script src="/assets/privacy-controls.v2.js"></script>
 <script src="/assets/meta-pixel.v4.js"></script>
 <link rel="stylesheet" href="/assets/privacy-footer.v2.css">
+<link rel="stylesheet" href="/assets/circle-beverages.v1.css">
 <meta charset="UTF-8">
 <title>Join The Collective | Downtown Pour Collective</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="Choose your Circle and join Downtown Pour Collective in downtown Livermore. One Circle to start, monthly or annual, with two months free on the annual path.">
+<meta name="description" content="Join a community supporting downtown Livermore. Choose your Circle for 5 Membership Pours per membership month at your monthly venues.">
 <link rel="canonical" href="https://www.downtownpourcollective.com/join">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://www.downtownpourcollective.com/join">
 <meta property="og:title" content="Join The Collective | Downtown Pour Collective">
-<meta property="og:description" content="Choose your Circle and join Downtown Pour Collective. Five Pours a month at downtown Livermore’s best spots, monthly or annual.">
+<meta property="og:description" content="Join a community supporting downtown Livermore. Choose your Circle for 5 Membership Pours per membership month at your monthly venues.">
 <meta property="og:image" content="https://www.downtownpourcollective.com/assets/og-image.jpg">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Join The Collective | Downtown Pour Collective">
-<meta name="twitter:description" content="Choose your Circle and join Downtown Pour Collective. Five Pours a month at downtown Livermore’s best spots.">
+<meta name="twitter:description" content="Join a community supporting downtown Livermore. Choose your Circle for 5 Membership Pours per membership month at your monthly venues.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Barlow+Condensed:wght@600;700&family=Barlow:ital,wght@0,400;0,500;1,400" rel="stylesheet">
@@ -27,6 +28,7 @@
 :root {
   --navy: #0D1B2A; --liquid: #1E3A5A; --gold: #C4A35A; --gold-hover: #D4B370;
   --gold-press: #B0915C; --cream: #F5F0E8; --muted-gray: #5A6475;
+  --control-border: #9C8557;
   --display: 'Playfair Display', Georgia, serif;
   --support: 'Barlow Condensed', 'Arial Narrow', sans-serif;
   --body: 'Barlow', system-ui, sans-serif;
@@ -46,7 +48,7 @@ body {
 svg { display: block; }
 a { color: var(--gold); }
 a:focus-visible, button:focus-visible, input:focus-visible, [tabindex]:focus-visible {
-  outline: 2px solid rgba(196, 163, 90, 0.5);
+  outline: 2px solid var(--cream);
   outline-offset: 4px;
 }
 
@@ -133,6 +135,38 @@ a:focus-visible, button:focus-visible, input:focus-visible, [tabindex]:focus-vis
   margin: 0 auto 28px;
   opacity: 0.7;
 }
+.join__inclusions {
+  margin: 0 0 24px;
+  font-size: 14px;
+  line-height: 1.55;
+  color: rgba(245, 240, 232, 0.78);
+}
+.join__inclusions h2 {
+  margin: 0 0 8px;
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--cream);
+}
+.join__inclusions p { margin: 0 0 8px; }
+.join__inclusions ul { margin: 0 0 16px; padding-left: 1.25em; }
+.join__inclusions li + li { margin-top: 8px; }
+.join__inclusions li::marker { color: var(--gold); }
+.checkout-kit a { color: inherit; text-underline-offset: 3px; }
+.checkout-kit a:focus-visible { outline: 2px solid var(--cream); outline-offset: 4px; }
+.join__inclusions summary {
+  width: fit-content;
+  max-width: 100%;
+  padding: 11px 0;
+  min-height: 44px;
+  color: var(--gold);
+  cursor: pointer;
+}
+.join__inclusions summary:focus-visible {
+  outline: 2px solid var(--cream);
+  outline-offset: 4px;
+}
+.join__inclusions details[open] summary { margin-bottom: 8px; }
+.join__inclusions a { text-underline-offset: 3px; }
 .panel__note {
   font-family: var(--body);
   font-size: 13px;
@@ -182,13 +216,14 @@ a:focus-visible, button:focus-visible, input:focus-visible, [tabindex]:focus-vis
   display: grid;
   grid-template-columns: 1fr auto;
   grid-template-areas:
+    "beverages price"
     "tag price"
     "name price"
     "desc note";
   column-gap: 12px;
   row-gap: 2px;
   align-items: start;
-  border: 1px solid rgba(196, 163, 90, 0.28);
+  border: 1px solid var(--control-border);
   background: rgba(13, 27, 42, 0.55);
   padding: 14px 14px;
   text-align: left;
@@ -196,10 +231,10 @@ a:focus-visible, button:focus-visible, input:focus-visible, [tabindex]:focus-vis
   min-height: 72px;
 }
 .circle-opt:hover .circle-opt__card {
-  border-color: rgba(196, 163, 90, 0.55);
+  border-color: var(--gold);
 }
 .circle-opt input:focus-visible + .circle-opt__card {
-  outline: 2px solid rgba(196, 163, 90, 0.5);
+  outline: 2px solid var(--cream);
   outline-offset: 3px;
 }
 .circle-opt input:checked + .circle-opt__card {
@@ -247,7 +282,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, [tabindex]:focus-vis
 .circle-opt__price-note {
   grid-area: note;
   font-size: 12px;
-  color: rgba(245, 240, 232, 0.5);
+  color: rgba(245, 240, 232, 0.65);
   margin: 4px 0 0;
   text-align: right;
   white-space: nowrap;
@@ -272,16 +307,16 @@ a:focus-visible, button:focus-visible, input:focus-visible, [tabindex]:focus-vis
   column-gap: 12px;
   row-gap: 2px;
   align-items: start;
-  border: 1px solid rgba(196, 163, 90, 0.28);
+  border: 1px solid var(--control-border);
   background: rgba(13, 27, 42, 0.55);
   padding: 14px 14px;
   text-align: left;
   transition: border-color 160ms ease, background 160ms ease;
   min-height: 72px;
 }
-.interval-opt:hover .interval-opt__card { border-color: rgba(196, 163, 90, 0.55); }
+.interval-opt:hover .interval-opt__card { border-color: var(--gold); }
 .interval-opt input:focus-visible + .interval-opt__card {
-  outline: 2px solid rgba(196, 163, 90, 0.5);
+  outline: 2px solid var(--cream);
   outline-offset: 3px;
 }
 .interval-opt input:checked + .interval-opt__card {
@@ -343,7 +378,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, [tabindex]:focus-vis
 .field input {
   width: 100%;
   appearance: none;
-  border: 1px solid rgba(196, 163, 90, 0.3);
+  border: 1px solid var(--control-border);
   background: rgba(13, 27, 42, 0.7);
   color: var(--cream);
   font-family: var(--body);
@@ -351,9 +386,8 @@ a:focus-visible, button:focus-visible, input:focus-visible, [tabindex]:focus-vis
   padding: 12px 14px;
   border-radius: 0;
 }
-.field input::placeholder { color: rgba(245, 240, 232, 0.35); }
+.field input::placeholder { color: rgba(245, 240, 232, 0.65); }
 .field input:focus {
-  outline: none;
   border-color: var(--gold);
 }
 
@@ -510,7 +544,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, [tabindex]:focus-vis
   gap: 12px 20px;
   justify-content: space-between;
   font-size: 12px;
-  color: rgba(245, 240, 232, 0.4);
+  color: rgba(245, 240, 232, 0.65);
 }
 .footer__legal-links { display: flex; gap: 10px; align-items: center; }
 .footer__legal-links a {
@@ -694,6 +728,22 @@ body:has(.cookie:not([hidden])) .page {
     <p class="join__lede">Choose your Circle, then select monthly or annual billing.</p>
     <hr class="join__rule">
 
+    <section class="join__inclusions" aria-labelledby="inclusions-title">
+      <h2 id="inclusions-title">Included with every Circle</h2>
+      <ul>
+        <li>5 Membership Pours per membership month at your monthly venues. Each Pour is an eligible standard drink included with your plan.</li>
+        <li>A Birthday Pour when eligible.</li>
+        <li>The physical Coaster Passport.</li>
+        <li>An invitation to an exclusive monthly Social Pour event.</li>
+      </ul>
+      <p>Unused standard Pours expire each membership month. They don’t roll over.</p>
+      <details>
+        <summary>Pour times and membership details</summary>
+        <p>During venue hours: Sunday through Thursday anytime; Friday and Saturday strictly before 4 PM Pacific. Blackout dates can apply.</p>
+        <p>Eligible selections depend on your Circle and the venue’s program. Premium, top-shelf, vintage, and specialty selections are outside the program. <a href="/#faq">Read the membership FAQs</a>.</p>
+      </details>
+    </section>
+
     <form id="join-form" novalidate>
       <div class="panel">
         <p class="panel__label">1 · Choose your Circle</p>
@@ -701,6 +751,7 @@ body:has(.cookie:not([hidden])) .page {
           <label class="circle-opt">
             <input type="radio" name="circle" value="tap" required>
             <span class="circle-opt__card">
+              <span class="circle-beverages" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><use href="/assets/beverage-icons.svg#beer"></use></svg></span>
               <p class="circle-opt__tag">Beer drinkers</p>
               <p class="circle-opt__name">Tap</p>
               <p class="circle-opt__desc">Eligible standard beer: draft, bottle, or can</p>
@@ -711,6 +762,7 @@ body:has(.cookie:not([hidden])) .page {
           <label class="circle-opt">
             <input type="radio" name="circle" value="cellar" required>
             <span class="circle-opt__card">
+              <span class="circle-beverages" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><use href="/assets/beverage-icons.svg#beer"></use></svg><svg viewBox="0 0 24 24" focusable="false"><use href="/assets/beverage-icons.svg#wine"></use></svg></span>
               <p class="circle-opt__tag">Wine or beer</p>
               <p class="circle-opt__name">Cellar</p>
               <p class="circle-opt__desc">An eligible standard glass of wine or beer</p>
@@ -721,6 +773,7 @@ body:has(.cookie:not([hidden])) .page {
           <label class="circle-opt">
             <input type="radio" name="circle" value="reserve" required>
             <span class="circle-opt__card">
+              <span class="circle-beverages" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><use href="/assets/beverage-icons.svg#beer"></use></svg><svg viewBox="0 0 24 24" focusable="false"><use href="/assets/beverage-icons.svg#wine"></use></svg><svg viewBox="0 0 24 24" focusable="false"><use href="/assets/beverage-icons.svg#cocktail"></use></svg></span>
               <p class="circle-opt__tag">Cocktails, spirits, wine or beer</p>
               <p class="circle-opt__name">Reserve</p>
               <p class="circle-opt__desc">An eligible standard cocktail, spirit pour, glass of wine, or beer</p>
@@ -781,7 +834,7 @@ body:has(.cookie:not([hidden])) .page {
         <div class="turnstile-wrap" id="turnstile-slot"></div>
         <div class="actions">
           <p class="summary" id="order-summary" aria-live="polite"></p>
-          <p class="checkout-kit">Optional Member Welcome Kit: $49 once, no added kit tax. Add or remove it at checkout.</p>
+          <p class="checkout-kit">Optional <a href="/#welcome-kit" target="_blank" rel="noopener" aria-label="Member Welcome Kit (opens in a new tab)">Member Welcome Kit</a>: $49 once, no added kit tax. Add or remove it at checkout.</p>
           <button class="btn" type="submit" id="submit-btn" aria-describedby="checkout-next-steps">Continue to Checkout</button>
           <p class="panel__note" id="checkout-next-steps">After payment, your app setup email arrives within a few minutes.</p>
           <p class="checkout-handoff" id="checkout-handoff" role="status" hidden>Secure checkout is ready. If it does not open automatically, tap below.</p>
@@ -861,7 +914,7 @@ body:has(.cookie:not([hidden])) .page {
    past. See plans/join-legal-version-staleness-remediation in DPC.
    Production uses the hostname-bound DPC Turnstile widget. Preview and local
    hosts use Cloudflare's published always-pass test key for client-side QA.
-   Checkout remains disabled server-side pending the reviewed backend enablement. */
+   Non-production hosts never send checkout requests to the live backend. */
 function dpcTurnstileSiteKeyForHost(hostname) {
   var isProductionJoinHost = hostname === 'www.downtownpourcollective.com'
     || hostname === 'downtownpourcollective.com';
@@ -869,8 +922,20 @@ function dpcTurnstileSiteKeyForHost(hostname) {
     ? '0x4AAAAAAECO2A5oKsePqsOg'
     : '1x00000000000000000000AA';
 }
+function dpcCheckoutEndpointForHost(hostname) {
+  if (hostname === 'www.downtownpourcollective.com' || hostname === 'downtownpourcollective.com') {
+    return 'https://ebiuspbgzggrdiaswpcc.supabase.co/functions/v1/circle-checkout';
+  }
+  // The staging handler separately restricts the exact approved preview origin
+  // and synthetic QA identities. Unknown hosts fail closed.
+  if (hostname === 'localhost' || hostname === '127.0.0.1'
+      || /^(?:dpc|dpc-web)-[a-z0-9-]+-brandis-projects-65a11cb6\.vercel\.app$/.test(hostname)) {
+    return 'https://hohbsqkmrlhkstojfdgx.supabase.co/functions/v1/circle-checkout-homepage-preview';
+  }
+  return '';
+}
 window.DPC_JOIN = {
-  checkoutEndpoint: 'https://ebiuspbgzggrdiaswpcc.supabase.co/functions/v1/circle-checkout',
+  checkoutEndpoint: dpcCheckoutEndpointForHost(window.location.hostname),
   turnstileSiteKey: dpcTurnstileSiteKeyForHost(window.location.hostname),
   turnstileAction: 'circle_checkout',
   /* Founding window ends 2026-09-01 00:00 America/Los_Angeles (PDT = UTC-7). */

@@ -1,5 +1,11 @@
 # DPC-WEB launch checklist
 
+For the October 20 Home, Events and Join preview's current readiness, use
+[the website launch checklist](docs/website-launch-checklist.md). This runbook
+also contains historical founding-deposit procedures; those are not instructions
+to restore retired founding offers to the new homepage. The applicable checkout,
+physical-device, legal-version and Git-integrated release gates still apply.
+
 A single, ordered runbook to get the site live. Do these in order — every step
 has acceptance criteria you can verify before moving on.
 

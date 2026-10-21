@@ -69,14 +69,16 @@ assert.doesNotMatch(home, /Already paid a \$49 Founding Slot Deposit/);
 // production (circle_venue_selection_policies.selection_enabled = false), so the
 // system assigns all five venues and nobody picks anything. Any copy offering the
 // member a choice of spots puts the page in conflict with the app.
-assert.match(home, /at spots we pick for you/);
+assert.match(home, /at your monthly venues/);
 // The entitlement is five Pours. The old line also hard-promised five distinct
 // spots, which was already wrong at eight partners and is wronger at ten, so the
 // count comes off while the assignment mechanic stays.
 assert.doesNotMatch(home, /one at each of five spots|five of downtown Livermore's best/);
-// The hero headline carries no venue count. Eight partners today, more later;
-// a hard number there reads as the size of the whole roster.
-assert.match(home, /<h1 class="hero__headline">Five drinks a month at downtown Livermore's best spots\.<\/h1>/);
+// The introduction explains the community membership without a venue count.
+const homeHero = home.match(/<section class="hero"[\s\S]*?<\/section>/)?.[0];
+assert.ok(homeHero, "homepage keeps its introductory offer");
+assert.match(homeHero, /local membership club/);
+assert.match(homeHero, /5 Membership Pours/);
 assert.doesNotMatch(home, /five of downtown Livermore/);
 // No dashes in visible copy. The body font renders a double hyphen as a dash
 // glyph, so `--` is caught here too, not just the em and en dash characters.
@@ -106,7 +108,7 @@ assert.doesNotMatch(home, /(?:start with one Circle|choose one Circle to start)/
 assert.doesNotMatch(home, /Pause feature|add (?:another|more) anytime|Welcome Kit fee|A \$50 value|THE INTRODUCTION/);
 // The Coaster Passport section is on the page; its CSS sat orphaned from
 // 2026-08-13 until it was reinstated. Guard the markup, not just the styles.
-assert.match(home, /THE COASTER PASSPORT/);
+assert.match(home, /The Coaster Passport/);
 assert.match(home, /data-screen-label="05 Coaster Passport"/);
 assert.doesNotMatch(home, /public launch checkout supports one Circle|between now and launch|Full launch August 1/);
 // Standard signup starts with membership alone and offers an optional kit.
@@ -176,16 +178,17 @@ assert.match(
 for (const [page, markup] of [['index.html', home], ['join.html', join]]) {
   assert.doesNotMatch(markup, /Member Setup Fee|Welcome Kit fee|add more anytime/i,
     `${page} must not advertise the retired mandatory setup fee`);
-  assert.match(markup, /optional Member Welcome Kit/i,
+  assert.match(markup.replace(/<[^>]+>/g, ''), /optional Member Welcome Kit/i,
     `${page} must describe the kit as optional`);
   assert.doesNotMatch(markup, /When you join, you receive the Member Welcome Kit|Kit is included with/i,
     `${page} must not imply every new membership includes a kit`);
 }
-assert.match(home, /<h3 class="kit__label">OPTIONAL MEMBER WELCOME KIT<\/h3>/);
-assert.match(home, /one-time \$49, with no added kit tax/i);
+assert.match(home, /<h2 class="kit__label" id="kit-title">The Member Welcome Kit\.<\/h2>/);
+assert.match(home, /one-time \$49/);
+assert.doesNotMatch(home, /no added kit tax|tax included/i, 'homepage tax claim awaits verified checkout treatment');
 const joinKitDisclosure = join.match(/<p class="checkout-kit">([\s\S]*?)<\/p>/);
 assert.ok(joinKitDisclosure, 'join.html must disclose the optional kit beside checkout');
-assert.match(joinKitDisclosure[1], /Optional Member Welcome Kit: \$49 once, no added kit tax/);
+assert.match(joinKitDisclosure[1].replace(/<[^>]+>/g, ''), /Optional Member Welcome Kit: \$49 once, no added kit tax/);
 assert.match(joinKitDisclosure[1], /Add or remove it at checkout/);
 assert.match(joinFineprint[1], /Turn off renewal anytime/);
 // Parse structured data as consumers do so a stale FAQ cannot silently disagree.
@@ -193,9 +196,10 @@ const homeStructuredData = [...home.matchAll(/<script type="application\/ld\+jso
   .map(match => JSON.parse(match[1]));
 const homeFaq = homeStructuredData.find(data => data['@type'] === 'FAQPage');
 assert.ok(homeFaq, 'homepage must retain its FAQ structured data');
-for (const question of homeFaq.mainEntity.filter(item => /cost|included/.test(item.name))) {
-  assert.match(question.acceptedAnswer.text, /optional Member Welcome Kit/);
-  assert.match(question.acceptedAnswer.text, /one-time \$49, with no added kit tax/);
+assert.equal(homeFaq.mainEntity.length, 5, 'homepage has the five visible closing FAQs');
+for (const question of homeFaq.mainEntity) {
+  assert.ok(home.includes(`<summary>${question.name}</summary>`), 'FAQ schema matches a visible question');
+  assert.ok(home.includes(`<p>${question.acceptedAnswer.text}</p>`), 'FAQ schema matches its visible answer');
 }
 // Events are separately coordinated, not membership entitlements. They may be
 // described; they may not be sold as included or promised as invitations.
@@ -213,15 +217,10 @@ assert.doesNotMatch(
   'public signup must not restore the retired founding-deposit notice',
 );
 
-// Five Pours is the promise, not a ceiling. "Up to five" and supply caveats
-// qualify it, and the structured data is what search and the assistants quote.
-for (const [page, markup] of [['index.html', home], ['join.html', join]]) {
-  assert.doesNotMatch(
-    markup,
-    /up to (?:five|5) Pours|when eligible venue supply allows|Five is the norm/i,
-    `${page} qualifies the five Pour promise`,
-  );
-}
+// Brandi requested five-Pour marketing copy on October 21. The launch
+// checklist retains the Decision #37/#58 policy reconciliation before release.
+assert.match(home, /5 Membership Pours per membership month/);
+assert.doesNotMatch(home, /a sixth Pour|for you or a guest|pause by email/i);
 assert.doesNotMatch(join, /Membership checkout opens August 1/);
 // Launch-day framing goes stale the moment the founding window closes, and the
 // roster is eight spots, not five. Guard both the page copy and the JSON-LD,
@@ -254,6 +253,7 @@ for (const [page, markup] of [
   ['index.html', home],
   ['join.html', join],
   ['partners.html', partners],
+  ['events.html', await read('events.html')],
   ['terms.html', terms],
   ['privacy.html', privacy],
   ['support.html', support],
@@ -317,7 +317,8 @@ for (const [page, markup] of [
 }
 
 assert.match(success, /account-setup and app-download instructions/);
-assert.match(cancelled, /remain held for up to 24 hours/);
+assert.doesNotMatch(cancelled, /founding reservation|remain held for up to 24 hours/);
+assert.match(cancelled, /No payment or membership activation was completed during this visit/);
 assert.match(terms, /September 1, 2026 at 12:00 AM Pacific Time/);
 assert.match(terms, /will not be charged again/);
 assert.match(terms, /Membership Pause is not currently available/);
@@ -397,6 +398,18 @@ assert.equal(configFor('downtownpourcollective.com').turnstileSiteKey, '0x4AAAAA
 assert.equal(configFor('dpc-preview.vercel.app').turnstileSiteKey, testKey);
 assert.equal(configFor('127.0.0.1').turnstileSiteKey, testKey);
 assert.notEqual(configFor('www.downtownpourcollective.com').turnstileSiteKey, testKey);
+const liveCheckout = 'https://ebiuspbgzggrdiaswpcc.supabase.co/functions/v1/circle-checkout';
+const stagingCheckout = 'https://hohbsqkmrlhkstojfdgx.supabase.co/functions/v1/circle-checkout-homepage-preview';
+for (const host of ['www.downtownpourcollective.com', 'downtownpourcollective.com']) {
+  assert.equal(configFor(host).checkoutEndpoint, liveCheckout);
+}
+for (const host of ['localhost', '127.0.0.1', 'dpc-web-git-codex-homepage-rebuild-brandis-projects-65a11cb6.vercel.app']) {
+  assert.equal(configFor(host).checkoutEndpoint, stagingCheckout);
+}
+for (const host of ['example.com', 'unrelated.vercel.app', 'www.downtownpourcollective.com.evil.test', 'dpc-web-test-brandis-projects-65a11cb6.vercel.app.evil.test']) {
+  assert.equal(configFor(host).checkoutEndpoint, '');
+}
+
 // Inverted deliberately. This used to pin the tuple to the values the server
 // required; pinning is what broke /join when the server moved and cached pages
 // did not. The config must now carry no tuple at all — join.html reads it live

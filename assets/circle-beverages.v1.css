@@ -1,0 +1,23 @@
+/* Shared beverage categories on the homepage and Join page. */
+.circle-beverages {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--gold);
+}
+.circle-beverages svg {
+  display: block;
+  width: 36px;
+  height: 36px;
+  flex: none;
+}
+.circle-card > .circle-beverages { margin-bottom: 20px; }
+.circle-opt__card > .circle-beverages {
+  grid-area: beverages;
+  margin-bottom: 10px;
+  gap: 10px;
+}
+.circle-opt__card > .circle-beverages svg { width: 28px; height: 28px; }
+@media (min-width: 720px) {
+  .circle-opt__card > .circle-beverages svg { width: 36px; height: 36px; }
+}
