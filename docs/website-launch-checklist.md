@@ -40,6 +40,19 @@ byte-for-byte unchanged. No new payment or backend verification was needed for
 this copy/layout-only change. Screenshots are saved locally under
 `.impeccable/review/copy-2026-10-21/`.
 
+The staging branch alias now serves the exact reviewed Home, Join and shared
+stylesheet bytes (HTTP 200). Vercel Preview deployment
+`dpl_2foqgJftXs5br4YEsuRmSjACA1UH` is READY at `56dccfe`; it was created from
+the connected Git repository because this push did not trigger an automatic
+deployment. No local source upload or production deployment was used.
+
+[CI run 39637865682](https://github.com/CrownLabs-LLC/DPC-WEB/actions/runs/39637865682)
+passed `npm test` but stopped before database/browser tests: the ECR registry
+rejected the disposable Postgres image download with
+`toomanyrequests: Data limit exceeded`. This is an external download blocker,
+not a failed database assertion against the app. A green full CI run remains
+required before publication; the 99 local browser passes remain valid.
+
 Impeccable's mechanical detector used its degraded regex parser and returned
 68 advisory entries for existing font/color/radius values. It did not evaluate
 computed contrast; this pass preserves the existing palette and typography.
@@ -62,7 +75,7 @@ observed but not rewritten during this narrow refinement.
 | [x] | Deploy the isolated staging candidate | Implementation | October 20: draft PR #74 and Git-integrated Preview are ready at implementation commit `9572762`. Home/Events/Join match the tested source. Dedicated staging checkout v1 has test-key, exact-Origin and synthetic-identity guards; readiness and rejection probes pass. Staging current legal tuple is `3.0 / 4.9 / 3.0 / 3.0`. Production main, Join source and checkout source bundle match the baseline; no production writes were made. |
 | [x] | Finish hosted checkout verification of the rebuilt pages | Implementation | October 20: branch-only staging credentials configured; fresh legal lookup 200/no-store. All six real Stripe sandbox handoffs have correct membership-only totals. Monthly/annual one-time $49 kit add/remove and recurring amounts pass; browser Back/retry and Stripe cancel/Return to Join pass. Six unpaid test sessions, no completed checkout or Circle membership. Stale founding-reservation cancel copy removed. See the [hosted verification report](hosted-join-verification-2026-10-20.md). |
 | [ ] | Complete physical-device and accessibility closeout | Release owner | Physical iPhone Safari and Android Chrome pass the Join handoff/return checks; keyboard focus, VoiceOver/form announcements and 200% text resizing are checked after the contrast correction. Include the in-app social browser if used for the launch campaign. Emulation is not physical-device evidence. |
-| [ ] | Obtain a clean verification gate for this preview | Implementation | October 20 implementation: [CI run `39506731776`](https://github.com/CrownLabs-LLC/DPC-WEB/actions/runs/39506731776) on `a40d963` passed unit tests, all database suites and the full browser suite: **546 passed, nine optional screenshot captures skipped, no failures/flaky cases reported**. The WebKit resize test now waits for the actual desktop-close state; 90 repeated cases also passed without retries. Initial registry/timing failures are retained in the report. October 21: npm test and 99 targeted browser cases passed; the new full PR CI run remains to complete. The earlier CI result remains historical checkout evidence. |
+| [ ] | Obtain a clean verification gate for this preview | Implementation | October 20 implementation: [CI run `39506731776`](https://github.com/CrownLabs-LLC/DPC-WEB/actions/runs/39506731776) on `a40d963` passed unit tests, all database suites and the full browser suite: **546 passed, nine optional screenshot captures skipped, no failures/flaky cases reported**. The WebKit resize test now waits for the actual desktop-close state; 90 repeated cases also passed without retries. Initial registry/timing failures are retained in the report. October 21: npm test and 99 targeted browser cases passed; full PR CI run 39637865682 is blocked by ECR’s Postgres image-download data limit before DB/browser execution. The earlier CI result remains historical checkout evidence. |
 | [ ] | Finish release metadata and remove preview treatment | Implementation + Brandi | Once assets/copy are approved, remove Home/Events review notices and `noindex, nofollow`. Ribbon watermarked-review captions are already removed after replacement. Add Events and intended public routes to the sitemap, refresh truthful modification dates and verify canonical/social previews on the hosted site. Preserve private-page noindex rules. |
 | [ ] | Final review and controlled publication | Brandi + release owner | Brandi approves the final copy/assets and reviewed PR. Publish through the existing Git-integrated process; verify the deployed commit, routes, checkout health and rollback readiness using the current runbook. No local production upload. |
 
