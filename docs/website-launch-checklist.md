@@ -44,7 +44,9 @@ The staging branch alias now serves the exact reviewed Home, Join and shared
 stylesheet bytes (HTTP 200). Vercel Preview deployment
 `dpl_2foqgJftXs5br4YEsuRmSjACA1UH` is READY at `56dccfe`; it was created from
 the connected Git repository because this push did not trigger an automatic
-deployment. No local source upload or production deployment was used.
+deployment. No local source upload or production deployment was used. The hosted visual check
+found the previous stylesheet cached in an already-open browser tab; a version
+query on Home’s stylesheet refreshes the new list spacing and timing layout.
 
 [CI run 39637865682](https://github.com/CrownLabs-LLC/DPC-WEB/actions/runs/39637865682)
 passed `npm test` but stopped before database/browser tests: the ECR registry
