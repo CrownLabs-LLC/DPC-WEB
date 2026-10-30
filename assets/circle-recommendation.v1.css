@@ -1,0 +1,19 @@
+.circle-recommendation {
+  color: var(--gold);
+  font: 600 14px/1.4 var(--body);
+  margin: 8px 0 0;
+}
+
+.circle-opt__card--recommended {
+  grid-template-areas:
+    "recommendation recommendation"
+    "beverages price"
+    "tag price"
+    "name price"
+    "desc note";
+}
+
+.circle-opt__card .circle-recommendation {
+  grid-area: recommendation;
+  margin: 0 0 8px;
+}
