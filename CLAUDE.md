@@ -26,3 +26,10 @@
   `{ data, error }`. Always check `result.error` explicitly.
 - Ops/monitoring docs live in DEPLOY.md §2b–2d (webhook, dashboard, health
   cron). Business days are Pacific time (Livermore, CA).
+
+# Release copy verification
+
+- Brandi owns re-checking the “Our most popular Circle” claim before each
+  release. Confirm privately that Cellar remains the leading Circle; if it
+  does not, remove the recommendation from both Home and Join before release.
+  Never put membership counts or percentages in public code, PRs, or comments.
