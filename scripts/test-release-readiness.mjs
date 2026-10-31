@@ -77,7 +77,7 @@ assert.doesNotMatch(home, /one at each of five spots|five of downtown Livermore'
 // The introduction explains the community membership without a venue count.
 const homeHero = home.match(/<section class="hero"[\s\S]*?<\/section>/)?.[0];
 assert.ok(homeHero, "homepage keeps its introductory offer");
-assert.match(homeHero, /local membership club/);
+assert.match(homeHero, /local membership community/);
 assert.match(homeHero, /5 Membership Pours/);
 assert.doesNotMatch(home, /five of downtown Livermore/);
 // No dashes in visible copy. The body font renders a double hyphen as a dash
