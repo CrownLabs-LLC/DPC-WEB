@@ -35,7 +35,9 @@ on:
 
 jobs:
   checkout-navigation:
-    runs-on: ubuntu-latest
+    # Keep browser system dependencies stable; the moving image timed out
+    # downloading Ubuntu 26.04 packages before tests could run.
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
