@@ -13,7 +13,7 @@ test('hands a fragment invitation to DPC without sending the credential to the w
   expect(await page.evaluate(() => ({local:localStorage.length,session:sessionStorage.length}))).toEqual({local:0,session:0});
   await page.getByText('App didn’t open?', {exact:true}).click();
   await expect(page.getByText('Don’t have the app yet?', {exact:false})).toBeVisible();
-  await page.screenshot({path:`/private/tmp/pour-partner-web-${test.info().project.name}.png`,fullPage:true});
+  await page.screenshot({path:test.info().outputPath('pour-partner-invitation.png'),fullPage:true});
 });
 for (const suffix of ['', '#token=short', `?token=${token}`, `#token=${token}&next=https://evil.example`, `?next=evil#token=${token}`]) {
   test(`rejects malformed invitation ${suffix.slice(0,20)}`, async ({page}) => {
