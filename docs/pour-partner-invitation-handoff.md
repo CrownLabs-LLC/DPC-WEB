@@ -1,6 +1,6 @@
 # Pour Partner invitation handoff — local batch
 
-Brandi approved this fix on November 5, 2026. No builds, internal updates, merges that publish, or deployments are authorized until she asks.
+Brandi approved this fix on November 5, 2026. Brandi subsequently authorized new internal iOS/Android builds and publication of only this invitation page. The mobile production release remains on hold.
 
 The app shares `https://www.downtownpourcollective.com/pour-partner#token=…`. The new static page validates the exact fragment shape and offers an explicit **Open in DPC** link to the existing native invitation route. It makes no invitation API calls and does not accept an invitation. The native app remains responsible for expiry, revocation, identity, eligibility, preview and explicit acceptance. Missing/malformed links show recovery guidance. The page does not include analytics; standard privacy controls may retain the user's advertising opt-out preference but never read or retain the invitation token.
 
