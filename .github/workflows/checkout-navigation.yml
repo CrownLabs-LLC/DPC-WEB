@@ -4,6 +4,10 @@ on:
   pull_request:
     paths:
       - 'join.html'
+      - 'delete-account.html'
+      - 'assets/account-deletion.*'
+      - 'api/account-deletion.js'
+      - 'api/admin-config.js'
       - 'email-preferences.html'
       - 'assets/email-preferences.*'
       - 'api/email-preferences-config.js'
