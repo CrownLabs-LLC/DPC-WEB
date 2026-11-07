@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en-US">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow,noarchive"><meta name="referrer" content="no-referrer">
+<title>Delete your account | Downtown Pour Collective</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/assets/pour-partner-invitation.v1.css">
+<link rel="stylesheet" href="/assets/account-deletion.v1.css">
+<script src="/assets/account-deletion.v1.js" defer></script>
+</head>
+<body>
+<header><a href="/">Downtown Pour Collective</a></header>
+<main>
+<h1>Delete your DPC account</h1>
+<p>Request deletion of your account and personal information. Verify your email, then choose when your account should close.</p>
+<p class="note">DPC processes these requests manually. Submitting the form does not instantly delete your account or cancel a subscription. DPC will stop future renewals in either case and confirm the billing and deletion steps by email.</p>
+<div id="status" role="status" aria-live="polite">Loading the secure request form…</div>
+<form id="identity-form" hidden>
+<label for="email">Account email</label>
+<input id="email" type="email" autocomplete="email" required maxlength="254">
+<button class="button" type="submit">Send verification code</button>
+</form>
+<form id="code-form" hidden>
+<label for="code">Six-digit email code</label>
+<input id="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required>
+<button class="button" type="submit">Verify email</button>
+<button id="change-email" class="secondary" type="button">Use a different email</button>
+</form>
+<form id="request-form" hidden>
+<p>Verified account: <strong id="verified-email"></strong></p>
+<fieldset><legend>When should your account be deleted?</legend>
+<label class="choice"><input type="radio" name="timing" value="now" required><span><strong>Delete now</strong><br>Delete after DPC verifies and processes this request, without waiting for your paid period to end. Your remaining membership access and unused Pours will end.</span></label>
+<label class="choice"><input type="radio" name="timing" value="paid_period_end" required><span><strong>At the end of my paid period</strong><br>Stop future renewals and keep your paid access until it ends. For multiple Circles, DPC will confirm the final paid-access date before scheduling account deletion.</span></label>
+</fieldset>
+<p class="note">If you have no remaining paid access, DPC will process either choice without waiting for a paid-period end. This request does not promise a refund; applicable terms and rights still apply.</p>
+<label class="choice"><input id="confirm" type="checkbox" required><span>I request account deletion with the timing selected above and want future membership renewals stopped. I understand that deletion ends access and cannot be undone.</span></label>
+<button class="button" type="submit">Submit deletion request</button>
+<button id="reverify" class="secondary" type="button">Verify this email again</button>
+<button id="leave" class="secondary" type="button">Leave without submitting</button>
+</form>
+<section id="received" hidden tabindex="-1"><h2>Request received</h2><p id="receipt"></p><p>DPC will confirm that renewals have stopped and tell you when deletion is complete. Keep your reference number for any follow-up.</p></section>
+<details><summary>What happens to my information?</summary>
+<p>DPC will delete or anonymize personal information that is no longer needed. Some payment, settlement, support, fraud and legal records must be retained. Account deletion does not erase those required records.</p>
+<p>The <a href="/privacy#sec-10">Privacy Policy’s retention schedule</a> includes payment records for seven years, support records for three years after resolution, redemption logs for three years, verification records for four years, and fraud/audit investigation logs for five years or as required by law. Applicable legal holds may extend retention. DPC will explain any exception that applies to your request.</p>
+<p>DPC responds to verified requests within 45 calendar days, or explains any necessary extension. “Delete now” means no wait for the paid period; processing is not instantaneous. For a scheduled deletion, DPC will confirm the date after checking paid access.</p>
+</details>
+<p class="note">Can’t verify your email or need help with an existing request? Contact <a href="mailto:privacy@downtownpourcollective.com">privacy@downtownpourcollective.com</a>. Never send your password or verification code.</p>
+<noscript><p>Enable JavaScript to verify your email and submit this form.</p></noscript>
+</main><footer><a href="/privacy">Privacy Policy</a> · <a href="/terms">Terms of Service</a> · <a href="/privacy-choices">Do Not Sell or Share My Personal Information</a></footer>
+</body></html>
