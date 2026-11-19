@@ -8,7 +8,7 @@
   const status=(message,error=false)=>{$('status').textContent=message;$('status').dataset.error=String(error);};
   const show=id=>{for(const name of ['identity-form','code-form','claim-form','guest-view','member-view'])$(name).hidden=name!==id;};
   const json=async(url,init={})=>{const r=await fetch(url,{...init,cache:'no-store',credentials:'omit',signal:AbortSignal.timeout(10000)});const data=await r.json();if(!r.ok){const error=Error(r.status===401?'verify_email':'request_failed');error.status=r.status;throw error;}return data;};
-  const headers=(authenticated=false)=>({'Content-Type':'application/json',apikey:config.anonKey,Authorization:`Bearer ${authenticated?session:config.anonKey}`});
+  const headers=(authenticated=false)=>({'Content-Type':'application/json',apikey:config.anonKey,...(authenticated?{Authorization:`Bearer ${session}`}:{})});
   const rpc=(name,args={},authenticated=true)=>json(`${config.supabaseUrl}/rest/v1/rpc/${name}`,{method:'POST',headers:headers(authenticated),body:JSON.stringify(args)});
   const edge=(name,body)=>json(`${config.supabaseUrl}/functions/v1/${name}`,{method:'POST',headers:headers(),body:JSON.stringify(body)});
   const run=async(fn)=>{if(busy)return;busy=true;document.querySelectorAll('button').forEach(b=>b.disabled=true);try{await fn();}catch(error){if(error.status===401){session=null;show('identity-form');status('Your session expired. Verify your email again to continue.',true);}else status('Could not complete this request. Check your connection and try again.',true);}finally{busy=false;document.querySelectorAll('button').forEach(b=>b.disabled=false);}};
