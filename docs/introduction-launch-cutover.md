@@ -84,3 +84,18 @@ Production currently has none of the Introduction migrations. Install the review
 11. `20261119202247_introduction_legal_publication.sql`
 
 Do not use a broad migration push to silently deploy unrelated staging-only work. The last two migrations prepare privacy controls and the explicit publication operation; they do not publish legal versions or activate claims by themselves. Staging already has the first nine migrations. Recheck this inventory at the final approved cutover rather than assuming the November 19 snapshot is still current.
+
+## November 19 device-test correction
+
+Brandi reported that Stop marketing emails did nothing. Staging showed no withdrawal
+record or browser withdrawal request. The page previously reused an immutable,
+year-cached `introduction.v1.js` URL even after adding the withdrawal handler;
+returning browsers could display the new button with the old script. The new page
+uses v2 script/style URLs and shows pending, success and retry feedback beside the
+button. Keep deployed immutable asset URLs versioned whenever their contents change.
+
+The desktop Chromium, mobile Chromium and mobile WebKit checks pass, including a
+stale-v1 regression, pending feedback, failure retry availability, preservation of
+the guest record and clearing feedback on sign-out. These are browser simulations;
+Brandi must retry the updated staging page on her phone before final release approval.
+No backend, entitlement, reimbursement or production changes are part of this fix.

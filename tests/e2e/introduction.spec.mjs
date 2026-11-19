@@ -126,5 +126,31 @@ test('failed withdrawal does not claim marketing was stopped',async({page})=>{
  await page.getByRole('button',{name:'Stop marketing emails',exact:true}).click();
  await expect(page.locator('#status')).toContainText('Could not complete');
  await expect(page.locator('#status')).not.toContainText('Marketing emails are stopped');
+ await expect(page.locator('#marketing-status')).toContainText('Try Stop marketing emails again');
+ await expect(page.locator('#marketing-status')).toBeInViewport();
+ await expect(page.locator('#withdraw-marketing')).toBeEnabled();
  await expect(page.locator('#guest-details')).toContainText('Claimed from');
+});
+
+// Returning visitors may retain the original immutable asset for a year.
+test('returning guest bypasses the old cached script and sees withdrawal feedback',async({page},info)=>{
+ await setup(page);
+ await page.route('**/assets/introduction.v1.js',r=>r.fulfill({contentType:'application/javascript',body:'/* stale pre-withdrawal script */'}));
+ let finish;
+ const pending=new Promise(resolve=>{finish=resolve;});
+ await page.route(`${host}/rest/v1/rpc/withdraw_introduction_marketing`,async r=>{await pending;await r.fulfill({json:{marketing_allowed:false}});});
+ await page.goto('/introduction?view=guest');await verify(page);
+ await page.getByRole('button',{name:'Stop marketing emails',exact:true}).click();
+ await expect(page.locator('#marketing-status')).toHaveText('Stopping marketing emails…');
+ await expect(page.locator('#marketing-status')).toBeInViewport();
+ finish();
+ await expect(page.locator('#marketing-status')).toContainText('Marketing emails are stopped');
+ await expect(page.locator('#marketing-status')).toBeInViewport();
+ await expect(page.locator('#withdraw-marketing')).toBeHidden();
+ await expect(page.locator('#guest-details')).toContainText('Claimed from');
+ await page.screenshot({path:info.outputPath('withdrawal-confirmation.png'),fullPage:true});
+ await page.getByRole('button',{name:'Sign out of this page',exact:true}).click();
+ await verify(page);
+ await expect(page.locator('#withdraw-marketing')).toBeVisible();
+ await expect(page.locator('#marketing-status')).toBeEmpty();
 });
