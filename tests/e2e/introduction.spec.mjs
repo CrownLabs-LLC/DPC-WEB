@@ -65,3 +65,48 @@ test('leaving a private page clears its session and visible guest record',async(
   await expect(page.locator('#guest-details')).toBeEmpty();
   await expect(page.locator('#identity-form')).toBeVisible();
 });
+async function readyClaim(page) {
+  await page.goto(`/introduction#invite=${token}`);await verify(page);
+  await page.getByLabel('First name as shown on your ID').fill('Guest');
+  await page.getByLabel('Last name as shown on your ID').fill('Friend');
+  await page.locator('#over-21').check();await page.locator('#terms').check();
+}
+test('whitespace names stay editable without submitting a frozen claim',async({page})=>{
+  const calls=await setup(page);await readyClaim(page);await page.locator('#first-name').fill('   ');
+  await page.getByRole('button',{name:'Claim my Introduction'}).click();
+  await expect(page.locator('#status')).toContainText('Enter your first and last name');
+  await expect(page.locator('#first-name')).toBeEnabled();expect(calls.some(c=>c.url.endsWith('/claim_introduction'))).toBe(false);
+});
+test('expired claim session asks for verification rather than endless retries',async({page})=>{
+  await setup(page);await page.route(`${host}/rest/v1/rpc/claim_introduction`,r=>r.fulfill({status:401,json:{error:'expired'}}));
+  await readyClaim(page);await page.getByRole('button',{name:'Claim my Introduction'}).click();
+  await expect(page.locator('#identity-form')).toBeVisible();await expect(page.locator('#status')).toContainText('session expired');
+  await expect(page.getByRole('link',{name:'View my claimed Introduction'})).toHaveAttribute('href','/introduction?view=guest');
+});
+for(const [reason,message] of [['already_claimed','You have already claimed'],['consent_changed','Reload this page']]) {
+  test(`claim reason ${reason} gives the correct recovery`,async({page})=>{
+    await setup(page);await page.route(`${host}/rest/v1/rpc/claim_introduction`,r=>r.fulfill({json:{ok:false,reason}}));
+    await readyClaim(page);await page.getByRole('button',{name:'Claim my Introduction'}).click();
+    await expect(page.locator('#status')).toContainText(message);await expect(page.locator('#first-name')).toBeEnabled();
+  });
+}
+test('unknown returning email receives the same neutral code prompt',async({page})=>{
+  await setup(page);await page.route(`${host}/auth/v1/otp`,r=>r.fulfill({status:400,json:{error:'unknown_user'}}));
+  await page.goto('/introduction?view=guest');await page.getByLabel('Email address',{exact:true}).fill('unknown@example.test');
+  await page.getByRole('button',{name:'Send verification code',exact:true}).click();
+  await expect(page.locator('#code-form')).toBeVisible();await expect(page.locator('#status')).toContainText('If this email can continue');
+});
+test('canceling another slot preserves the newly created share link',async({page})=>{
+  await setup(page,{member:true});let other=true;
+  await page.route(`${host}/rest/v1/rpc/get_introduction_invitations`,r=>r.fulfill({json:[...(other?[{id:'other',slot:1,state:'open'}]:[]),{id:'inv-1',slot:2,state:'open'}]}));
+  await page.goto('/introduction?view=member');await verify(page,'member@example.test');
+  // Start with the first slot only so the create control is available.
+  await page.unroute(`${host}/rest/v1/rpc/get_introduction_invitations`);
+  await page.getByRole('button',{name:'Refresh invitations'}).click();
+  await page.getByRole('button',{name:'Create invitation link'}).click();
+  await page.route(`${host}/rest/v1/rpc/get_introduction_invitations`,r=>r.fulfill({json:[...(other?[{id:'other',slot:1,state:'open'}]:[]),{id:'inv-1',slot:2,state:'open'}]}));
+  await page.getByRole('button',{name:'Refresh invitations'}).click();
+  await page.route(`${host}/rest/v1/rpc/cancel_introduction_invitation`,r=>{other=false;return r.fulfill({json:{ok:true}});});
+  await page.getByRole('button',{name:'Cancel unclaimed invitation'}).first().click();
+  await expect(page.locator('#share-link')).toBeVisible();await expect(page.locator('#invitation-link')).toHaveValue(new RegExp(`#invite=${token}$`));
+});
