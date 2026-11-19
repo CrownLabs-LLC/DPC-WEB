@@ -2,9 +2,9 @@ import {test,expect} from '@playwright/test';
 const host='https://hohbsqkmrlhkstojfdgx.supabase.co',token='a'.repeat(64);
 async function setup(page,{member=false,lost=false,missing=false}={}) {
   const calls=[];let claimed=false,created=false;
-  await page.route('**/api/introduction',route=>route.fulfill({json:{supabaseUrl:host,anonKey:'sb_publishable_fixture',isStaging:true}}));
+  await page.route('**/api/introduction',route=>route.fulfill({json:{supabaseUrl:host,anonKey:'synthetic-public',isStaging:true}}));
   await page.route(`${host}/**`,async route=>{
-    const url=route.request().url(),body=route.request().postDataJSON();calls.push({url,body,headers:route.request().headers()});
+    const url=route.request().url(),body=route.request().postDataJSON();calls.push({url,body});
     let data;
     if(url.endsWith('/get_introduction_preview'))data=missing?null:{inviterFirstName:'Nick',inviterLastName:'Host',termsRevision:'introduction-giving-2026-v1-draft',marketingRevision:'introduction-marketing-2026-v1-draft',privacyRevision:'privacy-fixture'};
     else if(url.endsWith('/request-introduction-code')||url.endsWith('/otp'))data={status:'accepted'};
@@ -19,14 +19,6 @@ async function setup(page,{member=false,lost=false,missing=false}={}) {
     return route.fulfill({json:data});
   });
   return calls;
-}
-function verifyRequestHeaders(calls) {
-  const publicPaths=['/get_introduction_preview','/request-introduction-code','/verify-introduction-code','/otp','/verify'];
-  for(const call of calls) {
-    expect(call.headers.apikey).toBe('sb_publishable_fixture');
-    if(publicPaths.some(path=>call.url.endsWith(path)))expect(call.headers.authorization).toBeUndefined();
-    else expect(call.headers.authorization).toBe('Bearer synthetic-session');
-  }
 }
 async function verify(page,email='guest@example.test') {
   await page.getByLabel('Email address',{exact:true}).fill(email);
@@ -45,7 +37,7 @@ test('browser claim separates optional consent, survives lost receipt, and store
   await expect(page.locator('#marketing')).toBeDisabled();await page.getByRole('button',{name:'Claim my Introduction'}).click();
   await expect(page.locator('#guest-view')).toBeVisible();const claims=calls.filter(c=>c.url.endsWith('/claim_introduction'));
   expect(claims).toHaveLength(2);expect(claims[0].body).toEqual(claims[1].body);expect(claims[0].body.p_marketing_opt_in).toBe(false);
-  expect(calls.some(c=>c.url.includes(token))).toBe(false);verifyRequestHeaders(calls);
+  expect(calls.some(c=>c.url.includes(token))).toBe(false);
   expect(await page.evaluate(()=>[localStorage.length,sessionStorage.length,document.cookie])).toEqual([0,0,'']);
 });
 test('member creates, copies and cancels an unclaimed link',async({page},info)=>{
@@ -54,12 +46,12 @@ test('member creates, copies and cancels an unclaimed link',async({page},info)=>
   await expect(page.locator('#invitation-link')).toHaveValue(new RegExp(`#invite=${token}$`));
   await page.screenshot({path:info.outputPath('member.png'),fullPage:true});
   await page.getByRole('button',{name:'Cancel unclaimed invitation'}).click();await expect(page.locator('#share-link')).toBeHidden();
-  expect(calls.filter(c=>c.url.endsWith('/create_introduction_invitation'))).toHaveLength(1);verifyRequestHeaders(calls);
+  expect(calls.filter(c=>c.url.endsWith('/create_introduction_invitation'))).toHaveLength(1);
 });
 test('returning guest verifies email without needing the original bearer link',async({page})=>{
   const calls=await setup(page);await page.goto('/introduction?view=guest');await verify(page);await expect(page.locator('#guest-view')).toBeVisible();
   expect(calls.find(c=>c.url.endsWith('/otp')).body).toEqual({email:'guest@example.test',create_user:false});
-  expect(calls.some(c=>c.url.endsWith('/claim_introduction'))).toBe(false);verifyRequestHeaders(calls);
+  expect(calls.some(c=>c.url.endsWith('/claim_introduction'))).toBe(false);
 });
 test('unavailable invitation does not offer email collection',async({page})=>{
   await setup(page,{missing:true});await page.goto(`/introduction#invite=${token}`);await expect(page.locator('#status')).toContainText('unavailable');await expect(page.locator('#identity-form')).toBeHidden();

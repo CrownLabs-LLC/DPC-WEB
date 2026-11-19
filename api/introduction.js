@@ -1,10 +1,11 @@
 import { looksLikeSecretKey } from './admin-config.js';
-// Reviewed nonproduction fixture: this is a browser-safe publishable key, not a
+// Reviewed nonproduction fixture: this is a browser-safe anon JWT key, not a
 // service credential. Match Vercel's server-owned project, branch and environment;
 // explicit operator configuration (including false) always takes precedence.
+// Legacy anon compatibility is required by the reviewed guest OTP JWT gateway.
 const previewConfig = Object.freeze({
   url: 'https://hohbsqkmrlhkstojfdgx.supabase.co',
-  anon: "sb_publishable_6hO6UuXyj8XGhasTbOGa3A_7fcGV26s",
+  anon: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhvaGJzcWttcmxoa3N0b2pmZGd4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYxMzk0MDgsImV4cCI6MjA5MTcxNTQwOH0.yMt2lBjEgsAyMihP-Sio2-LuOyrn9-1_jIybtoradaU",
 });
 function useReviewedPreview(env) {
   return env.DPC_INTRODUCTION_ENABLED === undefined
