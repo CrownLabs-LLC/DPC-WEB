@@ -1,6 +1,6 @@
-# The Introduction — November 25 release cutover
+# The Introduction — release cutover
 
-Candidate publication only. Production deployment, WEB main merge, public app distribution and feature activation require Brandi’s final release approval. November 19 edits are not evidence of publication. Set the displayed update date to the actual publication date before the approved production deploy.
+November 25 is the target, not a required wait: Brandi welcomes an earlier launch once all release gates pass. Candidate publication only. Production deployment, WEB main merge, public app distribution and feature activation require Brandi’s final release approval. November 19 edits are not evidence of publication. Set the displayed update date to the actual publication date before the approved production deploy.
 
 ## Approved content
 
