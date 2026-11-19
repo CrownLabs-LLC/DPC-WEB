@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en-US">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow,noarchive"><meta name="referrer" content="no-referrer">
+<title>The Introduction | Downtown Pour Collective</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/assets/pour-partner-invitation.v1.css">
+<link rel="stylesheet" href="/assets/account-deletion.v1.css">
+<link rel="stylesheet" href="/assets/introduction.v1.css">
+<script src="/assets/introduction.v1.js" defer></script>
+</head>
+<body>
+<header><a href="/">Downtown Pour Collective</a></header>
+<main>
+<h1>The Introduction</h1>
+<p id="intro-heading">Give a friend a Pour.</p>
+<div id="status" role="status" aria-live="polite">Loading The Introduction…</div>
+<form id="identity-form" hidden>
+<label for="email">Email address</label>
+<input id="email" type="email" autocomplete="email" required maxlength="254">
+<p class="note">We’ll send a six-digit verification code. Verifying your email does not subscribe you to marketing.</p>
+<button class="button" type="submit">Send verification code</button>
+</form>
+<form id="code-form" hidden>
+<label for="code">Six-digit email code</label>
+<input id="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required>
+<button class="button" type="submit">Verify email</button>
+<button id="resend" class="secondary" type="button">Send a new code</button>
+<button id="change-email" class="secondary" type="button">Use a different email</button>
+</form>
+<form id="claim-form" hidden>
+<h2>Claim your Introduction</h2>
+<p>Verified email: <strong id="verified-email"></strong></p>
+<label for="first-name">First name as shown on your ID</label>
+<input id="first-name" type="text" autocomplete="given-name" maxlength="80" required>
+<label for="last-name">Last name as shown on your ID</label>
+<input id="last-name" type="text" autocomplete="family-name" maxlength="80" required>
+<label class="choice"><input id="over-21" type="checkbox" required><span>I am 21 or older. I’ll bring my photo ID to the venue.</span></label>
+<label class="choice"><input id="terms" type="checkbox" required><span>I agree to <a href="#introduction-terms">The Introduction terms below</a> and have read the <a href="/privacy" target="_blank" rel="noopener noreferrer">privacy policy</a>.</span></label>
+<label class="choice"><input id="marketing" type="checkbox"><span>Optional: Email me DPC news and offers. I can unsubscribe at any time.</span></label>
+<button class="button" type="submit">Claim my Introduction</button>
+<p class="note">Your inviter will see your name and Introduction status. Your email and marketing choice stay private.</p>
+</form>
+<section id="guest-view" hidden tabindex="-1">
+<h2 id="guest-title">Your Introduction</h2><p id="guest-details"></p>
+<div id="guest-visit-instructions"><p>Visit together. Your original inviter will use the DPC app to redeem one of their monthly Pours alongside your Introduction. You do not need to download the app.</p>
+<p>Both of you should have photo ID ready and wait until the bartender is ready before redeeming.</p></div>
+</section>
+<section id="member-view" hidden>
+<h2>Your invitations</h2><p>Two Introductions for this Giving offering. A claimed Introduction stays with that friend through December 31.</p>
+<div id="invitations"></div>
+<button id="create-invitation" class="button" type="button">Create invitation link</button>
+<section id="share-link" hidden><label for="invitation-link">Share this personal invitation</label><input id="invitation-link" type="text" readonly><button id="copy-link" class="secondary" type="button">Copy invitation link</button><p class="note">Send it by text or email. The first friend to verify their email and claim it gets this Introduction. Save this link before leaving the page.</p></section>
+<p class="note">When you visit together, open an available monthly Pour in the app and choose “Use an Introduction.” Your friend’s Pour is separate from your monthly Pours.</p>
+<button id="refresh-invitations" class="secondary" type="button">Refresh invitations</button>
+</section>
+<section id="introduction-terms" hidden>
+<h2>The Introduction terms</h2>
+<p>This one-time Giving offering provides two Introductions per eligible member. Each guest may claim one Introduction and must never have been a DPC member when claiming. Guests must be 21 or older and verify their email.</p>
+<p>Redeem with your original inviter at the same participating venue during the same visit. Your inviter must have active redemption access and use an available regular monthly Membership Pour. Birthday Pours and special grants do not qualify. Venue beverage offerings, redemption hours and blackouts apply.</p>
+<p>Claim and redeem by the end of December 31, 2026, Pacific time. Unclaimed links and unused Introductions expire with no rollover. A claimed Introduction stays attached to the original inviter, including if you join DPC before the visit. Marketing consent is optional and separate.</p>
+<p id="terms-revision" class="note"></p>
+</section>
+<button id="sign-out" class="secondary" type="button" hidden>Sign out of this page</button>
+</main>
+<footer><a href="/privacy">Privacy policy</a> · <a href="/support">Need help?</a><br><a href="/privacy-choices">Do Not Sell or Share My Personal Information</a></footer>
+</body>
+</html>
