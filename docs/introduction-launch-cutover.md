@@ -99,3 +99,13 @@ stale-v1 regression, pending feedback, failure retry availability, preservation 
 the guest record and clearing feedback on sign-out. These are browser simulations;
 Brandi must retry the updated staging page on her phone before final release approval.
 No backend, entitlement, reimbursement or production changes are part of this fix.
+
+Brandi subsequently confirmed marketing withdrawal works. Staging recorded the
+withdrawal at 2026-11-19 22:10:39 UTC and the guest Introduction remains redeemed.
+She identified a separate issue: View my claimed Introduction reloaded the page
+and discarded the in-memory verified session. The v3 script handles that link
+inside the current authenticated page, while signed-out navigation and expired
+session verification remain enforced. Browser coverage includes both guest and
+claim-page entry points plus expired sessions (51 Introduction cases total).
+The session is still cleared when leaving the page; no persistent token storage
+was added. Final navigation retry and existing-member access confirmation remain.

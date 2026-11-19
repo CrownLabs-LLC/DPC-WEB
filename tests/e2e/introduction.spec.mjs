@@ -154,3 +154,28 @@ test('returning guest bypasses the old cached script and sees withdrawal feedbac
  await expect(page.locator('#withdraw-marketing')).toBeVisible();
  await expect(page.locator('#marketing-status')).toBeEmpty();
 });
+
+for(const fromClaim of [false,true])test(`view claimed Introduction preserves verified session (${fromClaim?'claim':'guest'} page)`,async({page})=>{
+ const calls=await setup(page);
+ await page.goto(fromClaim?`/introduction#invite=${token}`:'/introduction?view=guest');
+ await verify(page);
+ await expect(page.locator(fromClaim?'#claim-form':'#guest-view')).toBeVisible();
+ const url=page.url();
+ const requestsBefore=calls.filter(c=>c.url.endsWith('/get_claimed_introduction')).length;
+ await page.getByRole('link',{name:'View my claimed Introduction',exact:true}).click();
+ await expect(page.locator('#guest-details')).toContainText('Nick Host');
+ await expect.poll(()=>calls.filter(c=>c.url.endsWith('/get_claimed_introduction')).length).toBe(requestsBefore+1);
+ await expect(page.locator('#identity-form')).toBeHidden();
+ expect(page.url()).toBe(url);
+ expect(calls.filter(c=>c.url.endsWith('/verify')||c.url.endsWith('/verify-introduction-code'))).toHaveLength(1);
+});
+
+test('view claimed Introduction requests verification when its session expires',async({page})=>{
+ await setup(page);await page.goto('/introduction?view=guest');await verify(page);
+ await expect(page.locator('#guest-view')).toBeVisible();
+ await page.route(`${host}/rest/v1/rpc/get_claimed_introduction`,r=>r.fulfill({status:401,json:{error:'expired'}}));
+ await page.getByRole('link',{name:'View my claimed Introduction',exact:true}).click();
+ await expect(page.locator('#identity-form')).toBeVisible();
+ await expect(page.locator('#status')).toContainText('Your session expired');
+ await expect(page.locator('#guest-view')).toBeHidden();
+});
