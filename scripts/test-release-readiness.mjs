@@ -331,8 +331,10 @@ assert.match(privacy, /href="\/terms#redemption-mechanics"/,
 assert.match(terms, /The following beverage eligibility rules apply beginning September 22, 2026 at 12:00 AM Pacific Time\./,
   'the reviewed beverage clause must preserve the full-day business start');
 assert.doesNotMatch(terms, /Welcome Kit and Activation Fee|fourteen \(14\) calendar days|\[INSERT IN APP ROADMAP FOR CANCELLATION\]|Founding Annual memberships/);
-assert.match(privacy, /Version 4\.9/);
-assert.match(privacy, /Last Updated: September 22, 2026/);
+assert.match(terms, /Version 3\.1/);
+assert.match(terms, /id="sec-11-1"/);
+assert.match(privacy, /Version 4\.10/);
+assert.match(privacy, /Last Updated: November 19, 2026/);
 assert.match(privacy, /Material changes will be communicated at least fourteen \(14\) days/);
 assert.doesNotMatch(privacy, /Effective Date: August 1, 2026/);
 assert.match(privacy, /This sharing is limited to data collected through the Site/);
@@ -343,7 +345,7 @@ for (const [page, markup] of [
   ['index.html', home], ['join.html', join], ['privacy.html', privacy],
   ['terms.html', terms], ['partners.html', partners],
 ]) {
-  assert.match(markup, /Our Privacy Policy was updated on September 18, 2026/,
+  assert.match(markup, /The Introduction Giving offering is covered by our updated/,
     `${page} is missing the temporary notice`);
 }
 assert.doesNotMatch(privacy, /Effective Date: \[DATE\]/);

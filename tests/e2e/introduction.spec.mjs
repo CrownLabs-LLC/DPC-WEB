@@ -6,7 +6,7 @@ async function setup(page,{member=false,lost=false,missing=false}={}) {
   await page.route(`${host}/**`,async route=>{
     const url=route.request().url(),body=route.request().postDataJSON();calls.push({url,body});
     let data;
-    if(url.endsWith('/get_introduction_preview'))data=missing?null:{inviterFirstName:'Nick',inviterLastName:'Host',termsRevision:'introduction-giving-2026-v1-draft',marketingRevision:'introduction-marketing-2026-v1-draft',privacyRevision:'privacy-fixture'};
+    if(url.endsWith('/get_introduction_preview'))data=missing?null:{inviterFirstName:'Nick',inviterLastName:'Host',termsRevision:'introduction-giving-2026-v1',marketingRevision:'introduction-marketing-2026-v1',privacyRevision:'4.10'};
     else if(url.endsWith('/request-introduction-code')||url.endsWith('/otp'))data={status:'accepted'};
     else if(url.endsWith('/verify-introduction-code'))data={accessToken:'synthetic-session',email:'guest@example.test',expiresAt:9999999999};
     else if(url.endsWith('/verify'))data={access_token:'synthetic-session',user:{email:member?'member@example.test':'guest@example.test'}};
@@ -109,4 +109,22 @@ test('canceling another slot preserves the newly created share link',async({page
   await page.route(`${host}/rest/v1/rpc/cancel_introduction_invitation`,r=>{other=false;return r.fulfill({json:{ok:true}});});
   await page.getByRole('button',{name:'Cancel unclaimed invitation'}).first().click();
   await expect(page.locator('#share-link')).toBeVisible();await expect(page.locator('#invitation-link')).toHaveValue(new RegExp(`#invite=${token}$`));
+});
+
+test('guest can withdraw marketing without changing the saved Introduction',async({page})=>{
+ await setup(page);
+ await page.route(`${host}/rest/v1/rpc/withdraw_introduction_marketing`,r=>r.fulfill({json:{marketing_allowed:false}}));
+ await page.goto('/introduction?view=guest');await verify(page,'guest@example.test');
+ await page.getByRole('button',{name:'Stop marketing emails',exact:true}).click();
+ await expect(page.locator('#status')).toContainText('Marketing emails are stopped');
+ await expect(page.locator('#guest-details')).toContainText('Claimed from');
+});
+
+test('failed withdrawal does not claim marketing was stopped',async({page})=>{
+ await setup(page);await page.route(`${host}/rest/v1/rpc/withdraw_introduction_marketing`,r=>r.fulfill({status:503,json:{error:'unavailable'}}));
+ await page.goto('/introduction?view=guest');await verify(page,'guest@example.test');
+ await page.getByRole('button',{name:'Stop marketing emails',exact:true}).click();
+ await expect(page.locator('#status')).toContainText('Could not complete');
+ await expect(page.locator('#status')).not.toContainText('Marketing emails are stopped');
+ await expect(page.locator('#guest-details')).toContainText('Claimed from');
 });

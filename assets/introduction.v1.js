@@ -3,7 +3,7 @@
   const $=id=>document.getElementById(id);
   const fragment=new URLSearchParams(location.hash.slice(1)), invite=fragment.get('invite');
   const mode=invite?'claim':new URLSearchParams(location.search).get('view')==='member'?'member':'guest';
-  const TERMS='introduction-giving-2026-v1-draft', MARKETING='introduction-marketing-2026-v1-draft';
+  const TERMS='introduction-giving-2026-v1', MARKETING='introduction-marketing-2026-v1';
   let config,preview,session=null,email='',busy=false,createId=null,claimInput=null,sharedInvitationId=null;
   const status=(message,error=false)=>{$('status').textContent=message;$('status').dataset.error=String(error);};
   const show=id=>{for(const name of ['identity-form','code-form','claim-form','guest-view','member-view'])$(name).hidden=name!==id;};
@@ -22,7 +22,7 @@
   }
   async function guestStatus(){
     const result=await rpc('get_claimed_introduction');
-    show('guest-view');$('guest-visit-instructions').hidden=result?.state!=='claimed';$('guest-title').textContent=result?'Your Introduction':'No Introduction found';
+    show('guest-view');$('guest-marketing').hidden=!result;$('guest-visit-instructions').hidden=result?.state!=='claimed';$('guest-title').textContent=result?'Your Introduction':'No Introduction found';
     if(!result){$('guest-details').textContent='No claimed Introduction is attached to this verified email. Open your friend’s invitation link to claim.';return;}
     const inviter=`${result.inviter_first_name??''} ${result.inviter_last_name??''}`.trim();
     const state=result.state;
@@ -35,7 +35,7 @@
     for(const row of rows){
       const article=document.createElement('article'),title=document.createElement('h3'),detail=document.createElement('p');
       title.textContent=row.guest_first_name?`${row.guest_first_name} ${row.guest_last_name}`:`Invitation ${row.slot}`;
-      detail.textContent=({open:'Not claimed yet',claimed:'Claimed — ready to visit together',redeemed:'Redeemed together',expired:'Expired'})[row.state]??'Unavailable';
+      detail.textContent=({open:'Shared, waiting for a claim',claimed:'Claimed — ready when you are',redeemed:'Redeemed together',expired:'Expired'})[row.state]??'Unavailable';
       article.append(title,detail);
       if(row.state==='open'){
         const cancel=document.createElement('button');cancel.type='button';cancel.className='secondary';cancel.textContent='Cancel unclaimed invitation';
@@ -67,8 +67,8 @@
     claimInput??={p_token:invite,p_first_name:$('first-name').value.trim(),p_last_name:$('last-name').value.trim(),p_over_21:true,p_terms_revision:preview.termsRevision,p_privacy_revision:preview.privacyRevision,p_marketing_revision:preview.marketingRevision,p_marketing_opt_in:$('marketing').checked};
     claimFields(true);status('Claiming your Introduction…');
     try {const r=await rpc('claim_introduction',claimInput);
-      if(!r.ok){if(r.reason==='verify_email'){session=null;await sendCode();status('Verify this email again, then retry your claim.');return;}claimInput=null;claimFields(false);status(({guest_ineligible:'This offering is for people who have never been DPC members. This email is not eligible.',already_claimed:'You have already claimed an Introduction. Use View my claimed Introduction below.',invitation_unavailable:'This invitation is no longer available. Ask your inviter for help or view your claimed Introduction below.',consent_changed:'The terms or privacy notice changed. Reload this page to read the current versions before claiming.',feature_unavailable:'The Introduction is temporarily unavailable.'})[r.reason]??'This Introduction cannot be claimed right now. Contact your inviter or support.',true);return;}
-      await guestStatus();status('Your Introduction is claimed. Visit with your inviter before December 31.');
+      if(!r.ok){if(r.reason==='verify_email'){session=null;await sendCode();status('Verify this email again, then retry your claim.');return;}claimInput=null;claimFields(false);status(({guest_ineligible:'This email is connected to a DPC membership, so it can’t claim an Introduction. Introductions are for people new to the Collective.',already_claimed:'You have already claimed an Introduction. Use View my claimed Introduction below.',invitation_unavailable:'This invitation is no longer available. Ask your inviter for help or view your claimed Introduction below.',consent_changed:'The terms or privacy notice changed. Reload this page to read the current versions before claiming.',feature_unavailable:'The Introduction is temporarily unavailable.'})[r.reason]??'This Introduction cannot be claimed right now. Contact your inviter or support.',true);return;}
+      await guestStatus();status('You’re in. Your Introduction is saved. We’ll email your details and private page link. Check the status above before planning your visit.');
     } catch(error) {if(error.status===401){session=null;show('identity-form');status('Your session expired. Verify your email again, or view your claimed Introduction below if you already claimed.',true);}else if(error.status>=400&&error.status<500){claimInput=null;claimFields(false);status('The claim was not accepted. Check your details and try again.',true);}else status('We could not confirm the claim. Keep this page open and retry; the same claim will not use another invitation.',true);}
   });});
   $('create-invitation').addEventListener('click',()=>void run(async()=>{
@@ -80,20 +80,21 @@
     } catch(error) {if(error.status===401){session=null;show('identity-form');status('Your session expired. Verify your email again to continue.',true);}else if(error.status>=400&&error.status<500){createId=null;status('The invitation request was not accepted. Check your membership access and try again.',true);}else status('We could not confirm creation. Retry here with the same request. If it was created, no extra slot will be used.',true);}
   }));
   $('copy-link').addEventListener('click',()=>void run(async()=>{try{await navigator.clipboard.writeText($('invitation-link').value);status('Invitation link copied.');}catch{$('invitation-link').select();status('Select and copy the link above.');}}));
+  $('withdraw-marketing').addEventListener('click',()=>void run(async()=>{const result=await rpc('withdraw_introduction_marketing');if(result?.marketing_allowed!==false)throw Error();status('Marketing emails are stopped. Your Introduction is unchanged.');}));
   $('refresh-invitations').addEventListener('click',()=>void run(async()=>{await invitations();status('Invitations refreshed.');}));
   $('sign-out').addEventListener('click',()=>{clear();show('identity-form');status('Signed out of this page. Verify your email to return.');});
   window.addEventListener('pagehide',()=>{clear();$('guest-details').textContent='';$('verified-email').textContent='';$('invitations').replaceChildren();show('identity-form');status('Verify your email to return.');});
   void run(async()=>{
     config=await json('/api/introduction');
-    if(config.isStaging){const draft=document.createElement('p');draft.className='note';draft.textContent='Staging test — campaign copy and Introduction terms are drafts awaiting review.';$('intro-heading').after(draft);}
+    if(config.isStaging){const draft=document.createElement('p');draft.className='note';draft.textContent='Staging test — no real venue redemption.';$('intro-heading').after(draft);}
     if(mode==='claim'){
       if(!/^[a-f0-9]{64}$/.test(invite??'')){status('This invitation link is invalid. Ask your friend for their original link.',true);return;}
       preview=await rpc('get_introduction_preview',{p_token:invite},false);
       if(!preview){status('This invitation is unavailable. It may be claimed, canceled, expired or temporarily paused. Contact your inviter, or use View my claimed Introduction below.',true);return;}
-      if(preview.termsRevision!==TERMS||preview.marketingRevision!==MARKETING||!preview.privacyRevision){status('This invitation is not ready to claim yet. Please try again later.',true);return;}
-      $('intro-heading').textContent=`${preview.inviterFirstName} ${preview.inviterLastName} invited you for a Pour.`;
+      if(preview.termsRevision!==TERMS||preview.marketingRevision!==MARKETING||preview.privacyRevision!=='4.10'){status('This invitation is not ready to claim yet. Please try again later.',true);return;}
+      $('intro-heading').textContent=`${preview.inviterFirstName} ${preview.inviterLastName} is introducing you to the Collective.`;
       $('introduction-terms').hidden=false;$('terms-revision').textContent='Giving offering — November 2026.';
-    }else $('intro-heading').textContent=mode==='member'?'Give a friend a Pour. Manage your invitations.':'Verify your email to view your claimed Introduction.';
+    }else $('intro-heading').textContent=mode==='member'?'Give a friend a Pour.':'Verify your email to view your claimed Introduction.';
     show('identity-form');status('Verify your email to continue.');
   });
 })();

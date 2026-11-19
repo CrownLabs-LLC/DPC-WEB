@@ -36,30 +36,31 @@
 <input id="first-name" type="text" autocomplete="given-name" maxlength="80" required>
 <label for="last-name">Last name as shown on your ID</label>
 <input id="last-name" type="text" autocomplete="family-name" maxlength="80" required>
-<label class="choice"><input id="over-21" type="checkbox" required><span>I am 21 or older. I’ll bring my photo ID to the venue.</span></label>
-<label class="choice"><input id="terms" type="checkbox" required><span>I agree to <a href="#introduction-terms">The Introduction terms below</a> and have read the <a href="/privacy" target="_blank" rel="noopener noreferrer">privacy policy</a>.</span></label>
-<label class="choice"><input id="marketing" type="checkbox"><span>Optional: Email me DPC news and offers. I can unsubscribe at any time.</span></label>
+<label class="choice"><input id="over-21" type="checkbox" required><span>I’m 21 or older.</span></label>
+<label class="choice"><input id="terms" type="checkbox" required><span>I agree to the Introduction rules in <a href="/terms#sec-11-1" target="_blank" rel="noopener noreferrer">Section 11.1 of the Terms of Service</a> and to the <a href="/privacy" target="_blank" rel="noopener noreferrer">Privacy Policy</a>.</span></label>
+<label class="choice"><input id="marketing" type="checkbox"><span>Send me occasional emails from Downtown Pour Collective about events and membership. I can unsubscribe any time.</span></label>
 <button class="button" type="submit">Claim my Introduction</button>
 <p class="note">Your inviter will see your name and Introduction status. Your email and marketing choice stay private.</p>
 </form>
 <p><a href="/introduction?view=guest">View my claimed Introduction</a></p>
 <section id="guest-view" hidden tabindex="-1">
 <h2 id="guest-title">Your Introduction</h2><p id="guest-details"></p>
+<div id="guest-marketing"><button id="withdraw-marketing" type="button" class="secondary">Stop marketing emails</button><p class="note">This stops optional marketing. Your Introduction and the emails needed to provide it are unaffected.</p></div>
 <div id="guest-visit-instructions"><p>Visit together. Your original inviter will use the DPC app to redeem one of their monthly Pours alongside your Introduction. You do not need to download the app.</p>
-<p>Both of you should have photo ID ready and wait until the bartender is ready before redeeming.</p></div>
+<p>Bring photo ID. The venue will check it. Wait until your bartender is ready before redeeming.</p><p>Sunday through Thursday any time the venue is open. Friday and Saturday before 4 PM. Use it by December 31, 2026, Pacific time.</p></div>
 </section>
 <section id="member-view" hidden>
-<h2>Your invitations</h2><p>Two Introductions for this Giving offering. A claimed Introduction stays with that friend through December 31.</p>
+<h2>Your Introductions</h2><p class="note">We updated the <a href="/terms#sec-11-1">Introduction terms</a> and <a href="/privacy">Privacy Policy</a> for this Giving offering. Existing members do not need to re-accept.</p><p>Bring someone new to the Collective. Share your link, they claim it, and you go together. Their first drink is on us. You have two in total in this one-time Giving offering, through December 31.</p>
 <div id="invitations"></div>
 <button id="create-invitation" class="button" type="button">Create invitation link</button>
-<section id="share-link" hidden><label for="invitation-link">Share this personal invitation</label><input id="invitation-link" type="text" readonly><button id="copy-link" class="secondary" type="button">Copy invitation link</button><p class="note">Send it by text or email. The first friend to verify their email and claim it gets this Introduction. Save this link before leaving the page.</p></section>
+<section id="share-link" hidden><label for="invitation-link">Share this personal invitation</label><input id="invitation-link" type="text" readonly><button id="copy-link" class="secondary" type="button">Copy invitation link</button><p class="note">Your link can be claimed once, by the first eligible person who confirms their email and completes the claim. Send it straight to the friend you have in mind. Save this link before leaving the page.</p></section>
 <p class="note">When you visit together, open an available monthly Pour in the app and choose “Use an Introduction.” Your friend’s Pour is separate from your monthly Pours.</p>
 <button id="refresh-invitations" class="secondary" type="button">Refresh invitations</button>
 </section>
 <section id="introduction-terms" hidden>
-<h2>The Introduction terms</h2>
+<h2>The Introduction rules at a glance</h2>
 <p>This one-time Giving offering provides two Introductions per eligible member. Each guest may claim one Introduction and must never have been a DPC member when claiming. Guests must be 21 or older and verify their email.</p>
-<p>Redeem with your original inviter at the same participating venue during the same visit. Your inviter must have active redemption access and use an available regular monthly Membership Pour. Birthday Pours and special grants do not qualify. Venue beverage offerings, redemption hours and blackouts apply.</p>
+<p>Redeem with your original inviter at the same participating venue during the same visit. Your inviter must have active redemption access and use an available regular monthly Membership Pour. Birthday Pours and special grants do not qualify. Eligible DPC selections only. Sunday through Thursday any time the venue is open, Friday and Saturday before 4 PM. Venue blackouts apply.</p>
 <p>Claim and redeem by the end of December 31, 2026, Pacific time. Unclaimed links and unused Introductions expire with no rollover. A claimed Introduction stays attached to the original inviter, including if you join DPC before the visit. Marketing consent is optional and separate.</p>
 <p id="terms-revision" class="note"></p>
 </section>
