@@ -7,15 +7,16 @@
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/assets/pour-partner-invitation.v1.css">
 <link rel="stylesheet" href="/assets/account-deletion.v1.css">
-<link rel="stylesheet" href="/assets/introduction.v2.css">
-<script src="/assets/introduction.v4.js" defer></script>
+<link rel="stylesheet" href="/assets/introduction.v3.css">
+<script src="/assets/introduction.v5.js" defer></script>
 </head>
 <body>
 <header><a href="/">Downtown Pour Collective</a></header>
 <main>
-<h1>The Introduction</h1>
-<p id="intro-heading">Give a friend a Pour.</p>
+<h1 id="page-title">The Introduction</h1>
+<p id="intro-heading">A Pour to enjoy with a friend.</p>
 <div id="status" role="status" aria-live="polite">Loading The Introduction…</div>
+<p id="invitation-eligibility" class="note" hidden>For guests 21 or older who have never been DPC members. Claim and enjoy your Pour together by December 31, 2026, Pacific time.</p>
 <form id="identity-form" hidden>
 <label for="email">Email address</label>
 <input id="email" type="email" autocomplete="email" required maxlength="254">
@@ -23,6 +24,7 @@
 <button class="button" type="submit">Send verification code</button>
 </form>
 <form id="code-form" hidden>
+<p id="code-destination"></p>
 <label for="code">Six-digit email code</label>
 <input id="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required>
 <button class="button" type="submit">Verify email</button>
@@ -43,11 +45,27 @@
 <p class="note">Your inviter will see your name and Introduction status. Your email and marketing choice stay private.</p>
 </form>
 <p id="view-claimed-navigation"><a id="view-claimed-introduction" href="/introduction?view=guest">View my claimed Introduction</a></p>
-<section id="guest-view" hidden tabindex="-1">
-<h2 id="guest-title">Your Introduction</h2><p id="guest-details"></p>
-<div id="guest-marketing"><button id="withdraw-marketing" type="button" class="secondary">Stop marketing emails</button><p id="marketing-status" role="status" aria-live="polite"></p><p class="note">This stops optional marketing. Your Introduction and the emails needed to provide it are unaffected.</p></div>
-<div id="guest-visit-instructions"><p>Visit together. Your original inviter will use the DPC app to redeem one of their monthly Pours alongside your Introduction. You do not need to download the app.</p>
-<p>Bring photo ID. The venue will check it. Wait until your bartender is ready before redeeming.</p><p>Sunday through Thursday any time the venue is open. Friday and Saturday before 4 PM. Use it by December 31, 2026, Pacific time.</p></div>
+<section id="guest-view" hidden tabindex="-1" aria-labelledby="page-title">
+<p id="guest-details"></p>
+<p id="guest-outcome" hidden></p>
+<div id="guest-visit-instructions">
+<h2>Plan a visit together</h2>
+<p class="visit-deadline">Enjoy your Pour by December 31, 2026, Pacific time.</p>
+<ol class="visit-steps">
+<li><strong>Choose a participating venue with your inviter.</strong> You must visit the same venue together. Your inviter needs active redemption access and an available regular monthly Membership Pour.</li>
+<li><strong>Bring your photo ID.</strong> Venue staff will check that you’re 21 or older.</li>
+<li><strong>Your inviter handles redemption.</strong> <span id="guest-redemption-guide">When the bartender is ready, your inviter uses the DPC app to redeem both Pours.</span> You don’t need to download the app or redeem anything on this page.</li>
+</ol>
+<h3>When you can visit</h3>
+<p class="note">Sunday–Thursday during venue opening hours. Friday and Saturday before 4 PM. Venue blackouts apply.</p>
+<p class="note">Your guest Pour is separate from your inviter’s monthly Pours. See the <a href="/terms#sec-11-1">Introduction rules</a> for details.</p>
+</div>
+<details id="guest-marketing">
+<summary>Email preferences</summary>
+<p class="note">You can stop optional marketing emails here. This won’t affect your Introduction or the emails needed to provide it.</p>
+<button id="withdraw-marketing" type="button" class="secondary">Stop marketing emails</button>
+<p id="marketing-status" role="status" aria-live="polite"></p>
+</details>
 </section>
 <section id="member-view" hidden>
 <h2>Your Introductions</h2><p class="note">We updated the <a href="/terms#sec-11-1">Introduction terms</a> and <a href="/privacy">Privacy Policy</a> for this Giving offering. Existing members do not need to re-accept.</p><p>Bring someone new to the Collective. Share your link, they claim it, and you go together. Their first drink is on us. You have two in total in this one-time Giving offering, through December 31.</p>

@@ -117,3 +117,19 @@ record is open and replaces the guest verification prompt with Your private
 Introduction record. The link and verification prompt return when signed out.
 Staging full-suite CI for the v2 fix (`44625690954`) passed; final v4 verification
 and final device confirmation supersede the intermediate v3 navigation retry.
+
+## Guest purpose and next steps
+
+Brandi requested an Impeccable critique and authorized two independent assessors.
+The guest page now explains the free Pour before verification, shows the email
+being verified, and centers each saved state on its outcome. Claimed guests see
+visit-together steps, original-inviter app redemption, photo ID, the December 31
+deadline, monthly Pour/access requirements and the existing hours/blackouts before
+email preferences. Redeemed guests are told no further action is needed; expired
+and no-claim states explain recovery without implying a new entitlement. The
+no-claim path clears the completed verification status. Email preferences remain
+available in a native disclosure after the primary content. Neither backend rules
+nor optional consent behavior changed. Versioned v5 JS/v3 CSS replace immutable
+asset URLs. All 63 Introduction scenarios pass across the three browser targets;
+rendered claimed/redeemed layouts were inspected. The independent critique archive
+is retained locally under .impeccable/critique, not bundled as production content.

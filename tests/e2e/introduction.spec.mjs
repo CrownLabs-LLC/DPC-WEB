@@ -63,6 +63,8 @@ test('leaving a private page clears its session and visible guest record',async(
   await page.evaluate(()=>window.dispatchEvent(new PageTransitionEvent('pagehide',{persisted:true})));
   await expect(page.locator('#guest-view')).toBeHidden();
   await expect(page.locator('#guest-details')).toBeEmpty();
+  await expect(page.locator('#guest-redemption-guide')).not.toContainText('Nick Host');
+  await expect(page.locator('#guest-outcome')).toBeEmpty();
   await expect(page.locator('#identity-form')).toBeVisible();
 });
 async function readyClaim(page) {
@@ -115,21 +117,23 @@ test('guest can withdraw marketing without changing the saved Introduction',asyn
  await setup(page);
  await page.route(`${host}/rest/v1/rpc/withdraw_introduction_marketing`,r=>r.fulfill({json:{marketing_allowed:false}}));
  await page.goto('/introduction?view=guest');await verify(page,'guest@example.test');
+ await page.getByText('Email preferences',{exact:true}).click();
  await page.getByRole('button',{name:'Stop marketing emails',exact:true}).click();
- await expect(page.locator('#status')).toContainText('Marketing emails are stopped');
- await expect(page.locator('#guest-details')).toContainText('Claimed from');
+ await expect(page.locator('#marketing-status')).toContainText('Marketing emails are stopped');
+ await expect(page.locator('#guest-details')).toContainText('invited you for a free Pour');
 });
 
 test('failed withdrawal does not claim marketing was stopped',async({page})=>{
  await setup(page);await page.route(`${host}/rest/v1/rpc/withdraw_introduction_marketing`,r=>r.fulfill({status:503,json:{error:'unavailable'}}));
  await page.goto('/introduction?view=guest');await verify(page,'guest@example.test');
+ await page.getByText('Email preferences',{exact:true}).click();
  await page.getByRole('button',{name:'Stop marketing emails',exact:true}).click();
  await expect(page.locator('#status')).toContainText('Could not complete');
  await expect(page.locator('#status')).not.toContainText('Marketing emails are stopped');
  await expect(page.locator('#marketing-status')).toContainText('Try Stop marketing emails again');
  await expect(page.locator('#marketing-status')).toBeInViewport();
  await expect(page.locator('#withdraw-marketing')).toBeEnabled();
- await expect(page.locator('#guest-details')).toContainText('Claimed from');
+ await expect(page.locator('#guest-details')).toContainText('invited you for a free Pour');
 });
 
 // Returning visitors may retain the original immutable asset for a year.
@@ -140,6 +144,7 @@ test('returning guest bypasses the old cached script and sees withdrawal feedbac
  const pending=new Promise(resolve=>{finish=resolve;});
  await page.route(`${host}/rest/v1/rpc/withdraw_introduction_marketing`,async r=>{await pending;await r.fulfill({json:{marketing_allowed:false}});});
  await page.goto('/introduction?view=guest');await verify(page);
+ await page.getByText('Email preferences',{exact:true}).click();
  await page.getByRole('button',{name:'Stop marketing emails',exact:true}).click();
  await expect(page.locator('#marketing-status')).toHaveText('Stopping marketing emails…');
  await expect(page.locator('#marketing-status')).toBeInViewport();
@@ -147,10 +152,14 @@ test('returning guest bypasses the old cached script and sees withdrawal feedbac
  await expect(page.locator('#marketing-status')).toContainText('Marketing emails are stopped');
  await expect(page.locator('#marketing-status')).toBeInViewport();
  await expect(page.locator('#withdraw-marketing')).toBeHidden();
- await expect(page.locator('#guest-details')).toContainText('Claimed from');
+ await expect(page.locator('#guest-details')).toContainText('invited you for a free Pour');
  await page.screenshot({path:info.outputPath('withdrawal-confirmation.png'),fullPage:true});
  await page.getByRole('button',{name:'Sign out of this page',exact:true}).click();
+ await expect(page.locator('#guest-redemption-guide')).not.toContainText('Nick Host');
+ await expect(page.locator('#guest-outcome')).toBeEmpty();
  await verify(page);
+ await expect(page.locator('#guest-marketing')).not.toHaveAttribute('open','');
+ await page.getByText('Email preferences',{exact:true}).click();
  await expect(page.locator('#withdraw-marketing')).toBeVisible();
  await expect(page.locator('#marketing-status')).toBeEmpty();
 });
@@ -188,9 +197,41 @@ test('open guest record has no redundant view link or verification prompt',async
  await page.goto('/introduction?view=guest');await verify(page);
  await expect(page.locator('#guest-details')).toContainText('Redeemed with Nick Host');
  await expect(page.locator('#view-claimed-navigation')).toBeHidden();
- await expect(page.locator('#intro-heading')).toHaveText('Your private Introduction record.');
+ await expect(page.locator('#intro-heading')).toBeHidden();
+ await expect(page.locator('#page-title')).toHaveText('Introduction redeemed');
  await page.screenshot({path:info.outputPath('redeemed-record.png'),fullPage:true});
  await page.getByRole('button',{name:'Sign out of this page',exact:true}).click();
- await expect(page.locator('#view-claimed-navigation')).toBeVisible();
- await expect(page.locator('#intro-heading')).toHaveText('Verify your email to view your claimed Introduction.');
+ await expect(page.locator('#view-claimed-navigation')).toBeHidden();
+ await expect(page.locator('#intro-heading')).toContainText('Verify the same email');
+});
+
+for(const state of ['claimed','redeemed','expired','missing'])test(`guest next steps match ${state} status`,async({page},info)=>{
+ await setup(page);
+ await page.route(`${host}/rest/v1/rpc/get_claimed_introduction`,r=>r.fulfill({json:state==='missing'?null:{id:'claim-1',state,inviter_first_name:'Nick',inviter_last_name:'Host'}}));
+ await page.goto('/introduction?view=guest');
+ await page.getByLabel('Email address',{exact:true}).fill('guest@example.test');
+ await page.getByRole('button',{name:'Send verification code',exact:true}).click();
+ await expect(page.locator('#code-destination')).toHaveText('Email: guest@example.test');
+ await page.getByLabel('Six-digit email code').fill('123456');
+ await page.getByRole('button',{name:'Verify email',exact:true}).click();
+ await expect(page.locator('#guest-view')).toBeVisible();
+ await expect(page.locator('#status')).toBeEmpty();
+ await expect(page.locator('#view-claimed-navigation')).toBeHidden();
+ if(state==='claimed'){
+   await expect(page.locator('#page-title')).toHaveText('Your Introduction is claimed');
+   await expect(page.locator('#guest-redemption-guide')).toContainText('Nick Host uses the DPC app');
+   await expect(page.locator('#guest-visit-instructions')).toContainText('December 31, 2026');
+   await expect(page.locator('#guest-visit-instructions')).toContainText('Friday and Saturday before 4 PM');
+   expect(await page.locator('#guest-visit-instructions').evaluate(el=>Boolean(el.compareDocumentPosition(document.getElementById('guest-marketing'))&Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
+ }else{
+   await expect(page.locator('#guest-visit-instructions')).toBeHidden();
+   if(state==='missing'){
+     await expect(page.locator('#page-title')).toHaveText('No Introduction found');
+     await expect(page.locator('#guest-details')).toContainText('original invitation link');
+     await expect(page.locator('#guest-marketing')).toBeHidden();
+   }else await expect(page.locator('#guest-outcome')).toContainText(state==='redeemed'?'nothing else you need to do':'can no longer be redeemed');
+ }
+ await expect(page.locator('#withdraw-marketing')).toBeHidden();
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ await page.screenshot({path:info.outputPath(`${state}-guest.png`),fullPage:true});
 });
