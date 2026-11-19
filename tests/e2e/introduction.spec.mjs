@@ -155,7 +155,8 @@ test('returning guest bypasses the old cached script and sees withdrawal feedbac
  await expect(page.locator('#marketing-status')).toBeEmpty();
 });
 
-for(const fromClaim of [false,true])test(`view claimed Introduction preserves verified session (${fromClaim?'claim':'guest'} page)`,async({page})=>{
+test('view claimed Introduction opens the record from the verified claim page',async({page})=>{
+ const fromClaim=true;
  const calls=await setup(page);
  await page.goto(fromClaim?`/introduction#invite=${token}`:'/introduction?view=guest');
  await verify(page);
@@ -166,16 +167,30 @@ for(const fromClaim of [false,true])test(`view claimed Introduction preserves ve
  await expect(page.locator('#guest-details')).toContainText('Nick Host');
  await expect.poll(()=>calls.filter(c=>c.url.endsWith('/get_claimed_introduction')).length).toBe(requestsBefore+1);
  await expect(page.locator('#identity-form')).toBeHidden();
+ await expect(page.locator('#view-claimed-navigation')).toBeHidden();
  expect(page.url()).toBe(url);
  expect(calls.filter(c=>c.url.endsWith('/verify')||c.url.endsWith('/verify-introduction-code'))).toHaveLength(1);
 });
 
 test('view claimed Introduction requests verification when its session expires',async({page})=>{
- await setup(page);await page.goto('/introduction?view=guest');await verify(page);
- await expect(page.locator('#guest-view')).toBeVisible();
+ await setup(page);await page.goto(`/introduction#invite=${token}`);await verify(page);
+ await expect(page.locator('#claim-form')).toBeVisible();
  await page.route(`${host}/rest/v1/rpc/get_claimed_introduction`,r=>r.fulfill({status:401,json:{error:'expired'}}));
  await page.getByRole('link',{name:'View my claimed Introduction',exact:true}).click();
  await expect(page.locator('#identity-form')).toBeVisible();
  await expect(page.locator('#status')).toContainText('Your session expired');
  await expect(page.locator('#guest-view')).toBeHidden();
+});
+
+test('open guest record has no redundant view link or verification prompt',async({page},info)=>{
+ await setup(page);
+ await page.route(`${host}/rest/v1/rpc/get_claimed_introduction`,r=>r.fulfill({json:{id:'claim-1',state:'redeemed',inviter_first_name:'Nick',inviter_last_name:'Host'}}));
+ await page.goto('/introduction?view=guest');await verify(page);
+ await expect(page.locator('#guest-details')).toContainText('Redeemed with Nick Host');
+ await expect(page.locator('#view-claimed-navigation')).toBeHidden();
+ await expect(page.locator('#intro-heading')).toHaveText('Your private Introduction record.');
+ await page.screenshot({path:info.outputPath('redeemed-record.png'),fullPage:true});
+ await page.getByRole('button',{name:'Sign out of this page',exact:true}).click();
+ await expect(page.locator('#view-claimed-navigation')).toBeVisible();
+ await expect(page.locator('#intro-heading')).toHaveText('Verify your email to view your claimed Introduction.');
 });

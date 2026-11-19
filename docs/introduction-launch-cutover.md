@@ -109,3 +109,11 @@ session verification remain enforced. Browser coverage includes both guest and
 claim-page entry points plus expired sessions (51 Introduction cases total).
 The session is still cleared when leaving the page; no persistent token storage
 was added. Final navigation retry and existing-member access confirmation remain.
+
+The subsequent retry successfully fetched the existing record, but the persistent
+View my claimed Introduction link made the already-open record look like an
+unfinished navigation step. The v4 script hides that redundant link while the guest
+record is open and replaces the guest verification prompt with Your private
+Introduction record. The link and verification prompt return when signed out.
+Staging full-suite CI for the v2 fix (`44625690954`) passed; final v4 verification
+and final device confirmation supersede the intermediate v3 navigation retry.
