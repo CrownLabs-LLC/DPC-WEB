@@ -246,6 +246,7 @@ test('admin downloads a named, escaped CSV across pages and clears it on signout
  await page.route(`${host}/rest/v1/rpc/admin_introduction_contacts`,r=>{const b=r.request().postDataJSON();scopes.push(b);return r.fulfill({json:{rows:b.p_limit===1?[]:b.p_after_id?[contact('b')]:[contact('a',{first_name:'=SUM(1,2)'})],next_id:b.p_limit===1||b.p_after_id?null:'a',marketing_only:b.p_marketing_only}});});
  await page.goto('/introduction?view=admin');await verify(page,'member@example.test');
  await expect(page.locator('#admin-heading')).toBeFocused();
+ await expect(page.locator('#intro-heading')).toBeHidden();
  await page.getByRole('button',{name:'Prepare marketing opt-ins CSV',exact:true}).click();
  await expect(page.locator('#export-result')).toContainText('2 guests');
  await expect(page.locator('#download-contacts')).toBeFocused();
