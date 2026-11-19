@@ -1,0 +1,7 @@
+#introduction-terms{border-top:1px solid #c4a35a40;margin-top:40px;padding-top:8px}#introduction-terms p{font-size:16px}#invitations article{padding:20px 0;border-bottom:1px solid #c4a35a40}#invitations h3{font-size:20px;margin:0 0 8px}#invitations p{margin-bottom:12px;font-size:16px}#invitations .secondary{margin:0}#share-link{margin:28px 0}input[readonly]{font-size:16px}#guest-view:focus{outline:none}button:focus-visible,a:focus-visible{outline:3px solid var(--cream);outline-offset:4px}#sign-out{margin-top:32px}input[type=checkbox]{accent-color:var(--gold)}
+
+#marketing-status:empty{margin:0}#marketing-status{font-size:17px;margin:0 0 20px}#marketing-status[data-error=true]{color:#ffd0c6}#withdraw-marketing:disabled{opacity:.6;cursor:wait}
+
+#status:empty{margin:0}#intro-heading,#guest-details,#code-destination{overflow-wrap:anywhere}.visit-deadline{font-weight:bold;font-size:17px}.visit-steps{padding-left:24px;margin:0 0 28px;font-size:17px}.visit-steps li{padding-left:6px;margin:0 0 20px}.visit-steps strong{display:block;margin-bottom:4px}#guest-visit-instructions h3{font-size:18px;margin:28px 0 12px}#guest-marketing{margin-top:32px}#guest-marketing .secondary{margin:8px 0 20px}#sign-out{border:0;padding:0;min-height:44px;text-decoration:underline;text-underline-offset:4px;margin-top:16px}#sign-out:hover{background:transparent;color:var(--cream)}
+
+#member-heading:focus,#admin-heading:focus{outline:none}#invitations #share-link{margin:20px 0}#export-result{margin-top:24px}#admin-view h3{margin-top:32px}

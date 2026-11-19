@@ -7,8 +7,8 @@
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/assets/pour-partner-invitation.v1.css">
 <link rel="stylesheet" href="/assets/account-deletion.v1.css">
-<link rel="stylesheet" href="/assets/introduction.v3.css">
-<script src="/assets/introduction.v5.js" defer></script>
+<link rel="stylesheet" href="/assets/introduction.v4.css">
+<script src="/assets/introduction.v6.js" defer></script>
 </head>
 <body>
 <header><a href="/">Downtown Pour Collective</a></header>
@@ -68,12 +68,24 @@
 </details>
 </section>
 <section id="member-view" hidden>
-<h2>Your Introductions</h2><p class="note">We updated the <a href="/terms#sec-11-1">Introduction terms</a> and <a href="/privacy">Privacy Policy</a> for this Giving offering. Existing members do not need to re-accept.</p><p>Bring someone new to the Collective. Share your link, they claim it, and you go together. Their first drink is on us. You have two in total in this one-time Giving offering, through December 31.</p>
+<h2 id="member-heading" tabindex="-1">Your Introductions</h2><p class="note">We updated the <a href="/terms#sec-11-1">Introduction terms</a> and <a href="/privacy">Privacy Policy</a> for this Giving offering. Existing members do not need to re-accept.</p><p>Bring someone new to the Collective. Share your link, they claim it, and you go together. Their first drink is on us. You have two in total in this one-time Giving offering, through December 31.</p>
 <div id="invitations"></div>
 <button id="create-invitation" class="button" type="button">Create invitation link</button>
-<section id="share-link" hidden><label for="invitation-link">Share this personal invitation</label><input id="invitation-link" type="text" readonly><button id="copy-link" class="secondary" type="button">Copy invitation link</button><p class="note">Your link can be claimed once, by the first eligible person who confirms their email and completes the claim. Send it straight to the friend you have in mind. Save this link before leaving the page.</p></section>
+<section id="share-link" hidden><label for="invitation-link">Share this personal invitation</label><input id="invitation-link" type="text" readonly><button id="copy-link" class="secondary" type="button">Copy invitation link</button><p class="note">Your link can be claimed once, by the first eligible person who confirms their email and completes the claim. Send it straight to the friend you have in mind. Copy this link and send it to your friend before leaving this page. You can also save it privately to send later.</p></section>
 <p class="note">When you visit together, open an available monthly Pour in the app and choose “Use an Introduction.” Your friend’s Pour is separate from your monthly Pours.</p>
 <button id="refresh-invitations" class="secondary" type="button">Refresh invitations</button>
+</section>
+<section id="admin-view" hidden>
+<h2 id="admin-heading" tabindex="-1">Download guest contacts</h2>
+<p>Private to full admins. Choose the list you need, then download a CSV file.</p>
+<h3>For service and support</h3>
+<p class="note">All contacts includes guests who did not opt in. Do not use this list for marketing.</p>
+<button id="export-all" class="secondary" type="button">Prepare all contacts CSV</button>
+<h3>For marketing</h3>
+<p class="note">Only eligible opt-ins are included. Apply your marketing platform’s current unsubscribe and suppression lists before sending.</p>
+<button id="export-marketing" class="secondary" type="button">Prepare marketing opt-ins CSV</button>
+<p id="export-result" role="status" aria-live="polite"></p>
+<a id="download-contacts" class="button" hidden>Download CSV file</a>
 </section>
 <section id="introduction-terms" hidden>
 <h2>The Introduction rules at a glance</h2>

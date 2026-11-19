@@ -42,7 +42,11 @@ test('browser claim separates optional consent, survives lost receipt, and store
 });
 test('member creates, copies and cancels an unclaimed link',async({page},info)=>{
   const calls=await setup(page,{member:true});await page.goto('/introduction?view=member');await verify(page,'member@example.test');
+  await expect(page.locator('#member-heading')).toBeFocused();
   await page.getByRole('button',{name:'Create invitation link'}).click();
+  await expect(page.locator('#invitation-link')).toBeFocused();
+  await expect(page.locator('#invitations')).toContainText('Not claimed yet');
+  await expect(page.locator('#invitations #share-link')).toBeVisible();
   await expect(page.locator('#invitation-link')).toHaveValue(new RegExp(`#invite=${token}$`));
   await page.screenshot({path:info.outputPath('member.png'),fullPage:true});
   await page.getByRole('button',{name:'Cancel unclaimed invitation'}).click();await expect(page.locator('#share-link')).toBeHidden();
@@ -234,4 +238,85 @@ for(const state of ['claimed','redeemed','expired','missing'])test(`guest next s
  await expect(page.locator('#withdraw-marketing')).toBeHidden();
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
  await page.screenshot({path:info.outputPath(`${state}-guest.png`),fullPage:true});
+});
+
+const contact=(id,overrides={})=>({id,first_name:'Guest',last_name:'Friend',email:'guest@example.test',state:'claimed',created_at:'2026-11-19T00:00:00Z',expires_at:'2027-01-01T08:00:00Z',marketing_opt_in:true,marketing_eligible:true,marketing_revision:'v1',terms_revision:'v1',privacy_revision:'4.10',inviter_name:'Host',...overrides});
+test('admin downloads a named, escaped CSV across pages and clears it on signout',async({page})=>{
+ await setup(page,{member:true});const scopes=[];
+ await page.route(`${host}/rest/v1/rpc/admin_introduction_contacts`,r=>{const b=r.request().postDataJSON();scopes.push(b);return r.fulfill({json:{rows:b.p_limit===1?[]:b.p_after_id?[contact('b')]:[contact('a',{first_name:'=SUM(1,2)'})],next_id:b.p_limit===1||b.p_after_id?null:'a',marketing_only:b.p_marketing_only}});});
+ await page.goto('/introduction?view=admin');await verify(page,'member@example.test');
+ await expect(page.locator('#admin-heading')).toBeFocused();
+ await page.getByRole('button',{name:'Prepare marketing opt-ins CSV',exact:true}).click();
+ await expect(page.locator('#export-result')).toContainText('2 guests');
+ await expect(page.locator('#download-contacts')).toBeFocused();
+ const downloadPromise=page.waitForEvent('download');await page.getByRole('link',{name:'Download CSV file'}).click();const download=await downloadPromise;
+ expect(download.suggestedFilename()).toMatch(/^dpc-introduction-marketing-opt-ins-.*\.csv$/);
+ const stream=await download.createReadStream();let csv='';for await(const chunk of stream)csv+=chunk.toString();
+ expect(csv).toContain('"\'=SUM(1,2)"');expect(csv).toContain('guest@example.test');
+ expect(scopes.slice(1).every(b=>b.p_marketing_only===true)).toBe(true);
+ await page.getByRole('button',{name:'Sign out of this page'}).click();await expect(page.locator('#download-contacts')).not.toHaveAttribute('href');await expect(page.locator('#export-result')).toBeEmpty();
+ expect(await page.evaluate(()=>[localStorage.length,sessionStorage.length])).toEqual([0,0]);
+});
+test('non-admin cannot open export controls',async({page})=>{
+ await setup(page,{member:true});await page.route(`${host}/rest/v1/rpc/admin_introduction_contacts`,r=>r.fulfill({status:403,json:{error:'forbidden'}}));
+ await page.goto('/introduction?view=admin');await verify(page,'member@example.test');await expect(page.locator('#admin-view')).toBeHidden();await expect(page.locator('#status')).toContainText('full admin download access');await expect(page.locator('#download-contacts')).not.toHaveAttribute('href');
+});
+test('marketing export refuses ineligible rows and exposes no file',async({page})=>{
+ await setup(page,{member:true});await page.route(`${host}/rest/v1/rpc/admin_introduction_contacts`,r=>{const b=r.request().postDataJSON();return r.fulfill({json:{rows:b.p_limit===1?[]:[contact('a',{marketing_eligible:false})],next_id:null,marketing_only:b.p_marketing_only}});});
+ await page.goto('/introduction?view=admin');await verify(page,'member@example.test');await page.getByRole('button',{name:'Prepare marketing opt-ins CSV'}).click();
+ await expect(page.locator('#status')).toContainText('Could not prepare');await expect(page.locator('#download-contacts')).not.toHaveAttribute('href');
+});
+test('leaving during export cannot recreate a private download',async({page})=>{
+ await setup(page,{member:true});let finish;const gate=new Promise(r=>finish=r);
+ await page.route(`${host}/rest/v1/rpc/admin_introduction_contacts`,async r=>{const b=r.request().postDataJSON();if(b.p_limit!==1)await gate;await r.fulfill({json:{rows:[],next_id:null,marketing_only:b.p_marketing_only}});});
+ await page.goto('/introduction?view=admin');await verify(page,'member@example.test');await page.getByRole('button',{name:'Prepare all contacts CSV'}).click();
+ await page.evaluate(()=>window.dispatchEvent(new PageTransitionEvent('pagehide',{persisted:true})));finish();
+ await expect(page.getByRole('button',{name:'Send verification code',exact:true})).toBeEnabled();await expect(page.locator('#download-contacts')).not.toHaveAttribute('href');
+});
+
+test('Introduction terms anchor remains below the sticky header',async({page},info)=>{
+ await page.goto('/terms#sec-11-1');
+ const target=page.locator('#sec-11-1');await expect(target).toBeVisible();
+ await expect.poll(async()=>target.evaluate(el=>el.getBoundingClientRect().top)).toBeLessThan(200);
+ await expect.poll(async()=>target.evaluate(el=>el.getBoundingClientRect().top)).toBeGreaterThanOrEqual(66);
+ await page.screenshot({path:info.outputPath('introduction-terms-anchor.png')});
+});
+
+test('member controls survive leaving, re-verifying and creating a replacement link',async({page})=>{
+ await setup(page,{member:true});await page.goto('/introduction?view=member');await verify(page,'member@example.test');
+ await page.getByRole('button',{name:'Create invitation link'}).click();
+ await page.evaluate(()=>window.dispatchEvent(new PageTransitionEvent('pagehide',{persisted:true})));
+ await verify(page,'member@example.test');await expect(page.locator('#invitations')).toContainText('Already sent your link?');
+ await page.getByRole('button',{name:'Cancel unclaimed invitation'}).click();await page.getByRole('button',{name:'Create invitation link'}).click();
+ await expect(page.locator('#invitation-link')).toHaveValue(new RegExp(`#invite=${token}$`));
+ await page.getByRole('button',{name:'Sign out of this page'}).click();await expect(page.locator('#identity-form')).toBeVisible();await expect(page.locator('#member-view')).toBeHidden();
+});
+test('claimed invitations stop displaying their old share controls',async({page})=>{
+ await setup(page,{member:true});await page.goto('/introduction?view=member');await verify(page,'member@example.test');await page.getByRole('button',{name:'Create invitation link'}).click();
+ await page.route(`${host}/rest/v1/rpc/get_introduction_invitations`,r=>r.fulfill({json:[{id:'inv-1',slot:1,state:'claimed',guest_first_name:'Guest',guest_last_name:'Friend'}]}));
+ await page.getByRole('button',{name:'Refresh invitations'}).click();await expect(page.locator('#share-link')).toBeHidden();await expect(page.locator('#invitation-link')).toHaveValue('');
+});
+
+test('a late verification failure cannot reopen a page after leaving',async({page})=>{
+ await setup(page,{member:true});let finish;const gate=new Promise(r=>finish=r);
+ await page.route(`${host}/auth/v1/verify`,async r=>{await gate;await r.abort('failed');});
+ await page.goto('/introduction?view=member');await page.getByLabel('Email address',{exact:true}).fill('member@example.test');await page.getByRole('button',{name:'Send verification code',exact:true}).click();await page.getByLabel('Six-digit email code').fill('123456');await page.getByRole('button',{name:'Verify email',exact:true}).click();
+ await page.evaluate(()=>window.dispatchEvent(new PageTransitionEvent('pagehide',{persisted:true})));finish();
+ await expect(page.locator('#identity-form')).toBeVisible();await expect(page.locator('#status')).toHaveText('Verify your email to return.');
+ await expect(page.locator('#code-form')).toBeHidden();
+});
+
+test('a late withdrawal cannot leave feedback for the next guest session',async({page})=>{
+ await setup(page);let finish;const gate=new Promise(r=>finish=r);
+ await page.route(`${host}/rest/v1/rpc/withdraw_introduction_marketing`,async r=>{await gate;await r.fulfill({json:{marketing_allowed:false}});});
+ await page.goto('/introduction?view=guest');await verify(page);await page.getByText('Email preferences',{exact:true}).click();await page.getByRole('button',{name:'Stop marketing emails',exact:true}).click();
+ await page.evaluate(()=>window.dispatchEvent(new PageTransitionEvent('pagehide',{persisted:true})));finish();
+ await verify(page);await page.getByText('Email preferences',{exact:true}).click();await expect(page.locator('#marketing-status')).toBeEmpty();await expect(page.locator('#status')).toBeEmpty();
+});
+test('late invitation creation cannot reopen a cleared member view',async({page})=>{
+ await setup(page,{member:true});let finish;const gate=new Promise(r=>finish=r);
+ await page.route(`${host}/rest/v1/rpc/create_introduction_invitation`,async r=>{await gate;await r.fulfill({json:{ok:true,id:'late',token}});});
+ await page.goto('/introduction?view=member');await verify(page,'member@example.test');await page.getByRole('button',{name:'Create invitation link'}).click();
+ await page.evaluate(()=>window.dispatchEvent(new PageTransitionEvent('pagehide',{persisted:true})));finish();
+ await verify(page,'member@example.test');await expect(page.locator('#invitation-link')).toHaveValue('');await expect(page.locator('#share-link')).toBeHidden();
 });
