@@ -4,6 +4,9 @@ on:
   pull_request:
     paths:
       - 'join.html'
+      - 'introduction.html'
+      - 'assets/introduction.*'
+      - 'api/introduction.js'
       - 'delete-account.html'
       - 'assets/account-deletion.*'
       - 'api/account-deletion.js'
@@ -52,10 +55,23 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run test:db
-      # Azure's Ubuntu mirror timed out before browser tests could start.
-      # Keep signed Ubuntu packages and the same test coverage, using upstream.
+      # Both Azure and EC2 regional mirrors have timed out before browser tests.
+      # Preserve signed Ubuntu packages and every test; normalize all apt sources.
       - name: Use upstream Ubuntu package mirror
-        run: sudo sed -i 's|http://azure.archive.ubuntu.com/ubuntu|https://archive.ubuntu.com/ubuntu|g' /etc/apt/apt-mirrors.txt
+        run: |
+          sudo python3 - <<'PYTHON'
+          import pathlib, re
+          sources = [pathlib.Path('/etc/apt/apt-mirrors.txt'), pathlib.Path('/etc/apt/sources.list')]
+          sources += list(pathlib.Path('/etc/apt/sources.list.d').glob('*.list'))
+          sources += list(pathlib.Path('/etc/apt/sources.list.d').glob('*.sources'))
+          for source in sources:
+              if source.is_file():
+                  text = source.read_text()
+                  updated = re.sub(r'https?://(?:[A-Za-z0-9.-]+\.)?archive\.ubuntu\.com/ubuntu',
+                                   'https://archive.ubuntu.com/ubuntu', text)
+                  if updated != text:
+                      source.write_text(updated)
+          PYTHON
       - run: npx playwright install --with-deps chromium webkit
       - run: npm run test:e2e
       - name: Upload Playwright failure artifacts
