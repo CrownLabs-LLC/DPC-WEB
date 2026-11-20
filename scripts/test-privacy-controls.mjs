@@ -151,7 +151,7 @@ check('all public pages expose a static opt-out link and load controls before an
     const html = readFileSync(new URL(file, root), 'utf8');
     // Account and reminder utility pages have no advertising or analytics. Keep their
     // static privacy links without adding the site loader.
-    if (file === 'email-preferences.html' || file === 'app.html' || file === 'delete-account.html') {
+    if (file === 'email-preferences.html' || file === 'app.html' || file === 'delete-account.html' || file === 'introduction.html') {
       assert.match(html, /<a href="\/privacy-choices">Do Not Sell or Share My Personal Information<\/a>/);
       assert.doesNotMatch(html, /privacy-controls|meta-pixel|analytics|connect\.facebook\.net|fbq\s*\(/);
       if (file === 'app.html') assert.doesNotMatch(html, /<script\b/i);
