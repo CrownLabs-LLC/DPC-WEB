@@ -333,3 +333,24 @@ test('late invitation creation cannot reopen a cleared member view',async({page}
    await expect(page.getByRole('button',{name:'Create invitation link'})).toBeVisible();
    await expect(page.locator('#view-claimed-navigation')).toBeHidden();
  });
+
+test('verified members start at their invitations with clear paired guidance', async ({page}, info) => {
+ await setup(page,{member:true});await page.goto('/introduction?view=member');
+ await page.getByLabel('DPC member email address').fill('member@example.test');
+ await page.getByRole('button',{name:'Send verification code',exact:true}).click();
+ await expect(page.locator('#status')).toContainText('If this email is eligible to invite');
+ await page.getByLabel('Six-digit email code').fill('123456');
+ await page.getByRole('button',{name:'Verify email',exact:true}).click();
+ await expect(page.getByRole('heading',{name:'Your Introductions',level:1})).toBeVisible();
+ for(const id of ['site-header','page-title','intro-heading'])await expect(page.locator('#'+id)).toBeHidden();
+ await expect(page.locator('#member-redemption-guide')).toContainText('instead of “Redeem Pour.”');
+ await expect(page.locator('#member-redemption-guide')).toContainText('does not use another from your monthly allotment');
+ await expect(page.locator('#status')).toBeEmpty();
+ await page.getByRole('button',{name:'Create invitation link'}).click();
+ const gap=await page.locator('#copy-link').evaluate(el=>el.nextElementSibling.getBoundingClientRect().top-el.getBoundingClientRect().bottom);
+ expect(gap).toBeGreaterThanOrEqual(20);
+ await page.screenshot({path:info.outputPath('member-simplified.png'),fullPage:true});
+ await page.getByRole('button',{name:'Sign out of this page'}).click();
+ await expect(page.locator('#page-title')).toBeVisible();await expect(page.locator('#site-header')).toBeVisible();
+ await expect(page.locator('#status')).toContainText('Signed out');
+});
