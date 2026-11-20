@@ -21,7 +21,7 @@ async function setup(page,{member=false,lost=false,missing=false}={}) {
   return calls;
 }
 async function verify(page,email='guest@example.test') {
-  await page.getByLabel('Email address',{exact:true}).fill(email);
+  await page.getByLabel(/^(DPC member email address|Email address)$/).fill(email);
   await page.getByRole('button',{name:'Send verification code',exact:true}).click();
   await page.getByLabel('Six-digit email code').fill('123456');
   await page.getByRole('button',{name:'Verify email',exact:true}).click();
@@ -98,7 +98,7 @@ for(const [reason,message] of [['already_claimed','You have already claimed'],['
 }
 test('unknown returning email receives the same neutral code prompt',async({page})=>{
   await setup(page);await page.route(`${host}/auth/v1/otp`,r=>r.fulfill({status:400,json:{error:'unknown_user'}}));
-  await page.goto('/introduction?view=guest');await page.getByLabel('Email address',{exact:true}).fill('unknown@example.test');
+  await page.goto('/introduction?view=guest');await page.getByLabel(/^(DPC member email address|Email address)$/).fill('unknown@example.test');
   await page.getByRole('button',{name:'Send verification code',exact:true}).click();
   await expect(page.locator('#code-form')).toBeVisible();await expect(page.locator('#status')).toContainText('If this email can continue');
 });
@@ -213,7 +213,7 @@ for(const state of ['claimed','redeemed','expired','missing'])test(`guest next s
  await setup(page);
  await page.route(`${host}/rest/v1/rpc/get_claimed_introduction`,r=>r.fulfill({json:state==='missing'?null:{id:'claim-1',state,inviter_first_name:'Nick',inviter_last_name:'Host'}}));
  await page.goto('/introduction?view=guest');
- await page.getByLabel('Email address',{exact:true}).fill('guest@example.test');
+ await page.getByLabel(/^(DPC member email address|Email address)$/).fill('guest@example.test');
  await page.getByRole('button',{name:'Send verification code',exact:true}).click();
  await expect(page.locator('#code-destination')).toHaveText('Email: guest@example.test');
  await page.getByLabel('Six-digit email code').fill('123456');
@@ -301,7 +301,7 @@ test('claimed invitations stop displaying their old share controls',async({page}
 test('a late verification failure cannot reopen a page after leaving',async({page})=>{
  await setup(page,{member:true});let finish;const gate=new Promise(r=>finish=r);
  await page.route(`${host}/auth/v1/verify`,async r=>{await gate;await r.abort('failed');});
- await page.goto('/introduction?view=member');await page.getByLabel('Email address',{exact:true}).fill('member@example.test');await page.getByRole('button',{name:'Send verification code',exact:true}).click();await page.getByLabel('Six-digit email code').fill('123456');await page.getByRole('button',{name:'Verify email',exact:true}).click();
+ await page.goto('/introduction?view=member');await page.getByLabel(/^(DPC member email address|Email address)$/).fill('member@example.test');await page.getByRole('button',{name:'Send verification code',exact:true}).click();await page.getByLabel('Six-digit email code').fill('123456');await page.getByRole('button',{name:'Verify email',exact:true}).click();
  await page.evaluate(()=>window.dispatchEvent(new PageTransitionEvent('pagehide',{persisted:true})));finish();
  await expect(page.locator('#identity-form')).toBeVisible();await expect(page.locator('#status')).toHaveText('Verify your email to return.');
  await expect(page.locator('#code-form')).toBeHidden();
@@ -321,3 +321,15 @@ test('late invitation creation cannot reopen a cleared member view',async({page}
  await page.evaluate(()=>window.dispatchEvent(new PageTransitionEvent('pagehide',{persisted:true})));finish();
  await verify(page,'member@example.test');await expect(page.locator('#invitation-link')).toHaveValue('');await expect(page.locator('#share-link')).toBeHidden();
 });
+
+ test('member entry explains browser sign-in and never offers guest navigation', async ({page}, info) => {
+   await setup(page,{member:true}); await page.goto('/introduction?view=member');
+   await expect(page.locator('#page-title')).toHaveText('Manage your invitations');
+   await expect(page.getByLabel('DPC member email address')).toBeVisible();
+   await expect(page.locator('#email-help')).toContainText('Your app sign-in does not carry over');
+   await expect(page.locator('#view-claimed-navigation')).toBeHidden();
+   await page.screenshot({path: info.outputPath('member-entry.png'), fullPage:true});
+   await verify(page,'member@example.test');
+   await expect(page.getByRole('button',{name:'Create invitation link'})).toBeVisible();
+   await expect(page.locator('#view-claimed-navigation')).toBeHidden();
+ });

@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="/assets/pour-partner-invitation.v1.css">
 <link rel="stylesheet" href="/assets/account-deletion.v1.css">
 <link rel="stylesheet" href="/assets/introduction.v4.css">
-<script src="/assets/introduction.v7.js" defer></script>
+<script src="/assets/introduction.v8.js" defer></script>
 </head>
 <body>
 <header><a href="/">Downtown Pour Collective</a></header>
@@ -18,9 +18,9 @@
 <div id="status" role="status" aria-live="polite">Loading The Introduction…</div>
 <p id="invitation-eligibility" class="note" hidden>For guests 21 or older who have never been DPC members. Claim and enjoy your Pour together by December 31, 2026, Pacific time.</p>
 <form id="identity-form" hidden>
-<label for="email">Email address</label>
+<label id="email-label" for="email">Email address</label>
 <input id="email" type="email" autocomplete="email" required maxlength="254">
-<p class="note">We’ll send a six-digit verification code. Verifying your email does not subscribe you to marketing.</p>
+<p id="email-help" class="note">We’ll send a six-digit verification code. Verifying your email does not subscribe you to marketing.</p>
 <button class="button" type="submit">Send verification code</button>
 </form>
 <form id="code-form" hidden>
