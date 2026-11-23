@@ -28,7 +28,7 @@ async function fresh() {
   return handler;
 }
 
-const TUPLE = { tos: '3.0', privacy: '4.9', memberTerms: '3.0', autoRenewalTerms: '3.0' };
+const TUPLE = { tos: '3.1', privacy: '4.10', memberTerms: '3.0', autoRenewalTerms: '3.0' };
 
 // respond: (url, opts) => Response
 async function run(req, respond) {
@@ -69,10 +69,17 @@ process.env.SUPABASE_SERVICE_ROLE_KEY = 'service_role_test_key';
 {
   const { out } = await run({ method: 'GET', query: { fresh: '1' } },
     () => new Response(JSON.stringify({ ...TUPLE, privacy: '4.2' }), { status: 200 }));
-  check('old backend tuple pauses checkout instead of recording consent against v4.9 policy',
+  check('old backend tuple pauses checkout instead of recording consent against v4.10 policy',
     out.status === 503 && out.body?.privacy === undefined
     && out.headers['Cache-Control'] === 'no-store'
     && out.headers['X-DPC-Failure-Kind'] === 'policy_version_mismatch', out);
+}
+
+{
+  const { out } = await run({ method: 'GET', query: { fresh: '1' } },
+    () => new Response(JSON.stringify({ ...TUPLE, tos: '3.0' }), { status: 200 }));
+  check('old Terms tuple pauses checkout against newly published Terms',
+    out.status === 503 && out.headers['X-DPC-Failure-Kind'] === 'policy_version_mismatch', out);
 }
 
 /* ---------------- item 6: success ---------------- */
