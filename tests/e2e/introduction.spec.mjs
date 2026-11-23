@@ -21,20 +21,20 @@ async function setup(page,{member=false,lost=false,missing=false}={}) {
   return calls;
 }
 async function verify(page,email='guest@example.test') {
-  await page.getByLabel(/^(DPC member email address|Email address)$/).fill(email);
-  await page.getByRole('button',{name:'Send verification code',exact:true}).click();
-  await page.getByLabel('Six-digit email code').fill('123456');
-  await page.getByRole('button',{name:'Verify email',exact:true}).click();
+  await page.getByLabel(/^(The email you use for DPC|Your email)$/).fill(email);
+  await page.getByRole('button',{name:"Email me a code",exact:true}).click();
+  await page.getByLabel("Six-digit code").fill('123456');
+  await page.getByRole('button',{name:"Continue",exact:true}).click();
 }
 test('browser claim separates optional consent, survives lost receipt, and stores no session',async({page},info)=>{
   const calls=await setup(page,{lost:true});await page.goto(`/introduction#invite=${token}`);await verify(page);
   await expect(page.locator('#marketing')).not.toBeChecked();
-  await page.getByLabel('First name as shown on your ID').fill('Guest');await page.getByLabel('Last name as shown on your ID').fill('Friend');
+  await page.getByLabel("First name (as it appears on your ID)").fill('Guest');await page.getByLabel("Last name (as it appears on your ID)").fill('Friend');
   await page.locator('#over-21').check();await page.locator('#terms').check();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
   await page.screenshot({path:info.outputPath('claim.png'),fullPage:true});
-  await page.getByRole('button',{name:'Claim my Introduction'}).click();await expect(page.locator('#status')).toContainText('could not confirm');
-  await expect(page.locator('#marketing')).toBeDisabled();await page.getByRole('button',{name:'Claim my Introduction'}).click();
+  await page.getByRole('button',{name:"Claim my drink"}).click();await expect(page.locator('#status')).toContainText("couldn't confirm");
+  await expect(page.locator('#marketing')).toBeDisabled();await page.getByRole('button',{name:"Claim my drink"}).click();
   await expect(page.locator('#guest-view')).toBeVisible();const claims=calls.filter(c=>c.url.endsWith('/claim_introduction'));
   expect(claims).toHaveLength(2);expect(claims[0].body).toEqual(claims[1].body);expect(claims[0].body.p_marketing_opt_in).toBe(false);
   expect(calls.some(c=>c.url.includes(token))).toBe(false);
@@ -43,13 +43,13 @@ test('browser claim separates optional consent, survives lost receipt, and store
 test('member creates, copies and cancels an unclaimed link',async({page},info)=>{
   const calls=await setup(page,{member:true});await page.goto('/introduction?view=member');await verify(page,'member@example.test');
   await expect(page.locator('#member-heading')).toBeFocused();
-  await page.getByRole('button',{name:'Create invitation link'}).click();
+  await page.getByRole('button',{name:"Create my link"}).click();
   await expect(page.locator('#invitation-link')).toBeFocused();
-  await expect(page.locator('#invitations')).toContainText('Not claimed yet');
+  await expect(page.locator('#invitations')).toContainText("Waiting for your friend to claim");
   await expect(page.locator('#invitations #share-link')).toBeVisible();
   await expect(page.locator('#invitation-link')).toHaveValue(new RegExp(`#invite=${token}$`));
   await page.screenshot({path:info.outputPath('member.png'),fullPage:true});
-  await page.getByRole('button',{name:'Cancel unclaimed invitation'}).click();await expect(page.locator('#share-link')).toBeHidden();
+  await page.getByRole('button',{name:"Cancel this link"}).click();await expect(page.locator('#share-link')).toBeHidden();
   expect(calls.filter(c=>c.url.endsWith('/create_introduction_invitation'))).toHaveLength(1);
 });
 test('returning guest verifies email without needing the original bearer link',async({page})=>{
@@ -58,49 +58,49 @@ test('returning guest verifies email without needing the original bearer link',a
   expect(calls.some(c=>c.url.endsWith('/claim_introduction'))).toBe(false);
 });
 test('unavailable invitation does not offer email collection',async({page})=>{
-  await setup(page,{missing:true});await page.goto(`/introduction#invite=${token}`);await expect(page.locator('#status')).toContainText('unavailable');await expect(page.locator('#identity-form')).toBeHidden();
+  await setup(page,{missing:true});await page.goto(`/introduction#invite=${token}`);await expect(page.locator('#status')).toContainText("isn't available");await expect(page.locator('#identity-form')).toBeHidden();
 });
 
 test('leaving a private page clears its session and visible guest record',async({page})=>{
   await setup(page);await page.goto('/introduction?view=guest');await verify(page);
-  await expect(page.locator('#guest-details')).toContainText('Nick Host');
+  await expect(page.locator('#guest-details')).toContainText("Nick");
   await page.evaluate(()=>window.dispatchEvent(new PageTransitionEvent('pagehide',{persisted:true})));
   await expect(page.locator('#guest-view')).toBeHidden();
   await expect(page.locator('#guest-details')).toBeEmpty();
-  await expect(page.locator('#guest-redemption-guide')).not.toContainText('Nick Host');
+  await expect(page.locator('#guest-redemption-guide')).not.toContainText("Nick");
   await expect(page.locator('#guest-outcome')).toBeEmpty();
   await expect(page.locator('#identity-form')).toBeVisible();
 });
 async function readyClaim(page) {
   await page.goto(`/introduction#invite=${token}`);await verify(page);
-  await page.getByLabel('First name as shown on your ID').fill('Guest');
-  await page.getByLabel('Last name as shown on your ID').fill('Friend');
+  await page.getByLabel("First name (as it appears on your ID)").fill('Guest');
+  await page.getByLabel("Last name (as it appears on your ID)").fill('Friend');
   await page.locator('#over-21').check();await page.locator('#terms').check();
 }
 test('whitespace names stay editable without submitting a frozen claim',async({page})=>{
   const calls=await setup(page);await readyClaim(page);await page.locator('#first-name').fill('   ');
-  await page.getByRole('button',{name:'Claim my Introduction'}).click();
+  await page.getByRole('button',{name:"Claim my drink"}).click();
   await expect(page.locator('#status')).toContainText('Enter your first and last name');
   await expect(page.locator('#first-name')).toBeEnabled();expect(calls.some(c=>c.url.endsWith('/claim_introduction'))).toBe(false);
 });
 test('expired claim session asks for verification rather than endless retries',async({page})=>{
   await setup(page);await page.route(`${host}/rest/v1/rpc/claim_introduction`,r=>r.fulfill({status:401,json:{error:'expired'}}));
-  await readyClaim(page);await page.getByRole('button',{name:'Claim my Introduction'}).click();
-  await expect(page.locator('#identity-form')).toBeVisible();await expect(page.locator('#status')).toContainText('session expired');
-  await expect(page.getByRole('link',{name:'View my claimed Introduction'})).toHaveAttribute('href','/introduction?view=guest');
+  await readyClaim(page);await page.getByRole('button',{name:"Claim my drink"}).click();
+  await expect(page.locator('#identity-form')).toBeVisible();await expect(page.locator('#status')).toContainText("session timed out");
+  await expect(page.getByRole('link',{name:"Find my invitation"})).toHaveAttribute('href','/introduction?view=guest');
 });
-for(const [reason,message] of [['already_claimed','You have already claimed'],['consent_changed','Reload this page']]) {
+for(const [reason,message] of [['already_claimed',"You've already claimed"],['consent_changed','Reload the page']]) {
   test(`claim reason ${reason} gives the correct recovery`,async({page})=>{
     await setup(page);await page.route(`${host}/rest/v1/rpc/claim_introduction`,r=>r.fulfill({json:{ok:false,reason}}));
-    await readyClaim(page);await page.getByRole('button',{name:'Claim my Introduction'}).click();
+    await readyClaim(page);await page.getByRole('button',{name:"Claim my drink"}).click();
     await expect(page.locator('#status')).toContainText(message);await expect(page.locator('#first-name')).toBeEnabled();
   });
 }
 test('unknown returning email receives the same neutral code prompt',async({page})=>{
   await setup(page);await page.route(`${host}/auth/v1/otp`,r=>r.fulfill({status:400,json:{error:'unknown_user'}}));
-  await page.goto('/introduction?view=guest');await page.getByLabel(/^(DPC member email address|Email address)$/).fill('unknown@example.test');
-  await page.getByRole('button',{name:'Send verification code',exact:true}).click();
-  await expect(page.locator('#code-form')).toBeVisible();await expect(page.locator('#status')).toContainText('If this email can continue');
+  await page.goto('/introduction?view=guest');await page.getByLabel(/^(The email you use for DPC|Your email)$/).fill('unknown@example.test');
+  await page.getByRole('button',{name:"Email me a code",exact:true}).click();
+  await expect(page.locator('#code-form')).toBeVisible();await expect(page.locator('#status')).toContainText("Check your inbox for a six-digit code");
 });
 test('canceling another slot preserves the newly created share link',async({page})=>{
   await setup(page,{member:true});let other=true;
@@ -108,12 +108,12 @@ test('canceling another slot preserves the newly created share link',async({page
   await page.goto('/introduction?view=member');await verify(page,'member@example.test');
   // Start with the first slot only so the create control is available.
   await page.unroute(`${host}/rest/v1/rpc/get_introduction_invitations`);
-  await page.getByRole('button',{name:'Refresh invitations'}).click();
-  await page.getByRole('button',{name:'Create invitation link'}).click();
+  await page.getByRole('button',{name:"Refresh"}).click();
+  await page.getByRole('button',{name:"Create my link"}).click();
   await page.route(`${host}/rest/v1/rpc/get_introduction_invitations`,r=>r.fulfill({json:[...(other?[{id:'other',slot:1,state:'open'}]:[]),{id:'inv-1',slot:2,state:'open'}]}));
-  await page.getByRole('button',{name:'Refresh invitations'}).click();
+  await page.getByRole('button',{name:"Refresh"}).click();
   await page.route(`${host}/rest/v1/rpc/cancel_introduction_invitation`,r=>{other=false;return r.fulfill({json:{ok:true}});});
-  await page.getByRole('button',{name:'Cancel unclaimed invitation'}).first().click();
+  await page.getByRole('button',{name:"Cancel this link"}).first().click();
   await expect(page.locator('#share-link')).toBeVisible();await expect(page.locator('#invitation-link')).toHaveValue(new RegExp(`#invite=${token}$`));
 });
 
@@ -121,23 +121,23 @@ test('guest can withdraw marketing without changing the saved Introduction',asyn
  await setup(page);
  await page.route(`${host}/rest/v1/rpc/withdraw_introduction_marketing`,r=>r.fulfill({json:{marketing_allowed:false}}));
  await page.goto('/introduction?view=guest');await verify(page,'guest@example.test');
- await page.getByText('Email preferences',{exact:true}).click();
- await page.getByRole('button',{name:'Stop marketing emails',exact:true}).click();
- await expect(page.locator('#marketing-status')).toContainText('Marketing emails are stopped');
- await expect(page.locator('#guest-details')).toContainText('invited you for a free Pour');
+ await page.getByText("Email settings",{exact:true}).click();
+ await page.getByRole('button',{name:"Stop event and membership emails",exact:true}).click();
+ await expect(page.locator('#marketing-status')).toContainText("You won't get event and membership emails");
+ await expect(page.locator('#guest-details')).toContainText("Your drink with Nick is on us");
 });
 
 test('failed withdrawal does not claim marketing was stopped',async({page})=>{
- await setup(page);await page.route(`${host}/rest/v1/rpc/withdraw_introduction_marketing`,r=>r.fulfill({status:503,json:{error:'unavailable'}}));
+ await setup(page);await page.route(`${host}/rest/v1/rpc/withdraw_introduction_marketing`,r=>r.fulfill({status:503,json:{error:"isn't available"}}));
  await page.goto('/introduction?view=guest');await verify(page,'guest@example.test');
- await page.getByText('Email preferences',{exact:true}).click();
- await page.getByRole('button',{name:'Stop marketing emails',exact:true}).click();
- await expect(page.locator('#status')).toContainText('Could not complete');
- await expect(page.locator('#status')).not.toContainText('Marketing emails are stopped');
- await expect(page.locator('#marketing-status')).toContainText('Try Stop marketing emails again');
+ await page.getByText("Email settings",{exact:true}).click();
+ await page.getByRole('button',{name:"Stop event and membership emails",exact:true}).click();
+ await expect(page.locator('#status')).toContainText("Something didn't go through");
+ await expect(page.locator('#status')).not.toContainText("You won't get event and membership emails");
+ await expect(page.locator('#marketing-status')).toContainText("Tap Stop event and membership emails again");
  await expect(page.locator('#marketing-status')).toBeInViewport();
  await expect(page.locator('#withdraw-marketing')).toBeEnabled();
- await expect(page.locator('#guest-details')).toContainText('invited you for a free Pour');
+ await expect(page.locator('#guest-details')).toContainText("Your drink with Nick is on us");
 });
 
 // Returning visitors may retain the original immutable asset for a year.
@@ -148,22 +148,22 @@ test('returning guest bypasses the old cached script and sees withdrawal feedbac
  const pending=new Promise(resolve=>{finish=resolve;});
  await page.route(`${host}/rest/v1/rpc/withdraw_introduction_marketing`,async r=>{await pending;await r.fulfill({json:{marketing_allowed:false}});});
  await page.goto('/introduction?view=guest');await verify(page);
- await page.getByText('Email preferences',{exact:true}).click();
- await page.getByRole('button',{name:'Stop marketing emails',exact:true}).click();
- await expect(page.locator('#marketing-status')).toHaveText('Stopping marketing emails…');
+ await page.getByText("Email settings",{exact:true}).click();
+ await page.getByRole('button',{name:"Stop event and membership emails",exact:true}).click();
+ await expect(page.locator('#marketing-status')).toHaveText("Updating your email settings…");
  await expect(page.locator('#marketing-status')).toBeInViewport();
  finish();
- await expect(page.locator('#marketing-status')).toContainText('Marketing emails are stopped');
+ await expect(page.locator('#marketing-status')).toContainText("You won't get event and membership emails");
  await expect(page.locator('#marketing-status')).toBeInViewport();
  await expect(page.locator('#withdraw-marketing')).toBeHidden();
- await expect(page.locator('#guest-details')).toContainText('invited you for a free Pour');
+ await expect(page.locator('#guest-details')).toContainText("Your drink with Nick is on us");
  await page.screenshot({path:info.outputPath('withdrawal-confirmation.png'),fullPage:true});
- await page.getByRole('button',{name:'Sign out of this page',exact:true}).click();
- await expect(page.locator('#guest-redemption-guide')).not.toContainText('Nick Host');
+ await page.getByRole('button',{name:"Sign out",exact:true}).click();
+ await expect(page.locator('#guest-redemption-guide')).not.toContainText("Nick");
  await expect(page.locator('#guest-outcome')).toBeEmpty();
  await verify(page);
  await expect(page.locator('#guest-marketing')).not.toHaveAttribute('open','');
- await page.getByText('Email preferences',{exact:true}).click();
+ await page.getByText("Email settings",{exact:true}).click();
  await expect(page.locator('#withdraw-marketing')).toBeVisible();
  await expect(page.locator('#marketing-status')).toBeEmpty();
 });
@@ -176,8 +176,8 @@ test('view claimed Introduction opens the record from the verified claim page',a
  await expect(page.locator(fromClaim?'#claim-form':'#guest-view')).toBeVisible();
  const url=page.url();
  const requestsBefore=calls.filter(c=>c.url.endsWith('/get_claimed_introduction')).length;
- await page.getByRole('link',{name:'View my claimed Introduction',exact:true}).click();
- await expect(page.locator('#guest-details')).toContainText('Nick Host');
+ await page.getByRole('link',{name:"Find my invitation",exact:true}).click();
+ await expect(page.locator('#guest-details')).toContainText("Nick");
  await expect.poll(()=>calls.filter(c=>c.url.endsWith('/get_claimed_introduction')).length).toBe(requestsBefore+1);
  await expect(page.locator('#identity-form')).toBeHidden();
  await expect(page.locator('#view-claimed-navigation')).toBeHidden();
@@ -189,9 +189,9 @@ test('view claimed Introduction requests verification when its session expires',
  await setup(page);await page.goto(`/introduction#invite=${token}`);await verify(page);
  await expect(page.locator('#claim-form')).toBeVisible();
  await page.route(`${host}/rest/v1/rpc/get_claimed_introduction`,r=>r.fulfill({status:401,json:{error:'expired'}}));
- await page.getByRole('link',{name:'View my claimed Introduction',exact:true}).click();
+ await page.getByRole('link',{name:"Find my invitation",exact:true}).click();
  await expect(page.locator('#identity-form')).toBeVisible();
- await expect(page.locator('#status')).toContainText('Your session expired');
+ await expect(page.locator('#status')).toContainText("Your session timed out");
  await expect(page.locator('#guest-view')).toBeHidden();
 });
 
@@ -199,41 +199,41 @@ test('open guest record has no redundant view link or verification prompt',async
  await setup(page);
  await page.route(`${host}/rest/v1/rpc/get_claimed_introduction`,r=>r.fulfill({json:{id:'claim-1',state:'redeemed',inviter_first_name:'Nick',inviter_last_name:'Host'}}));
  await page.goto('/introduction?view=guest');await verify(page);
- await expect(page.locator('#guest-details')).toContainText('Redeemed with Nick Host');
+ await expect(page.locator('#guest-details')).toContainText("Enjoyed with Nick");
  await expect(page.locator('#view-claimed-navigation')).toBeHidden();
  await expect(page.locator('#intro-heading')).toBeHidden();
- await expect(page.locator('#page-title')).toHaveText('Introduction redeemed');
+ await expect(page.locator('#page-title')).toHaveText("You've used your invitation");
  await page.screenshot({path:info.outputPath('redeemed-record.png'),fullPage:true});
- await page.getByRole('button',{name:'Sign out of this page',exact:true}).click();
+ await page.getByRole('button',{name:"Sign out",exact:true}).click();
  await expect(page.locator('#view-claimed-navigation')).toBeHidden();
- await expect(page.locator('#intro-heading')).toContainText('Verify the same email');
+ await expect(page.locator('#intro-heading')).toContainText("Enter the email you used");
 });
 
 for(const state of ['claimed','redeemed','expired','missing'])test(`guest next steps match ${state} status`,async({page},info)=>{
  await setup(page);
  await page.route(`${host}/rest/v1/rpc/get_claimed_introduction`,r=>r.fulfill({json:state==='missing'?null:{id:'claim-1',state,inviter_first_name:'Nick',inviter_last_name:'Host'}}));
  await page.goto('/introduction?view=guest');
- await page.getByLabel(/^(DPC member email address|Email address)$/).fill('guest@example.test');
- await page.getByRole('button',{name:'Send verification code',exact:true}).click();
+ await page.getByLabel(/^(The email you use for DPC|Your email)$/).fill('guest@example.test');
+ await page.getByRole('button',{name:"Email me a code",exact:true}).click();
  await expect(page.locator('#code-destination')).toHaveText('Email: guest@example.test');
- await page.getByLabel('Six-digit email code').fill('123456');
- await page.getByRole('button',{name:'Verify email',exact:true}).click();
+ await page.getByLabel("Six-digit code").fill('123456');
+ await page.getByRole('button',{name:"Continue",exact:true}).click();
  await expect(page.locator('#guest-view')).toBeVisible();
  await expect(page.locator('#status')).toBeEmpty();
  await expect(page.locator('#view-claimed-navigation')).toBeHidden();
  if(state==='claimed'){
-   await expect(page.locator('#page-title')).toHaveText('Your Introduction is claimed');
-   await expect(page.locator('#guest-redemption-guide')).toContainText('Nick Host uses the DPC app');
-   await expect(page.locator('#guest-visit-instructions')).toContainText('December 31, 2026');
-   await expect(page.locator('#guest-visit-instructions')).toContainText('Friday and Saturday before 4 PM');
+   await expect(page.locator('#page-title')).toHaveText("You're all set");
+   await expect(page.locator('#guest-redemption-guide')).toContainText("Nick takes care of it at the bar");
+   await expect(page.locator('#guest-visit-instructions')).toContainText("December 31");
+   await expect(page.locator('#guest-visit-instructions')).toContainText("Friday and Saturday before 4pm");
    expect(await page.locator('#guest-visit-instructions').evaluate(el=>Boolean(el.compareDocumentPosition(document.getElementById('guest-marketing'))&Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
  }else{
    await expect(page.locator('#guest-visit-instructions')).toBeHidden();
    if(state==='missing'){
-     await expect(page.locator('#page-title')).toHaveText('No Introduction found');
-     await expect(page.locator('#guest-details')).toContainText('original invitation link');
+     await expect(page.locator('#page-title')).toHaveText("We couldn't find an invitation");
+     await expect(page.locator('#guest-details')).toContainText("If a friend sent you a link");
      await expect(page.locator('#guest-marketing')).toBeHidden();
-   }else await expect(page.locator('#guest-outcome')).toContainText(state==='redeemed'?'nothing else you need to do':'can no longer be redeemed');
+   }else await expect(page.locator('#guest-outcome')).toContainText(state==='redeemed'?"We hope to see you downtown again soon":"can't be used anymore");
  }
  await expect(page.locator('#withdraw-marketing')).toBeHidden();
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
@@ -255,7 +255,7 @@ test('admin downloads a named, escaped CSV across pages and clears it on signout
  const stream=await download.createReadStream();let csv='';for await(const chunk of stream)csv+=chunk.toString();
  expect(csv).toContain('"\'=SUM(1,2)"');expect(csv).toContain('guest@example.test');
  expect(scopes.slice(1).every(b=>b.p_marketing_only===true)).toBe(true);
- await page.getByRole('button',{name:'Sign out of this page'}).click();await expect(page.locator('#download-contacts')).not.toHaveAttribute('href');await expect(page.locator('#export-result')).toBeEmpty();
+ await page.getByRole('button',{name:"Sign out"}).click();await expect(page.locator('#download-contacts')).not.toHaveAttribute('href');await expect(page.locator('#export-result')).toBeEmpty();
  expect(await page.evaluate(()=>[localStorage.length,sessionStorage.length])).toEqual([0,0]);
 });
 test('non-admin cannot open export controls',async({page})=>{
@@ -272,7 +272,7 @@ test('leaving during export cannot recreate a private download',async({page})=>{
  await page.route(`${host}/rest/v1/rpc/admin_introduction_contacts`,async r=>{const b=r.request().postDataJSON();if(b.p_limit!==1)await gate;await r.fulfill({json:{rows:[],next_id:null,marketing_only:b.p_marketing_only}});});
  await page.goto('/introduction?view=admin');await verify(page,'member@example.test');await page.getByRole('button',{name:'Prepare all contacts CSV'}).click();
  await page.evaluate(()=>window.dispatchEvent(new PageTransitionEvent('pagehide',{persisted:true})));finish();
- await expect(page.getByRole('button',{name:'Send verification code',exact:true})).toBeEnabled();await expect(page.locator('#download-contacts')).not.toHaveAttribute('href');
+ await expect(page.getByRole('button',{name:"Email me a code",exact:true})).toBeEnabled();await expect(page.locator('#download-contacts')).not.toHaveAttribute('href');
 });
 
 test('Introduction terms anchor remains below the sticky header',async({page},info)=>{
@@ -285,39 +285,39 @@ test('Introduction terms anchor remains below the sticky header',async({page},in
 
 test('member controls survive leaving, re-verifying and creating a replacement link',async({page})=>{
  await setup(page,{member:true});await page.goto('/introduction?view=member');await verify(page,'member@example.test');
- await page.getByRole('button',{name:'Create invitation link'}).click();
+ await page.getByRole('button',{name:"Create my link"}).click();
  await page.evaluate(()=>window.dispatchEvent(new PageTransitionEvent('pagehide',{persisted:true})));
  await verify(page,'member@example.test');await expect(page.locator('#invitations')).toContainText('Already sent your link?');
- await page.getByRole('button',{name:'Cancel unclaimed invitation'}).click();await page.getByRole('button',{name:'Create invitation link'}).click();
+ await page.getByRole('button',{name:"Cancel this link"}).click();await page.getByRole('button',{name:"Create my link"}).click();
  await expect(page.locator('#invitation-link')).toHaveValue(new RegExp(`#invite=${token}$`));
- await page.getByRole('button',{name:'Sign out of this page'}).click();await expect(page.locator('#identity-form')).toBeVisible();await expect(page.locator('#member-view')).toBeHidden();
+ await page.getByRole('button',{name:"Sign out"}).click();await expect(page.locator('#identity-form')).toBeVisible();await expect(page.locator('#member-view')).toBeHidden();
 });
 test('claimed invitations stop displaying their old share controls',async({page})=>{
- await setup(page,{member:true});await page.goto('/introduction?view=member');await verify(page,'member@example.test');await page.getByRole('button',{name:'Create invitation link'}).click();
+ await setup(page,{member:true});await page.goto('/introduction?view=member');await verify(page,'member@example.test');await page.getByRole('button',{name:"Create my link"}).click();
  await page.route(`${host}/rest/v1/rpc/get_introduction_invitations`,r=>r.fulfill({json:[{id:'inv-1',slot:1,state:'claimed',guest_first_name:'Guest',guest_last_name:'Friend'}]}));
- await page.getByRole('button',{name:'Refresh invitations'}).click();await expect(page.locator('#share-link')).toBeHidden();await expect(page.locator('#invitation-link')).toHaveValue('');
+ await page.getByRole('button',{name:"Refresh"}).click();await expect(page.locator('#share-link')).toBeHidden();await expect(page.locator('#invitation-link')).toHaveValue('');
 });
 
 test('a late verification failure cannot reopen a page after leaving',async({page})=>{
  await setup(page,{member:true});let finish;const gate=new Promise(r=>finish=r);
  await page.route(`${host}/auth/v1/verify`,async r=>{await gate;await r.abort('failed');});
- await page.goto('/introduction?view=member');await page.getByLabel(/^(DPC member email address|Email address)$/).fill('member@example.test');await page.getByRole('button',{name:'Send verification code',exact:true}).click();await page.getByLabel('Six-digit email code').fill('123456');await page.getByRole('button',{name:'Verify email',exact:true}).click();
+ await page.goto('/introduction?view=member');await page.getByLabel(/^(The email you use for DPC|Your email)$/).fill('member@example.test');await page.getByRole('button',{name:"Email me a code",exact:true}).click();await page.getByLabel("Six-digit code").fill('123456');await page.getByRole('button',{name:"Continue",exact:true}).click();
  await page.evaluate(()=>window.dispatchEvent(new PageTransitionEvent('pagehide',{persisted:true})));finish();
- await expect(page.locator('#identity-form')).toBeVisible();await expect(page.locator('#status')).toHaveText('Verify your email to return.');
+ await expect(page.locator('#identity-form')).toBeVisible();await expect(page.locator('#status')).toHaveText("Confirm your email to continue.");
  await expect(page.locator('#code-form')).toBeHidden();
 });
 
 test('a late withdrawal cannot leave feedback for the next guest session',async({page})=>{
  await setup(page);let finish;const gate=new Promise(r=>finish=r);
  await page.route(`${host}/rest/v1/rpc/withdraw_introduction_marketing`,async r=>{await gate;await r.fulfill({json:{marketing_allowed:false}});});
- await page.goto('/introduction?view=guest');await verify(page);await page.getByText('Email preferences',{exact:true}).click();await page.getByRole('button',{name:'Stop marketing emails',exact:true}).click();
+ await page.goto('/introduction?view=guest');await verify(page);await page.getByText("Email settings",{exact:true}).click();await page.getByRole('button',{name:"Stop event and membership emails",exact:true}).click();
  await page.evaluate(()=>window.dispatchEvent(new PageTransitionEvent('pagehide',{persisted:true})));finish();
- await verify(page);await page.getByText('Email preferences',{exact:true}).click();await expect(page.locator('#marketing-status')).toBeEmpty();await expect(page.locator('#status')).toBeEmpty();
+ await verify(page);await page.getByText("Email settings",{exact:true}).click();await expect(page.locator('#marketing-status')).toBeEmpty();await expect(page.locator('#status')).toBeEmpty();
 });
 test('late invitation creation cannot reopen a cleared member view',async({page})=>{
  await setup(page,{member:true});let finish;const gate=new Promise(r=>finish=r);
  await page.route(`${host}/rest/v1/rpc/create_introduction_invitation`,async r=>{await gate;await r.fulfill({json:{ok:true,id:'late',token}});});
- await page.goto('/introduction?view=member');await verify(page,'member@example.test');await page.getByRole('button',{name:'Create invitation link'}).click();
+ await page.goto('/introduction?view=member');await verify(page,'member@example.test');await page.getByRole('button',{name:"Create my link"}).click();
  await page.evaluate(()=>window.dispatchEvent(new PageTransitionEvent('pagehide',{persisted:true})));finish();
  await verify(page,'member@example.test');await expect(page.locator('#invitation-link')).toHaveValue('');await expect(page.locator('#share-link')).toBeHidden();
 });
@@ -325,32 +325,32 @@ test('late invitation creation cannot reopen a cleared member view',async({page}
  test('member entry explains browser sign-in and never offers guest navigation', async ({page}, info) => {
    await setup(page,{member:true}); await page.goto('/introduction?view=member');
    await expect(page.locator('#page-title')).toHaveText('Manage your invitations');
-   await expect(page.getByLabel('DPC member email address')).toBeVisible();
-   await expect(page.locator('#email-help')).toContainText('Your app sign-in does not carry over');
+   await expect(page.getByLabel("The email you use for DPC")).toBeVisible();
+   await expect(page.locator('#email-help')).toContainText("This page opens in your browser");
    await expect(page.locator('#view-claimed-navigation')).toBeHidden();
    await page.screenshot({path: info.outputPath('member-entry.png'), fullPage:true});
    await verify(page,'member@example.test');
-   await expect(page.getByRole('button',{name:'Create invitation link'})).toBeVisible();
+   await expect(page.getByRole('button',{name:"Create my link"})).toBeVisible();
    await expect(page.locator('#view-claimed-navigation')).toBeHidden();
  });
 
 test('verified members start at their invitations with clear paired guidance', async ({page}, info) => {
  await setup(page,{member:true});await page.goto('/introduction?view=member');
- await page.getByLabel('DPC member email address').fill('member@example.test');
- await page.getByRole('button',{name:'Send verification code',exact:true}).click();
- await expect(page.locator('#status')).toContainText('If this email is eligible to invite');
- await page.getByLabel('Six-digit email code').fill('123456');
- await page.getByRole('button',{name:'Verify email',exact:true}).click();
+ await page.getByLabel("The email you use for DPC").fill('member@example.test');
+ await page.getByRole('button',{name:"Email me a code",exact:true}).click();
+ await expect(page.locator('#status')).toContainText("It only goes to the email on your DPC membership");
+ await page.getByLabel("Six-digit code").fill('123456');
+ await page.getByRole('button',{name:"Continue",exact:true}).click();
  await expect(page.getByRole('heading',{name:'Your Introductions',level:1})).toBeVisible();
  for(const id of ['site-header','page-title','intro-heading'])await expect(page.locator('#'+id)).toBeHidden();
- await expect(page.locator('#member-redemption-guide')).toContainText('instead of “Redeem Pour.”');
- await expect(page.locator('#member-redemption-guide')).toContainText('does not use another from your monthly allotment');
+ await expect(page.locator('#member-redemption-guide')).toContainText("instead of Redeem Pour");
+ await expect(page.locator('#member-redemption-guide')).toContainText("doesn't come out of your Pours");
  await expect(page.locator('#status')).toBeEmpty();
- await page.getByRole('button',{name:'Create invitation link'}).click();
+ await page.getByRole('button',{name:"Create my link"}).click();
  const gap=await page.locator('#copy-link').evaluate(el=>el.nextElementSibling.getBoundingClientRect().top-el.getBoundingClientRect().bottom);
  expect(gap).toBeGreaterThanOrEqual(20);
  await page.screenshot({path:info.outputPath('member-simplified.png'),fullPage:true});
- await page.getByRole('button',{name:'Sign out of this page'}).click();
+ await page.getByRole('button',{name:"Sign out"}).click();
  await expect(page.locator('#page-title')).toBeVisible();await expect(page.locator('#site-header')).toBeVisible();
- await expect(page.locator('#status')).toContainText('Signed out');
+ await expect(page.locator('#status')).toContainText("You're signed out");
 });

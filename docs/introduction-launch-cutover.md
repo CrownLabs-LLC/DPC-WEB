@@ -46,13 +46,13 @@ So we built The Introduction. You can bring a friend who has never been a member
 
 For this one-time Giving offering, you have two Introductions in total to share. Claim and use them together by December 31, 2026, Pacific time.
 
-Open Pours in the app and choose Share an Introduction to share a link. Your friend claims it with their verified email. When you are out together at a Partner venue, open an available monthly Pour, tap Use an Introduction, choose your friend and their eligible beverage offering, and redeem together.
+Open Pours in the app and choose Invite a friend to share a link. Your friend claims it with their verified email. When you are out together at a Partner venue, open an available monthly Pour, tap Use an Introduction, choose your friend and their eligible beverage offering, and redeem together.
 
 Sunday through Thursday any time the venue is open. Friday and Saturday before 4 PM. Your friend brings a photo ID. Venue blackouts apply.
 
 We updated the Introduction rules in Terms §11.1 and the Privacy Policy for this Giving offering. Existing members do not need to re-accept.
 
-Button: Share an Introduction → https://www.downtownpourcollective.com/introduction?view=member
+Button: Invite a friend → https://www.downtownpourcollective.com/introduction?view=member
 Terms: https://www.downtownpourcollective.com/terms#sec-11-1
 Privacy: https://www.downtownpourcollective.com/privacy
 
