@@ -177,6 +177,7 @@ async function fillForm(page) {
 for (const failure of [
   { code: 'SIGN_IN_REQUIRED', status: 409, message: 'Please sign in through the app.' },
   { code: 'RATE_LIMITED', status: 429, message: 'Too many attempts.' },
+  { code: 'CHECKOUT_IN_PROGRESS', status: 409, message: 'choose the same Circle and billing option as before' },
   { code: 'CHECKOUT_NOT_ENABLED', status: 503, message: 'Membership checkout is temporarily unavailable.' },
   { code: 'network', networkError: true, message: 'Network error. Check your connection and try again.' },
   { code: 'CHALLENGE_FAILED', status: 403, message: 'Security check failed.', clearsOnRenewal: true },
