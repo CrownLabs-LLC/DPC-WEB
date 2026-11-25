@@ -398,3 +398,17 @@ test('leaving during invitation load cannot restore private records',async({page
  await page.evaluate(()=>window.dispatchEvent(new PageTransitionEvent('pagehide',{persisted:true})));finish();
  await expect(page.locator('#admin-invitations')).toBeEmpty();await expect(page.locator('#admin-view')).toBeHidden();
 });
+
+for(const status of [401,403])test(`CSV access loss ${status} clears loaded invitation identity`,async({page})=>{
+ await adminSetup(page);
+ await page.route(`${host}/rest/v1/rpc/admin_introduction_invitations`,r=>r.fulfill({json:{rows:[overviewRow('a','open')],next_id:'a'}}));
+ await page.getByRole('button',{name:'Load invitations',exact:true}).click();
+ await expect(page.locator('#admin-invitations')).toContainText('alex@example.test');
+ await page.route(`${host}/rest/v1/rpc/admin_introduction_contacts`,r=>r.fulfill({status,json:{error:'access_lost'}}));
+ await page.getByRole('button',{name:'Prepare all contacts CSV',exact:true}).click();
+ await expect(page.locator('#admin-invitations')).toBeEmpty();
+ await expect(page.locator('#admin-view')).toBeHidden();
+ await expect(page.locator('#more-admin-invitations')).toBeHidden();
+ await expect(page.locator('#download-contacts')).not.toHaveAttribute('href');
+ await expect(page.locator('#identity-form')).toBeVisible();
+});

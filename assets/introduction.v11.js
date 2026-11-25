@@ -35,6 +35,8 @@
   const clearDownload=()=>{exportGeneration++;if(downloadUrl)URL.revokeObjectURL(downloadUrl);downloadUrl=null;$('download-contacts').hidden=true;$('download-contacts').removeAttribute('href');$('export-result').textContent='';};
   let invitationCursor=null;
   const clearInvitationOverview=()=>{invitationCursor=null;$('admin-invitations').replaceChildren();$('admin-invitation-status').textContent='';$('more-admin-invitations').hidden=true;};
+  const clearAdminData=()=>{clearInvitationOverview();clearDownload();};
+  const adminAccessLost=()=>{clearAdminData();session=null;show('identity-form');$('sign-out').hidden=true;status('Full admin access is required. Sign in with an authorized account.',true);$('email').focus();};
   const pacificDate=value=>value?new Intl.DateTimeFormat('en-US',{timeZone:'America/Los_Angeles',month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit',timeZoneName:'short'}).format(new Date(value)):'Not claimed';
   async function loadInvitationOverview(more=false){
     const cursor=more?invitationCursor:null;
@@ -65,8 +67,8 @@
       $('admin-invitation-status').textContent=count?`${count} invitation links loaded${invitationCursor?' · more available':''}. Includes canceled replacements; this is not a count of people contacted.`:'No invitation links have been created yet.';
     }catch(error){
       if(error.stale)throw error;
-      if(error.status===401||error.status===403){clearInvitationOverview();clearDownload();if(error.status===401)throw error;session=null;show('identity-form');$('sign-out').hidden=true;status('Full admin access is required. Sign in with an authorized account.',true);return;}
-      $('admin-invitation-status').textContent='Could not load invitations. Try Load invitations again. Guest CSV downloads remain available.';
+      if(error.status===401){clearAdminData();throw error;}if(error.status===403){adminAccessLost();return;}
+      $('admin-invitation-status').textContent=more?'Could not load the next page. Try Load more invitations again.':'Could not load invitations. Try Load invitations again. You can also try a guest CSV.';
     }
   }
   const contactColumns=['first_name','last_name','email','state','created_at','marketing_opt_in','marketing_eligible','marketing_revision','terms_revision','privacy_revision','expires_at','inviter_name'];
@@ -89,10 +91,10 @@
       const link=$('download-contacts');link.href=downloadUrl;link.download=`dpc-introduction-${marketingOnly?'marketing-opt-ins':'all-contacts'}-${new Date().toISOString().slice(0,10)}.csv`;link.hidden=false;
       $('export-result').textContent=`${rows.length} ${rows.length===1?'guest':'guests'} in this ${marketingOnly?'marketing opt-in':'all-contact'} export. Download the CSV, then save it securely. Preparing the file does not send any emails.`;
       status('Your CSV is ready to download.');link.focus();
-    }catch(error){if(generation!==exportGeneration)return;clearDownload();if(error.status===401)throw error;status('Could not prepare the export. Check your connection and full admin access, then try again.',true);}
+    }catch(error){if(generation!==exportGeneration)return;clearDownload();if(error.status===401){clearAdminData();throw error;}if(error.status===403){adminAccessLost();return;}status('Could not prepare the export. Check your connection and full admin access, then try again.',true);}
   }
   const edge=(name,body)=>json(`${config.supabaseUrl}/functions/v1/${name}`,{method:'POST',headers:headers(),body:JSON.stringify(body)});
-  const run=async(fn)=>{if(busy)return;const generation=lifecycle;busy=true;document.querySelectorAll('button').forEach(b=>b.disabled=true);try{await fn();}catch(error){if(error.stale)return;if(error.status===401){session=null;show('identity-form');status("Your session timed out. Confirm your email again to pick up where you left off.",true);}else status("Something didn't go through. Check your connection and try again.",true);}finally{if(generation===lifecycle){busy=false;document.querySelectorAll('button').forEach(b=>b.disabled=false);}}};
+  const run=async(fn)=>{if(busy)return;const generation=lifecycle;busy=true;document.querySelectorAll('button').forEach(b=>b.disabled=true);try{await fn();}catch(error){if(error.stale)return;if(error.status===401){if(mode==='admin')clearAdminData();session=null;show('identity-form');status("Your session timed out. Confirm your email again to pick up where you left off.",true);}else status("Something didn't go through. Check your connection and try again.",true);}finally{if(generation===lifecycle){busy=false;document.querySelectorAll('button').forEach(b=>b.disabled=false);}}};
   const claimFields=disabled=>$('claim-form').querySelectorAll('input').forEach(input=>input.disabled=disabled);
   const clear=(invalidate=true)=>{if(invalidate){lifecycle++;busy=false;document.querySelectorAll('button').forEach(b=>b.disabled=false);}clearDownload();clearInvitationOverview();$('member-view').append($('share-link'));$('marketing-status').textContent='';$('withdraw-marketing').hidden=false;$('guest-marketing').open=false;$('code-destination').textContent='';$('guest-redemption-guide').textContent="When you order, your friend pulls up both drinks in their app for the bartender.";$('guest-outcome').textContent='';$('guest-venue-guide').textContent='Pick one of our partner venues with your friend and go together.';$('guest-covered-guide').textContent='Your drink is covered by us, not by your friend.';claimFields(false);$('claim-form').reset();session=null;email='';createId=null;claimInput=null;sharedInvitationId=null;$('email').value='';$('code').value='';$('invitation-link').value='';$('share-link').hidden=true;$('sign-out').hidden=true;};
   async function sendCode(){
@@ -162,7 +164,7 @@
       else if(mode==='member'){await invitations();$('member-heading').focus();status('');}
       else if(mode==='admin'){await contactPage(false,null,1);show('admin-view');$('admin-heading').focus();status('Full admin access verified. Load invitations or choose a guest export.');}
       else await guestStatus();
-    } catch(error) {if(error.stale)return;session=null;if(mode==='admin'&&error.status===403){$('sign-out').hidden=true;show('identity-form');status('This email does not have full admin download access. Use your full admin email or contact support.',true);$('email').focus();}else{show('code-form');status("We couldn't confirm that code or open your page. Try it again, send a new one, or contact us.",true);}}
+    } catch(error) {if(error.stale)return;session=null;if(mode==='admin'&&error.status===403){clearAdminData();$('sign-out').hidden=true;show('identity-form');status('This email does not have full admin download access. Use your full admin email or contact support.',true);$('email').focus();}else{show('code-form');status("We couldn't confirm that code or open your page. Try it again, send a new one, or contact us.",true);}}
   });});
   $('claim-form').addEventListener('submit',event=>{event.preventDefault();void run(async()=>{
     if(!session||!$('over-21').checked||!$('terms').checked)return;
@@ -217,7 +219,7 @@
       $('intro-heading').textContent=`Your first drink is on us. ${preview.inviterFirstName || 'Your friend'} is a member of Downtown Pour Collective, a Livermore membership that gets members drinks at local restaurants and bars every month. Claim your invitation here, then go out together. ${preview.inviterFirstName || 'Your friend'} takes care of everything at the bar, so there's nothing to download.`;
       $('claim-privacy').textContent=`${preview.inviterFirstName || 'Your friend'} will see your name and whether your invitation has been used. Your email and email choices stay private.`;
       $('introduction-terms').hidden=false;$('terms-revision').textContent="";
-    }else $('intro-heading').textContent=mode==='admin'?'Private guest contact downloads for full admins. Verify your DPC admin email to continue.':mode==='member'?"Give a friend a Pour. Confirm your member email and we'll take you to your two invitations.":"Already claimed your drink? Enter the email you used and we'll send a code to pull it up. Got a new invitation from a friend? Open the link they sent you instead.";
+    }else $('intro-heading').textContent=mode==='admin'?'Private invitation overview and guest contact downloads for full admins. Verify your DPC admin email to continue.':mode==='member'?"Give a friend a Pour. Confirm your member email and we'll take you to your two invitations.":"Already claimed your drink? Enter the email you used and we'll send a code to pull it up. Got a new invitation from a friend? Open the link they sent you instead.";
     show('identity-form');$('email-label').textContent=mode==='member'?"The email you use for DPC":"Your email";$('email-help').textContent=mode==='member'?"This page opens in your browser, so we'll email you a quick six-digit code to confirm it's you.":"We'll email you a six-digit code to confirm it's you. This doesn't sign you up for marketing.";status(mode==='member'?'':"Confirm your email to continue.");
   });
 })();
