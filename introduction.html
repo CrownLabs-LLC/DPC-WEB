@@ -7,8 +7,8 @@
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/assets/pour-partner-invitation.v1.css">
 <link rel="stylesheet" href="/assets/account-deletion.v1.css">
-<link rel="stylesheet" href="/assets/introduction.v6.css">
-<script src="/assets/introduction.v10.js" defer></script>
+<link rel="stylesheet" href="/assets/introduction.v7.css">
+<script src="/assets/introduction.v11.js" defer></script>
 </head>
 <body>
 <header id="site-header"><a href="/">Downtown Pour Collective</a></header>
@@ -80,13 +80,22 @@
 <details><summary>Introduction terms and privacy</summary><p class="note">We updated our <a href="/terms#sec-11-1">Terms</a> and <a href="/privacy">Privacy Policy</a> for The Introduction. Nothing for you to re-accept.</p></details>
 </section>
 <section id="admin-view" hidden>
-<h2 id="admin-heading" tabindex="-1">Download guest contacts</h2>
+<h2 id="admin-heading" tabindex="-1">Invitations and guest contacts</h2>
+<p>See who created each link and whether their guest claimed or redeemed it. Inviter contact details are for operations; they do not establish marketing permission.</p>
+<button id="load-admin-invitations" class="secondary" type="button">Load invitations</button>
+<p id="admin-invitation-status" role="status" aria-live="polite"></p>
+<div id="admin-invitations"></div>
+<button id="more-admin-invitations" class="secondary" type="button" hidden>Load more invitations</button>
+<details id="admin-status-guide"><summary>What invitation statuses mean</summary>
+<p>Open: a link was created and is unclaimed. Sending, delivery and link views are not recorded. Claimed: a verified guest claimed the link, permanently committing the slot. Redeemed: the paired redemption committed. Canceled: the member canceled an unclaimed link. Expired: the deadline passed without redemption. Unavailable means the guest status could not be determined. These statuses do not record a check-in.</p>
+<p>All dates are shown in Pacific time. Links are not sorted by date; load invitations again to refresh. Claiming and redemption end at midnight Pacific after December 31, 2026. Canceled links remain in this history, even when the slot is reused.</p></details>
+<h2>Download guest contacts</h2>
 <p>Private to full admins. Choose the list you need, then download a CSV file.</p>
 <h3>For service and support</h3>
 <p class="note">All contacts includes guests who did not opt in. Do not use this list for marketing.</p>
 <button id="export-all" class="secondary" type="button">Prepare all contacts CSV</button>
 <h3>For marketing</h3>
-<p class="note">Only eligible opt-ins are included. Apply your marketing platform’s current unsubscribe and suppression lists before sending.</p>
+<p class="note">Guests only, with affirmative opt-in and no recorded withdrawal or suppression. This does not include inviter email addresses or establish inviter consent. Use a fresh export and apply your marketing platform’s current unsubscribe and suppression lists before sending.</p>
 <button id="export-marketing" class="secondary" type="button">Prepare marketing opt-ins CSV</button>
 <p id="export-result" role="status" aria-live="polite"></p>
 <a id="download-contacts" class="button" hidden>Download CSV file</a>

@@ -354,3 +354,61 @@ test('verified members start at their invitations with clear paired guidance', a
  await expect(page.locator('#page-title')).toBeVisible();await expect(page.locator('#site-header')).toBeVisible();
  await expect(page.locator('#status')).toContainText("You're signed out");
 });
+
+const overviewRow=(id,state,overrides={})=>({id,state,slot:1,inviter_member_id:'member-1',inviter_name:'Alex Member',inviter_email:'alex@example.test',guest_first_name:['claimed','redeemed','expired'].includes(state)?'Jamie':null,guest_last_name:['claimed','redeemed','expired'].includes(state)?'Guest':null,created_at:'2026-11-24T18:00:00Z',claimed_at:['claimed','redeemed','expired'].includes(state)?'2026-11-24T19:00:00Z':null,expires_at:'2027-01-01T08:00:00Z',...overrides});
+async function adminSetup(page){
+ await setup(page,{member:true});
+ await page.route(`${host}/rest/v1/rpc/admin_introduction_contacts`,r=>{const b=r.request().postDataJSON();return r.fulfill({json:{rows:[],next_id:null,marketing_only:b.p_marketing_only}});});
+ await page.goto('/introduction?view=admin');await verify(page,'member@example.test');
+}
+test('invitation overview shows all statuses, separate audiences and pagination',async({page},info)=>{
+ await adminSetup(page);
+ await page.route(`${host}/rest/v1/rpc/admin_introduction_invitations`,r=>{const b=r.request().postDataJSON();return r.fulfill({json:b.p_after_id?{rows:[overviewRow('f','open',{inviter_name:'<script>alert(1)</script>'})],next_id:null}:{rows:['open','claimed','redeemed','cancelled','expired'].map((s,i)=>overviewRow(String(i),s,{inviter_member_id:`member-${i}`,inviter_name:['Alex Member','Morgan Member','Sam Member','Alex Member','Taylor Member'][i],inviter_email:['alex','morgan','sam','alex','taylor'][i]+'@example.test'})),next_id:'4'}});});
+ await page.getByRole('button',{name:'Load invitations',exact:true}).click();
+ await expect(page.locator('#admin-invitations article')).toHaveCount(5);
+ for(const label of ['Open · awaiting claim','Claimed','Redeemed','Canceled','Expired'])await expect(page.locator('#admin-invitations dd').filter({hasText:new RegExp(`^${label}$`)}).first()).toBeVisible();
+ await expect(page.locator('#admin-invitations')).toContainText('alex@example.test');
+ await expect(page.locator('#admin-invitations')).toContainText('Jan 1, 2027');
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ await page.screenshot({path:info.outputPath('invitation-overview.png'),fullPage:true});
+ await page.getByRole('button',{name:'Load more invitations',exact:true}).click();
+ await expect(page.locator('#admin-invitations article')).toHaveCount(6);
+ await expect(page.locator('#more-admin-invitations')).toBeHidden();
+ await expect(page.locator('#admin-invitations h3').last()).toContainText('<script>');
+ await expect(page.locator('#admin-invitations script')).toHaveCount(0);
+ await page.getByRole('button',{name:'Sign out',exact:true}).click();
+ await expect(page.locator('#admin-invitations')).toBeEmpty();await expect(page.locator('#admin-invitation-status')).toBeEmpty();
+});
+test('overview handles empty, failed, and revoked access without stale private records',async({page})=>{
+ await adminSetup(page);
+ await page.route(`${host}/rest/v1/rpc/admin_introduction_invitations`,r=>r.fulfill({json:{rows:[],next_id:null}}));
+ await page.getByRole('button',{name:'Load invitations',exact:true}).click();await expect(page.locator('#admin-invitation-status')).toContainText('No invitation links');
+ await page.route(`${host}/rest/v1/rpc/admin_introduction_invitations`,r=>r.fulfill({status:500,json:{error:'offline'}}));
+ await page.getByRole('button',{name:'Load invitations',exact:true}).click();await expect(page.locator('#admin-invitation-status')).toContainText('Could not load');
+ await page.route(`${host}/rest/v1/rpc/admin_introduction_invitations`,r=>r.fulfill({json:{rows:[overviewRow('a','open')],next_id:null}}));
+ await page.getByRole('button',{name:'Load invitations',exact:true}).click();await expect(page.locator('#admin-invitations article')).toHaveCount(1);
+ await page.route(`${host}/rest/v1/rpc/admin_introduction_invitations`,r=>r.fulfill({status:403,json:{error:'forbidden'}}));
+ await page.getByRole('button',{name:'Load invitations',exact:true}).click();await expect(page.locator('#admin-view')).toBeHidden();await expect(page.locator('#admin-invitations')).toBeEmpty();
+});
+test('leaving during invitation load cannot restore private records',async({page})=>{
+ await adminSetup(page);let finish;const gate=new Promise(resolve=>finish=resolve);
+ await page.route(`${host}/rest/v1/rpc/admin_introduction_invitations`,async r=>{await gate;await r.fulfill({json:{rows:[overviewRow('a','open')],next_id:null}});});
+ const request=page.waitForRequest(r=>r.url().endsWith('admin_introduction_invitations'));
+ await page.getByRole('button',{name:'Load invitations',exact:true}).click();await request;
+ await page.evaluate(()=>window.dispatchEvent(new PageTransitionEvent('pagehide',{persisted:true})));finish();
+ await expect(page.locator('#admin-invitations')).toBeEmpty();await expect(page.locator('#admin-view')).toBeHidden();
+});
+
+for(const status of [401,403])test(`CSV access loss ${status} clears loaded invitation identity`,async({page})=>{
+ await adminSetup(page);
+ await page.route(`${host}/rest/v1/rpc/admin_introduction_invitations`,r=>r.fulfill({json:{rows:[overviewRow('a','open')],next_id:'a'}}));
+ await page.getByRole('button',{name:'Load invitations',exact:true}).click();
+ await expect(page.locator('#admin-invitations')).toContainText('alex@example.test');
+ await page.route(`${host}/rest/v1/rpc/admin_introduction_contacts`,r=>r.fulfill({status,json:{error:'access_lost'}}));
+ await page.getByRole('button',{name:'Prepare all contacts CSV',exact:true}).click();
+ await expect(page.locator('#admin-invitations')).toBeEmpty();
+ await expect(page.locator('#admin-view')).toBeHidden();
+ await expect(page.locator('#more-admin-invitations')).toBeHidden();
+ await expect(page.locator('#download-contacts')).not.toHaveAttribute('href');
+ await expect(page.locator('#identity-form')).toBeVisible();
+});

@@ -1,0 +1,13 @@
+# Introduction dashboard extension — November 25, 2026
+
+Extends the existing private `/introduction?view=admin` surface, preserving its design, full-admin gate, code sign-in and separate operational/marketing guest CSVs. The prerequisite is DPC's additive `admin_introduction_invitations(integer,uuid)` RPC; deploy that reviewed migration before this web revision. The production route currently serves v10, verified HTTP 200, with public config targeting production and byte-identical reviewed JavaScript. Anonymous contact RPC returns HTTP 401.
+
+The overview shows invitation links, including open and canceled replacements, with inviter name/email, guest name after claim, creation/claim/deadline dates and current status. It uses the server's ledger-owned status projection. Open does not establish sending, delivery or viewing; there is no check-in inference. Canceled links retain that state after the deadline. A reused slot may appear more than once in the history. A missing guest ledger status is displayed as Unavailable, never falsely reported as claimed.
+
+Marketing exports cover guests, not inviting members. The original opt-in choice is immutable; current eligibility additionally excludes withdrawals and known suppressions. Verification is not consent. The operational export includes non-opted-in guests and is not a marketing list. Nothing sends messages, creates invitations, copies contacts to a platform or changes access.
+
+Nick already has full-admin access in production. No new grant is necessary. The least-privilege alternative and consent-source findings are recorded in [the feature plan](https://github.com/CrownLabs-LLC/DPC/blob/main/plans/the-introduction.md). Do not change his role without explicit approval.
+
+Walkthrough with synthetic data: sign in as the fixture admin; load invitations; inspect open, claimed, redeemed, canceled and expired examples; load another page; inspect the status explanation; prepare either guest CSV; sign out and confirm private data/downloads clear. The browser fixture uses example.test identities and intercepted requests; it is not evidence of hosted production activity. Local database tests separately exercise actual authorization, pagination, lifecycle and withdrawal filtering.
+
+Production remains unchanged. Website merge deploys to production and therefore requires Brandi's release approval after Claude review and checks. Recovery: revert introduction.html to JS v10/CSS v6; preserve the original guest exports. The additive read RPC can be revoked/dropped without altering stored data. No #594 dependency or migration is included.
